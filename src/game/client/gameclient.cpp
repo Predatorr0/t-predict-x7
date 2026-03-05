@@ -78,8 +78,8 @@
 #include <game/version.h>
 
 #include <chrono>
-#include <limits>
 #include <cmath>
+#include <limits>
 
 using namespace std::chrono_literals;
 
@@ -2693,7 +2693,7 @@ void CGameClient::OnPredict()
 		// TClient
 		// This has to be before direct input because physics happens in there
 		bool TempPredEventState = m_PredictedWorld.m_WorldConfig.m_PredictEvents;
-		if (Tick > FinalTickRegular)
+		if(Tick > FinalTickRegular)
 			m_PredictedWorld.m_WorldConfig.m_PredictEvents = false;
 
 		if(DummyFirst)
@@ -2730,10 +2730,10 @@ void CGameClient::OnPredict()
 				if(CCharacter *pChar = m_PredictedWorld.GetCharacterById(i))
 					m_aClients[i].m_Predicted = pChar->GetCore();
 		}
-		if (Tick == FinalTickRegular)
+		if(Tick == FinalTickRegular)
 		{
-			for (int i = 0; i < MAX_CLIENTS; i++)
-				if (CCharacter* pChar = m_PredictedWorld.GetCharacterById(i))
+			for(int i = 0; i < MAX_CLIENTS; i++)
+				if(CCharacter *pChar = m_PredictedWorld.GetCharacterById(i))
 					m_aClients[i].m_RegularPredicted = pChar->GetCore();
 		}
 
@@ -4319,7 +4319,7 @@ vec2 CGameClient::GetFastInputPos(int ClientId)
 
 	int FinalTick = PredTick + FastInputTicks;
 
-	if (FinalTick > 0 &&
+	if(FinalTick > 0 &&
 		m_aClients[ClientId].m_aPredTick[(FinalTick - 1) % 200] >= Client()->PrevGameTick(g_Config.m_ClDummy) &&
 		m_aClients[ClientId].m_aPredTick[FinalTick % 200] <= Client()->PredGameTick(g_Config.m_ClDummy) + FastInputTicks)
 	{
@@ -4377,7 +4377,7 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 	int CarryOverTicks = static_cast<int>(IntraRemainder);
 
 	FastInputTicks += CarryOverTicks;
-		 
+
 	const bool IsLocal = ClientId == m_Snap.m_LocalClientId || (PredictDummy() && ClientId == m_aLocalIds[!g_Config.m_ClDummy]);
 	if(IsLocal && g_Config.m_TcFastInput)
 	{

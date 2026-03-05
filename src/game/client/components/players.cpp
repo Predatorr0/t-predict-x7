@@ -745,15 +745,14 @@ void CPlayers::RenderPlayer(
 
 			if(g_Config.m_TcRenderWeaponsAsGun && (Player.m_Weapon == WEAPON_SHOTGUN || Player.m_Weapon == WEAPON_GRENADE || Player.m_Weapon == WEAPON_LASER))
 			{
-				if (g_Config.m_TcRenderWeaponsAsGun == 1) 
+				if(g_Config.m_TcRenderWeaponsAsGun == 1)
 				{
 					if(Player.m_Weapon == WEAPON_SHOTGUN)
 						Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClLaserShotgunInnerColor).WithAlpha(Alpha)));
-					if (Player.m_Weapon == WEAPON_GRENADE)
+					if(Player.m_Weapon == WEAPON_GRENADE)
 						Graphics()->SetColor(ColorRGBA(0.866666f, 0.372549f, 0.372549f).WithAlpha(Alpha));
-					if (Player.m_Weapon == WEAPON_LASER)
+					if(Player.m_Weapon == WEAPON_LASER)
 						Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClLaserRifleInnerColor).WithAlpha(Alpha)));
-					
 				}
 				Player.m_Weapon = WEAPON_GUN;
 			}
