@@ -601,51 +601,6 @@ int CGameClient::OnSnapInput(int *pData, bool Dummy, bool Force)
 	}
 }
 
-bool CGameClient::GetDummyFastInput(CNetObj_PlayerInput &DummyFastInput, const CNetObj_PlayerInput *pDummyInputData, const CCharacter *pDummyChar, int LocalTee, int DummyTee) const
-{
-	if(!PredictDummy() || !pDummyChar)
-		return false;
-
-	if(g_Config.m_ClDummyHammer)
-	{
-		DummyFastInput = m_HammerInput;
-		return true;
-	}
-
-	if(g_Config.m_ClDummyCopyMoves)
-	{
-		DummyFastInput = m_Controls.m_aFastInput[LocalTee];
-		DummyFastInput.m_Fire = m_Controls.m_aFastInput[DummyTee].m_Fire;
-		DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
-		DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
-		DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
-		if(g_Config.m_ClDummyControl)
-		{
-			const CNetObj_PlayerInput BaseDummyInput = pDummyInputData ? *pDummyInputData : CNetObj_PlayerInput{};
-			DummyFastInput.m_Jump = BaseDummyInput.m_Jump;
-			DummyFastInput.m_Fire = BaseDummyInput.m_Fire;
-			DummyFastInput.m_Hook = BaseDummyInput.m_Hook;
-		}
-		return true;
-	}
-
-	if(g_Config.m_ClDummyControl)
-	{
-		const CNetObj_PlayerInput BaseDummyInput = pDummyInputData ? *pDummyInputData : CNetObj_PlayerInput{};
-		DummyFastInput = BaseDummyInput;
-		DummyFastInput.m_Direction = m_Controls.m_aFastInput[DummyTee].m_Direction;
-		DummyFastInput.m_PlayerFlags = m_Controls.m_aFastInput[DummyTee].m_PlayerFlags;
-		DummyFastInput.m_TargetX = m_Controls.m_aFastInput[DummyTee].m_TargetX;
-		DummyFastInput.m_TargetY = m_Controls.m_aFastInput[DummyTee].m_TargetY;
-		DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
-		DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
-		DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
-		return true;
-	}
-
-	return false;
-}
-
 void CGameClient::OnConnected()
 {
 	const char *pConnectCaption = DemoPlayer()->IsPlaying() ? Localize("Preparing demo playback") : Localize("Connected");
@@ -2569,6 +2524,52 @@ void CGameClient::UpdateEditorIngameMoved()
 	}
 }
 
+// TClient
+bool CGameClient::GetDummyFastInput(CNetObj_PlayerInput& DummyFastInput, const CNetObj_PlayerInput* pDummyInputData, const CCharacter* pDummyChar, int LocalTee, int DummyTee) const
+{
+	if (!PredictDummy() || !pDummyChar)
+		return false;
+
+	if (g_Config.m_ClDummyHammer)
+	{
+		DummyFastInput = m_HammerInput;
+		return true;
+	}
+
+	if (g_Config.m_ClDummyCopyMoves)
+	{
+		DummyFastInput = m_Controls.m_aFastInput[LocalTee];
+		DummyFastInput.m_Fire = m_Controls.m_aFastInput[DummyTee].m_Fire;
+		DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
+		DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
+		DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
+		if (g_Config.m_ClDummyControl)
+		{
+			const CNetObj_PlayerInput BaseDummyInput = pDummyInputData ? *pDummyInputData : CNetObj_PlayerInput{};
+			DummyFastInput.m_Jump = BaseDummyInput.m_Jump;
+			DummyFastInput.m_Fire = BaseDummyInput.m_Fire;
+			DummyFastInput.m_Hook = BaseDummyInput.m_Hook;
+		}
+		return true;
+	}
+
+	if (g_Config.m_ClDummyControl)
+	{
+		const CNetObj_PlayerInput BaseDummyInput = pDummyInputData ? *pDummyInputData : CNetObj_PlayerInput{};
+		DummyFastInput = BaseDummyInput;
+		DummyFastInput.m_Direction = m_Controls.m_aFastInput[DummyTee].m_Direction;
+		DummyFastInput.m_PlayerFlags = m_Controls.m_aFastInput[DummyTee].m_PlayerFlags;
+		DummyFastInput.m_TargetX = m_Controls.m_aFastInput[DummyTee].m_TargetX;
+		DummyFastInput.m_TargetY = m_Controls.m_aFastInput[DummyTee].m_TargetY;
+		DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
+		DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
+		DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
+		return true;
+	}
+
+	return false;
+}
+
 void CGameClient::ApplyPreInputs(int Tick, bool Direct, CGameWorld &GameWorld)
 {
 	if(!g_Config.m_ClAntiPingPreInput)
@@ -2732,6 +2733,7 @@ void CGameClient::OnPredict()
 		}
 
 		// TClient
+		// Disable predicted events during fastinput over-run prediction ticks because they are not real
 		// This has to be before direct input because physics happens in there
 		bool TempPredEventState = m_PredictedWorld.m_WorldConfig.m_PredictEvents;
 		if(Tick > FinalTickRegular)
@@ -2758,9 +2760,6 @@ void CGameClient::OnPredict()
 
 		// TClient
 		m_PredictedWorld.m_WorldConfig.m_PredictEvents = TempPredEventState;
-
-		if(Tick == FinalTickRegular)
-			m_RegularPredictedWorld.CopyWorldClean(&m_PredictedWorld);
 
 		// fetch the current characters
 		if(Tick == FinalTickSelf)
@@ -2837,6 +2836,9 @@ void CGameClient::OnPredict()
 
 		if(Tick <= FinalTickRegular)
 			HandlePredictedEvents(Tick);
+
+		if (Tick == FinalTickRegular)
+			m_RegularPredictedWorld.CopyWorldClean(&m_PredictedWorld);
 	}
 
 	if(FastInputTicks > 0)
