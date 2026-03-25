@@ -165,6 +165,7 @@ class CChat : public CComponent
 	bool m_EditingNewLine;
 
 	bool m_ServerSupportsCommandInfo;
+	void SetUiMousePos(vec2 Pos);
 
 	static void ConSay(IConsole::IResult *pResult, void *pUserData);
 	static void ConSayTeam(IConsole::IResult *pResult, void *pUserData);
@@ -212,6 +213,7 @@ public:
 	void OnRelease() override;
 	void OnMessage(int MsgType, void *pRawMsg) override;
 	bool OnInput(const IInput::CEvent &Event) override;
+	bool OnCursorMove(float x, float y, IInput::ECursorType CursorType) override;
 	void OnInit() override;
 
 	void RebuildChat();

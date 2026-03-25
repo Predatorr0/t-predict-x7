@@ -706,6 +706,26 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 	return true;
 }
 
+bool CChat::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
+{
+	if(m_Mode == MODE_NONE || GameClient()->m_Menus.IsActive() || GameClient()->m_GameConsole.IsActive())
+		return false;
+
+	Ui()->ConvertMouseMove(&x, &y, CursorType);
+	Ui()->OnCursorMove(x, y);
+	return true;
+}
+
+void CChat::SetUiMousePos(vec2 Pos)
+{
+	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
+	const CUIRect *pScreen = Ui()->Screen();
+
+	const vec2 UpdatedMousePos = Ui()->UpdatedMousePos();
+	Pos = Pos / vec2(pScreen->w, pScreen->h) * WindowSize;
+	Ui()->OnCursorMove(Pos.x - UpdatedMousePos.x, Pos.y - UpdatedMousePos.y);
+}
+
 void CChat::EnableMode(int Team)
 {
 	if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
@@ -726,6 +746,7 @@ void CChat::EnableMode(int Team)
 		ResetTypingAnimation();
 		m_Input.Activate(EInputPriority::CHAT);
 		SyncTypingAnimationBaseline();
+		SetUiMousePos(Ui()->Screen()->Center());
 	}
 }
 
@@ -1500,6 +1521,20 @@ void CChat::OnRender()
 	}
 
 	float ScaledFontSize = FontSize() * (8.0f / 6.0f);
+	const bool ChatCursorUiActive = m_Mode != MODE_NONE && !GameClient()->m_Menus.IsActive() && !GameClient()->m_GameConsole.IsActive();
+	if(ChatCursorUiActive)
+	{
+		Ui()->StartCheck();
+		Ui()->Update();
+	}
+	auto FinishChatCursorUi = [&]() {
+		if(!ChatCursorUiActive)
+			return;
+		Ui()->MapScreen();
+		RenderTools()->RenderCursor(Ui()->MousePos(), 24.0f);
+		Ui()->FinishCheck();
+	};
+
 	if(m_Mode != MODE_NONE)
 	{
 		// render chat input
@@ -1643,7 +1678,10 @@ void CChat::OnRender()
 #else
 	if(!g_Config.m_ClShowChat)
 #endif
+	{
+		FinishChatCursorUi();
 		return;
+	}
 
 	y -= ScaledFontSize;
 
@@ -1727,6 +1765,8 @@ void CChat::OnRender()
 			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, LineRenderX, (LineRenderY + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset);
 		}
 	}
+
+	FinishChatCursorUi();
 }
 
 void CChat::EnsureCoherentFontSize() const
