@@ -3237,6 +3237,18 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		const float MarginBetweenViews = 30.0f;
 		const ColorRGBA BlockColor = ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f);
 
+		static CScrollRegion s_BestClientVisualsScrollRegion;
+		vec2 VisualsScrollOffset(0.0f, 0.0f);
+		CScrollRegionParams VisualsScrollParams;
+		VisualsScrollParams.m_ScrollUnit = 60.0f;
+		VisualsScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
+		VisualsScrollParams.m_ScrollbarMargin = 5.0f;
+		s_BestClientVisualsScrollRegion.Begin(&MainView, &VisualsScrollOffset, &VisualsScrollParams);
+
+		MainView.y += VisualsScrollOffset.y;
+		MainView.VSplitRight(5.0f, &MainView, nullptr);
+		MainView.VSplitLeft(5.0f, nullptr, &MainView);
+
 		const bool IsOnline = Client()->State() == IClient::STATE_ONLINE;
 		const bool IsFngServer = IsOnline && GameClient()->m_GameInfo.m_PredictFNG;
 		const bool Is0xFServer = IsOnline && str_comp_nocase(GameClient()->m_GameInfo.m_aGameType, "0xf") == 0;
@@ -3604,6 +3616,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			}
 		}
 
+		const float LeftColumnEndY = Column.y;
 		Column = RightView;
 
 		// Camera Drift (right column block)
@@ -3706,6 +3719,15 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				Ui()->DoScrollbarOption(&g_Config.m_BcAfterimageSpacing, &g_Config.m_BcAfterimageSpacing, &Row, Localize("Afterimage spacing"), 1, 64);
 			}
 		}
+
+		const float RightColumnEndY = Column.y;
+		CUIRect ScrollRegion;
+		ScrollRegion.x = MainView.x;
+		ScrollRegion.y = maximum(LeftColumnEndY, RightColumnEndY) + MarginSmall * 2.0f;
+		ScrollRegion.w = MainView.w;
+		ScrollRegion.h = 0.0f;
+		s_BestClientVisualsScrollRegion.AddRect(ScrollRegion);
+		s_BestClientVisualsScrollRegion.End();
 	}
 	else if(s_CurTab == BESTCLIENT_TAB_GAMEPLAY)
 	{
