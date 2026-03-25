@@ -150,6 +150,8 @@ protected:
 	int m_Popup;
 	bool m_ShowStart;
 	bool m_MenuActive;
+	float m_BcIngameMenuOpenPhase = 0.0f;
+	bool m_BcIngameMenuClosing = false;
 
 	bool m_DummyNamePlatePreview = false;
 

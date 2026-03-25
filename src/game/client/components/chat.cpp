@@ -18,6 +18,7 @@
 #include <generated/protocol7.h>
 
 #include <game/client/animstate.h>
+#include <game/client/bc_ui_animations.h>
 #include <game/client/components/censor.h>
 #include <game/client/components/scoreboard.h>
 #include <game/client/components/skins.h>
@@ -27,6 +28,21 @@
 #include <game/localization.h>
 
 char CChat::ms_aDisplayText[MAX_LINE_LENGTH] = "";
+static constexpr int CHAT_TYPING_ANIM_MAX_TEXT_BYTES = 16;
+
+static bool ChatTypingAnimSupportsText(const char *pText)
+{
+	for(const char *pScan = pText; *pScan;)
+	{
+		const char *pBefore = pScan;
+		const int Codepoint = str_utf8_decode(&pScan);
+		if(Codepoint < 0)
+			return false;
+		if(pScan <= pBefore)
+			return false;
+	}
+	return true;
+}
 
 CChat::CLine::CLine()
 {
@@ -142,6 +158,9 @@ void CChat::Reset()
 	m_PendingChatCounter = 0;
 	m_LastChatSend = 0;
 	m_CurrentLine = 0;
+	m_ChatOpenAnimationStart = 0;
+	m_vTypingGlyphAnims.clear();
+	m_aPreviousDisplayedInputText[0] = '\0';
 	m_IsInputCensored = false;
 	m_EditingNewLine = true;
 	m_ServerSupportsCommandInfo = false;
@@ -154,9 +173,172 @@ void CChat::Reset()
 		LastSoundPlayed = 0;
 }
 
+void CChat::ResetTypingAnimation()
+{
+	m_vTypingGlyphAnims.clear();
+}
+
+void CChat::SyncTypingAnimationBaseline()
+{
+	ResetTypingAnimation();
+	str_copy(m_aPreviousDisplayedInputText, m_Input.GetDisplayedString(), sizeof(m_aPreviousDisplayedInputText));
+}
+
+void CChat::RefreshTypingAnimation()
+{
+	if(m_Mode == MODE_NONE || !BCUiAnimations::Enabled() || g_Config.m_BcChatAnimation == 0 || g_Config.m_BcChatTypingAnimation == 0 || m_Input.HasSelection() || Input()->HasComposition())
+	{
+		SyncTypingAnimationBaseline();
+		return;
+	}
+
+	const char *pCurrent = m_Input.GetDisplayedString();
+	const size_t CurrentLen = str_length(pCurrent);
+	const size_t PreviousLen = str_length(m_aPreviousDisplayedInputText);
+
+	if(!ChatTypingAnimSupportsText(pCurrent) || !ChatTypingAnimSupportsText(m_aPreviousDisplayedInputText))
+	{
+		SyncTypingAnimationBaseline();
+		return;
+	}
+
+	if(str_comp(pCurrent, m_aPreviousDisplayedInputText) == 0)
+		return;
+
+	if(CurrentLen == 0)
+	{
+		SyncTypingAnimationBaseline();
+		return;
+	}
+
+	size_t PrefixBytes = 0;
+	{
+		const char *pCurScan = pCurrent;
+		const char *pPrevScan = m_aPreviousDisplayedInputText;
+		while(*pCurScan && *pPrevScan)
+		{
+			const char *pCurBefore = pCurScan;
+			const char *pPrevBefore = pPrevScan;
+			const int CurCp = str_utf8_decode(&pCurScan);
+			const int PrevCp = str_utf8_decode(&pPrevScan);
+			if(CurCp != PrevCp)
+			{
+				pCurScan = pCurBefore;
+				pPrevScan = pPrevBefore;
+				break;
+			}
+			PrefixBytes = (size_t)(pCurScan - pCurrent);
+		}
+	}
+
+	size_t SuffixBytesCur = 0;
+	size_t SuffixBytesPrev = 0;
+	{
+		int CurCursor = (int)CurrentLen;
+		int PrevCursor = (int)PreviousLen;
+		while(CurCursor > (int)PrefixBytes && PrevCursor > (int)PrefixBytes)
+		{
+			const int CurBefore = CurCursor;
+			const int PrevBefore = PrevCursor;
+			CurCursor = str_utf8_rewind(pCurrent, CurCursor);
+			PrevCursor = str_utf8_rewind(m_aPreviousDisplayedInputText, PrevCursor);
+
+			const char *pCurCpPtr = pCurrent + CurCursor;
+			const char *pPrevCpPtr = m_aPreviousDisplayedInputText + PrevCursor;
+			const int CurCp = str_utf8_decode(&pCurCpPtr);
+			const int PrevCp = str_utf8_decode(&pPrevCpPtr);
+			if(CurCp != PrevCp)
+			{
+				CurCursor = CurBefore;
+				PrevCursor = PrevBefore;
+				break;
+			}
+
+			SuffixBytesCur = CurrentLen - (size_t)CurCursor;
+			SuffixBytesPrev = PreviousLen - (size_t)PrevCursor;
+		}
+	}
+
+	const size_t RemovedBytes = PreviousLen - PrefixBytes - SuffixBytesPrev;
+	const size_t InsertedBytes = CurrentLen - PrefixBytes - SuffixBytesCur;
+	const int EditOldEndByte = (int)(PrefixBytes + RemovedBytes);
+	const int DeltaBytes = (int)InsertedBytes - (int)RemovedBytes;
+
+	for(auto It = m_vTypingGlyphAnims.begin(); It != m_vTypingGlyphAnims.end();)
+	{
+		const int AnimEndByte = It->m_ByteIndex + It->m_ByteLength;
+		if(It->m_ByteIndex >= (int)PrefixBytes && AnimEndByte <= EditOldEndByte)
+		{
+			It = m_vTypingGlyphAnims.erase(It);
+			continue;
+		}
+		if(It->m_ByteIndex >= EditOldEndByte)
+			It->m_ByteIndex += DeltaBytes;
+
+		if(It->m_ByteIndex < 0 || It->m_ByteLength <= 0 || It->m_ByteIndex + It->m_ByteLength > (int)CurrentLen)
+		{
+			It = m_vTypingGlyphAnims.erase(It);
+			continue;
+		}
+
+		if(str_length(It->m_aText) != It->m_ByteLength ||
+			str_comp_num(It->m_aText, pCurrent + It->m_ByteIndex, It->m_ByteLength) != 0)
+		{
+			It = m_vTypingGlyphAnims.erase(It);
+			continue;
+		}
+		++It;
+	}
+
+	if(InsertedBytes > 0)
+	{
+		for(int ByteIndex = (int)PrefixBytes; ByteIndex < (int)(PrefixBytes + InsertedBytes);)
+		{
+			const int NextByteIndex = str_utf8_forward(pCurrent, ByteIndex);
+			const int GlyphBytes = minimum(NextByteIndex - ByteIndex, CHAT_TYPING_ANIM_MAX_TEXT_BYTES - 1);
+			if(GlyphBytes > 0)
+			{
+				STypingGlyphAnim Anim;
+				Anim.m_StartTime = time_get();
+				Anim.m_ByteIndex = ByteIndex;
+				Anim.m_ByteLength = GlyphBytes;
+				str_truncate(Anim.m_aText, sizeof(Anim.m_aText), pCurrent + ByteIndex, GlyphBytes);
+				m_vTypingGlyphAnims.push_back(Anim);
+			}
+			ByteIndex = NextByteIndex;
+		}
+	}
+
+	str_copy(m_aPreviousDisplayedInputText, pCurrent, sizeof(m_aPreviousDisplayedInputText));
+}
+
+bool CChat::WasChatAutoHidden() const
+{
+	if(g_Config.m_ClShowChat == 0 || g_Config.m_ClShowChat == 2 || m_Mode != MODE_NONE)
+		return false;
+
+	const int64_t Now = time();
+	bool HadAnyLines = false;
+	for(int i = 0; i < MAX_LINES; i++)
+	{
+		const CLine &Line = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
+		if(!Line.m_Initialized)
+			break;
+
+		HadAnyLines = true;
+		if(Now <= Line.m_Time + 16 * time_freq())
+			return false;
+	}
+
+	return HadAnyLines;
+}
+
 void CChat::OnRelease()
 {
 	m_Show = false;
+	m_ChatOpenAnimationStart = 0;
+	ResetTypingAnimation();
+	m_aPreviousDisplayedInputText[0] = '\0';
 }
 
 void CChat::OnStateChange(int NewState, int OldState)
@@ -520,6 +702,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 		}
 	}
 
+	RefreshTypingAnimation();
 	return true;
 }
 
@@ -530,6 +713,7 @@ void CChat::EnableMode(int Team)
 
 	if(m_Mode == MODE_NONE)
 	{
+		const bool AnimateWholeChatOpen = WasChatAutoHidden();
 		if(Team)
 			m_Mode = MODE_TEAM;
 		else
@@ -538,7 +722,10 @@ void CChat::EnableMode(int Team)
 		Input()->Clear();
 		m_CompletionChosen = -1;
 		m_CompletionUsed = false;
+		m_ChatOpenAnimationStart = AnimateWholeChatOpen ? time_get() : 0;
+		ResetTypingAnimation();
 		m_Input.Activate(EInputPriority::CHAT);
+		SyncTypingAnimationBaseline();
 	}
 }
 
@@ -548,6 +735,9 @@ void CChat::DisableMode()
 	{
 		m_Mode = MODE_NONE;
 		m_Input.Deactivate();
+		m_ChatOpenAnimationStart = 0;
+		ResetTypingAnimation();
+		m_aPreviousDisplayedInputText[0] = '\0';
 	}
 }
 
@@ -1296,13 +1486,25 @@ void CChat::OnRender()
 	// TClient
 	float y = 300.0f - (20.0f * FontSize() / 6.0f + (g_Config.m_TcStatusBar ? g_Config.m_TcStatusBarHeight : 0.0f));
 	// float y = 300.0f - 20.0f * FontSize() / 6.0f;
+	const bool BcChatMessageAnimEnabled = BCUiAnimations::Enabled() && g_Config.m_BcChatAnimation != 0;
+	const bool BcChatOpenAnimEnabled = BcChatMessageAnimEnabled && g_Config.m_BcChatOpenAnimation != 0 && g_Config.m_BcChatOpenAnimationMs > 0;
+	const bool BcChatTypingAnimEnabled = BcChatMessageAnimEnabled && g_Config.m_BcChatTypingAnimation != 0 && g_Config.m_BcChatTypingAnimationMs > 0;
+	float ChatOpenOffsetX = 0.0f;
+	if(m_Mode != MODE_NONE && BcChatOpenAnimEnabled && m_ChatOpenAnimationStart > 0)
+	{
+		const float Dur = BCUiAnimations::MsToSeconds(g_Config.m_BcChatOpenAnimationMs);
+		const float Age = (time_get() - m_ChatOpenAnimationStart) / (float)time_freq();
+		const float Progress = Dur > 0.0f ? std::clamp(Age / Dur, 0.0f, 1.0f) : 1.0f;
+		const float ChatOpenEase = BCUiAnimations::EaseInOutQuart(Progress);
+		ChatOpenOffsetX = -(x + maximum(Width - 190.0f, 190.0f) + 24.0f) * (1.0f - ChatOpenEase);
+	}
 
 	float ScaledFontSize = FontSize() * (8.0f / 6.0f);
 	if(m_Mode != MODE_NONE)
 	{
 		// render chat input
 		CTextCursor InputCursor;
-		InputCursor.SetPosition(vec2(x, y));
+		InputCursor.SetPosition(vec2(x + ChatOpenOffsetX, y));
 		InputCursor.m_FontSize = ScaledFontSize;
 		InputCursor.m_LineWidth = Width - 190.0f;
 
@@ -1320,9 +1522,11 @@ void CChat::OnRender()
 
 		const float MessageMaxWidth = InputCursor.m_LineWidth - (InputCursor.m_X - InputCursor.m_StartX);
 		const CUIRect ClippingRect = {InputCursor.m_X, InputCursor.m_Y, MessageMaxWidth, 2.25f * InputCursor.m_FontSize};
+		const float TypingTravel = 30.0f;
+		const CUIRect ChatInputClipRect = {0.0f, ClippingRect.y - TypingTravel, Width, ClippingRect.h + TypingTravel};
 		const float XScale = Graphics()->ScreenWidth() / Width;
 		const float YScale = Graphics()->ScreenHeight() / Height;
-		Graphics()->ClipEnable((int)(ClippingRect.x * XScale), (int)(ClippingRect.y * YScale), (int)(ClippingRect.w * XScale), (int)(ClippingRect.h * YScale));
+		Graphics()->ClipEnable((int)(ChatInputClipRect.x * XScale), (int)(ChatInputClipRect.y * YScale), (int)(ChatInputClipRect.w * XScale), (int)(ChatInputClipRect.h * YScale));
 
 		float ScrollOffset = m_Input.GetScrollOffset();
 		float ScrollOffsetChange = m_Input.GetScrollOffsetChange();
@@ -1332,7 +1536,75 @@ void CChat::OnRender()
 		const bool WasChanged = m_Input.WasChanged();
 		const bool WasCursorChanged = m_Input.WasCursorChanged();
 		const bool Changed = WasChanged || WasCursorChanged;
-		const STextBoundingBox BoundingBox = m_Input.Render(&InputCursorRect, InputCursor.m_FontSize, TEXTALIGN_TL, Changed, MessageMaxWidth, 0.0f);
+		char aDisplayedInputText[MAX_LINE_LENGTH];
+		str_copy(aDisplayedInputText, m_Input.GetDisplayedString(), sizeof(aDisplayedInputText));
+		const float TypingAnimDuration = BCUiAnimations::MsToSeconds(g_Config.m_BcChatTypingAnimationMs);
+		std::vector<STextColorSplit> vTypingColorSplits;
+		std::vector<CChat::STypingGlyphAnim> vActiveTypingGlyphAnims;
+		if(BcChatTypingAnimEnabled && TypingAnimDuration > 0.0f && aDisplayedInputText[0] != '\0' && ChatTypingAnimSupportsText(aDisplayedInputText))
+		{
+			for(auto It = m_vTypingGlyphAnims.begin(); It != m_vTypingGlyphAnims.end();)
+			{
+				const float TypingAnimAge = (time_get() - It->m_StartTime) / (float)time_freq();
+				const int StartByte = It->m_ByteIndex;
+				const int GlyphBytes = It->m_ByteLength;
+				const int StoredGlyphBytes = str_length(It->m_aText);
+				const bool Valid =
+					TypingAnimAge < TypingAnimDuration &&
+					It->m_ByteIndex >= 0 &&
+					GlyphBytes > 0 &&
+					StartByte + GlyphBytes <= str_length(aDisplayedInputText) &&
+					StoredGlyphBytes == GlyphBytes &&
+					str_comp_num(It->m_aText, aDisplayedInputText + StartByte, GlyphBytes) == 0;
+				if(!Valid)
+				{
+					It = m_vTypingGlyphAnims.erase(It);
+					continue;
+				}
+
+				vActiveTypingGlyphAnims.push_back(*It);
+				vTypingColorSplits.emplace_back(It->m_ByteIndex, It->m_ByteLength, ColorRGBA(1.0f, 1.0f, 1.0f, 0.0f));
+				++It;
+			}
+		}
+
+		const bool DisableBaseOutline = !vTypingColorSplits.empty();
+		if(DisableBaseOutline)
+			TextRender()->TextOutlineColor(ColorRGBA(0.0f, 0.0f, 0.0f, 0.0f));
+		const STextBoundingBox BoundingBox = m_Input.Render(&InputCursorRect, InputCursor.m_FontSize, TEXTALIGN_TL, Changed, MessageMaxWidth, 0.0f, vTypingColorSplits);
+		if(DisableBaseOutline)
+			TextRender()->TextOutlineColor(TextRender()->DefaultTextOutlineColor());
+
+		for(const auto &TypingGlyphAnim : vActiveTypingGlyphAnims)
+		{
+			const float TypingAnimAge = (time_get() - TypingGlyphAnim.m_StartTime) / (float)time_freq();
+			const float Progress = std::clamp(TypingAnimAge / TypingAnimDuration, 0.0f, 1.0f);
+			const float Ease = BCUiAnimations::EaseInOutQuart(Progress);
+			const float OverlayYOffset = -4.5f * (1.0f - Ease);
+			const int PrefixBytes = TypingGlyphAnim.m_ByteIndex;
+			char aPrefixText[MAX_LINE_LENGTH] = "";
+			if(PrefixBytes < 0 || PrefixBytes > str_length(aDisplayedInputText))
+				continue;
+			str_truncate(aPrefixText, sizeof(aPrefixText), aDisplayedInputText, PrefixBytes);
+
+			CTextCursor MeasureCursor;
+			MeasureCursor.SetPosition(vec2(InputCursorRect.x, InputCursorRect.y));
+			MeasureCursor.m_FontSize = InputCursor.m_FontSize;
+			MeasureCursor.m_LineWidth = MessageMaxWidth;
+			TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 0.0f));
+			TextRender()->TextOutlineColor(ColorRGBA(0.0f, 0.0f, 0.0f, 0.0f));
+			TextRender()->TextEx(&MeasureCursor, aPrefixText);
+
+			CTextCursor OverlayCursor;
+			OverlayCursor.SetPosition(vec2(MeasureCursor.m_X, MeasureCursor.m_Y + OverlayYOffset));
+			OverlayCursor.m_FontSize = InputCursor.m_FontSize;
+			OverlayCursor.m_LineWidth = MessageMaxWidth;
+			TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 0.75f + 0.25f * Ease));
+			TextRender()->TextOutlineColor(TextRender()->DefaultTextOutlineColor().WithMultipliedAlpha(0.75f + 0.25f * Ease));
+			TextRender()->TextEx(&OverlayCursor, TypingGlyphAnim.m_aText);
+			TextRender()->TextColor(TextRender()->DefaultTextColor());
+		}
+		TextRender()->TextOutlineColor(TextRender()->DefaultTextOutlineColor());
 
 		Graphics()->ClipDisable();
 
@@ -1407,6 +1679,18 @@ void CChat::OnRender()
 			break;
 
 		float Blend = Now > Line.m_Time + 14 * time_freq() && !m_PrevShowChat ? 1.0f - (Now - Line.m_Time - 14 * time_freq()) / (2.0f * time_freq()) : 1.0f;
+		float BcLineXOffset = 0.0f;
+		float BcLineYOffset = 0.0f;
+		if(BcChatMessageAnimEnabled && g_Config.m_BcChatAnimationMs > 0 && Line.m_Time > 0)
+		{
+			const float Dur = BCUiAnimations::MsToSeconds(g_Config.m_BcChatAnimationMs);
+			const float Age = (Now - Line.m_Time) / (float)time_freq();
+			const float Progress = Dur > 0.0f ? std::clamp(Age / Dur, 0.0f, 1.0f) : 1.0f;
+			const float Ease = BCUiAnimations::EaseInOutQuad(Progress);
+			BcLineYOffset = 42.0f * (1.0f - Ease);
+		}
+		const float LineRenderX = ChatOpenOffsetX + BcLineXOffset;
+		const float LineRenderY = y + BcLineYOffset;
 
 		// Draw backgrounds for messages in one batch
 		if(!g_Config.m_ClChatOld)
@@ -1415,7 +1699,7 @@ void CChat::OnRender()
 			if(Line.m_QuadContainerIndex != -1)
 			{
 				Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClChatBackgroundColor, true)).WithMultipliedAlpha(Blend));
-				Graphics()->RenderQuadContainerEx(Line.m_QuadContainerIndex, 0, -1, 0, ((y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset));
+				Graphics()->RenderQuadContainerEx(Line.m_QuadContainerIndex, 0, -1, LineRenderX, ((LineRenderY + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset));
 			}
 		}
 
@@ -1434,13 +1718,13 @@ void CChat::OnRender()
 				const CAnimState *pIdleState = CAnimState::GetIdle();
 				vec2 OffsetToMid;
 				CRenderTools::GetRenderTeeOffsetToRenderedTee(pIdleState, &TeeRenderInfo, OffsetToMid);
-				vec2 TeeRenderPos(x + (RealMsgPaddingX + TeeSize) / 2.0f, y + OffsetTeeY + FullHeightMinusTee / 2.0f + OffsetToMid.y);
+				vec2 TeeRenderPos(x + LineRenderX + (RealMsgPaddingX + TeeSize) / 2.0f, LineRenderY + OffsetTeeY + FullHeightMinusTee / 2.0f + OffsetToMid.y);
 				RenderTools()->RenderTee(pIdleState, &TeeRenderInfo, EMOTE_NORMAL, vec2(1, 0.1f), TeeRenderPos, Blend);
 			}
 
 			const ColorRGBA TextColor = TextRender()->DefaultTextColor().WithMultipliedAlpha(Blend);
 			const ColorRGBA TextOutlineColor = TextRender()->DefaultTextOutlineColor().WithMultipliedAlpha(Blend);
-			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, 0, (y + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset);
+			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, LineRenderX, (LineRenderY + RealMsgPaddingY / 2.0f) - Line.m_TextYOffset);
 		}
 	}
 }

@@ -150,6 +150,16 @@ class CChat : public CComponent
 	int m_PendingChatCounter;
 	int64_t m_LastChatSend;
 	int64_t m_aLastSoundPlayed[CHAT_NUM];
+	int64_t m_ChatOpenAnimationStart = 0;
+	struct STypingGlyphAnim
+	{
+		int64_t m_StartTime = 0;
+		int m_ByteIndex = 0;
+		int m_ByteLength = 0;
+		char m_aText[16] = "";
+	};
+	std::vector<STypingGlyphAnim> m_vTypingGlyphAnims;
+	char m_aPreviousDisplayedInputText[MAX_LINE_LENGTH] = "";
 	bool m_IsInputCensored;
 	char m_aCurrentInputText[MAX_LINE_LENGTH];
 	bool m_EditingNewLine;
@@ -168,6 +178,10 @@ class CChat : public CComponent
 	static void ConchainChatWidth(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 
 	bool LineShouldHighlight(const char *pLine, const char *pName);
+	void ResetTypingAnimation();
+	void SyncTypingAnimationBaseline();
+	void RefreshTypingAnimation();
+	bool WasChatAutoHidden() const;
 	void StoreSave(const char *pText);
 
 	friend class CBindChat;

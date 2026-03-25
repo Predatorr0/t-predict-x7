@@ -27,6 +27,7 @@
 #include <generated/protocol.h>
 
 #include <game/client/animstate.h>
+#include <game/client/bc_ui_animations.h>
 #include <game/client/components/binds.h>
 #include <game/client/components/console.h>
 #include <game/client/components/key_binder.h>
@@ -1090,6 +1091,13 @@ void CMenus::Render()
 	}
 
 	CUIRect Screen = *Ui()->Screen();
+	if(IsActive() && (ClientState == IClient::STATE_ONLINE || ClientState == IClient::STATE_DEMOPLAYBACK))
+	{
+		const bool IngameMenuAnimationEnabled = BCUiAnimations::Enabled() && g_Config.m_BcIngameMenuAnimation != 0 && g_Config.m_BcIngameMenuAnimationMs > 0;
+		const float Ease = IngameMenuAnimationEnabled ? BCUiAnimations::EaseInOutQuad(m_BcIngameMenuOpenPhase) : 1.0f;
+		const float Slide = (1.0f - Ease) * 60.0f;
+		Screen.y -= Slide;
+	}
 	if(Client()->State() != IClient::STATE_DEMOPLAYBACK || m_Popup != POPUP_NONE)
 	{
 		Screen.Margin(10.0f, &Screen);
@@ -2405,6 +2413,8 @@ void CMenus::SetActive(bool Active)
 	m_MenuActive = Active;
 	if(!m_MenuActive)
 	{
+		m_BcIngameMenuClosing = false;
+		m_BcIngameMenuOpenPhase = 0.0f;
 		if(m_NeedSendinfo)
 		{
 			GameClient()->SendInfo(false);
@@ -2422,9 +2432,16 @@ void CMenus::SetActive(bool Active)
 			GameClient()->OnRelease();
 		}
 	}
-	else if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
+	else
 	{
-		GameClient()->OnRelease();
+		if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
+			GameClient()->OnRelease();
+
+		m_BcIngameMenuClosing = false;
+		if(Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK)
+			m_BcIngameMenuOpenPhase = (BCUiAnimations::Enabled() && g_Config.m_BcIngameMenuAnimation != 0 && g_Config.m_BcIngameMenuAnimationMs > 0) ? 0.0f : 1.0f;
+		else
+			m_BcIngameMenuOpenPhase = 1.0f;
 	}
 }
 
@@ -2455,6 +2472,14 @@ bool CMenus::OnInput(const IInput::CEvent &Event)
 	// Escape key is always handled to activate/deactivate menu
 	if((Event.m_Flags & IInput::FLAG_PRESS && Event.m_Key == KEY_ESCAPE) || IsActive())
 	{
+		if((Event.m_Flags & IInput::FLAG_PRESS) && Event.m_Key == KEY_ESCAPE &&
+			IsActive() && (Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK) &&
+			BCUiAnimations::Enabled() && g_Config.m_BcIngameMenuAnimation != 0 && g_Config.m_BcIngameMenuAnimationMs > 0)
+		{
+			m_BcIngameMenuClosing = true;
+			return true;
+		}
+
 		Ui()->OnInput(Event);
 		return true;
 	}
@@ -2535,7 +2560,45 @@ void CMenus::OnRender()
 	Ui()->StartCheck();
 	UpdateColors();
 
+	const bool IngameMenu = IsActive() && (Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK);
+	const bool IngameMenuAnimated = IngameMenu && BCUiAnimations::Enabled() && g_Config.m_BcIngameMenuAnimation != 0 && g_Config.m_BcIngameMenuAnimationMs > 0;
+	if(IngameMenuAnimated)
+	{
+		const bool AllowInput = !m_BcIngameMenuClosing && m_BcIngameMenuOpenPhase >= 0.999f;
+		Ui()->SetEnabled(AllowInput);
+		if(!AllowInput)
+		{
+			Ui()->SetHotItem(nullptr);
+			Ui()->SetActiveItem(nullptr);
+		}
+	}
+	else
+	{
+		Ui()->SetEnabled(true);
+	}
+
 	Ui()->Update();
+
+	if(IngameMenu)
+	{
+		if(BCUiAnimations::Enabled() && g_Config.m_BcIngameMenuAnimation != 0 && g_Config.m_BcIngameMenuAnimationMs > 0)
+		{
+			const float Target = m_BcIngameMenuClosing ? 0.0f : 1.0f;
+			BCUiAnimations::UpdatePhase(m_BcIngameMenuOpenPhase, Target, Client()->RenderFrameTime(), BCUiAnimations::MsToSeconds(g_Config.m_BcIngameMenuAnimationMs));
+			if(m_BcIngameMenuClosing && m_BcIngameMenuOpenPhase <= 0.0f)
+			{
+				Ui()->SetEnabled(true);
+				SetActive(false);
+				Ui()->FinishCheck();
+				Ui()->ClearHotkeys();
+				return;
+			}
+		}
+		else
+		{
+			m_BcIngameMenuOpenPhase = 1.0f;
+		}
+	}
 
 	Render();
 
@@ -2549,7 +2612,14 @@ void CMenus::OnRender()
 		Ui()->DebugRender(2.0f, Ui()->Screen()->h - 12.0f);
 
 	if(Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
-		SetActive(false);
+	{
+		Ui()->SetHotItem(nullptr);
+		Ui()->SetActiveItem(nullptr);
+		if(IngameMenuAnimated)
+			m_BcIngameMenuClosing = true;
+		else
+			SetActive(false);
+	}
 
 	Ui()->FinishCheck();
 	Ui()->ClearHotkeys();

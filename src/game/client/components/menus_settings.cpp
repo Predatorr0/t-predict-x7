@@ -20,6 +20,7 @@
 #include <generated/protocol.h>
 
 #include <game/client/animstate.h>
+#include <game/client/bc_ui_animations.h>
 #include <game/client/components/chat.h>
 #include <game/client/components/media_decoder.h>
 #include <game/client/components/menu_background.h>
@@ -3236,6 +3237,18 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		const float MarginBetweenSections = 30.0f;
 		const float MarginBetweenViews = 30.0f;
 		const ColorRGBA BlockColor = ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f);
+		const auto ModuleUiRevealAnimationsEnabled = [&]() {
+			return BCUiAnimations::Enabled() && g_Config.m_BcModuleUiRevealAnimation != 0;
+		};
+		const auto ModuleUiRevealAnimationDuration = [&]() {
+			return BCUiAnimations::MsToSeconds(g_Config.m_BcModuleUiRevealAnimationMs);
+		};
+		const auto UpdateRevealPhase = [&](float &Phase, bool Expanded) {
+			if(ModuleUiRevealAnimationsEnabled())
+				BCUiAnimations::UpdatePhase(Phase, Expanded ? 1.0f : 0.0f, Client()->RenderFrameTime(), ModuleUiRevealAnimationDuration());
+			else
+				Phase = Expanded ? 1.0f : 0.0f;
+		};
 
 		static CScrollRegion s_BestClientVisualsScrollRegion;
 		vec2 VisualsScrollOffset(0.0f, 0.0f);
@@ -3270,9 +3283,12 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 		// Magic particles (left column block)
 		{
-			const int ExtraLines = g_Config.m_BcMagicParticles ? 5 : 0;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraLines * LineSize;
-			CUIRect Content, Label, Row;
+			static float s_MagicParticlesPhase = 0.0f;
+			const bool MagicParticlesEnabled = g_Config.m_BcMagicParticles != 0;
+			UpdateRevealPhase(s_MagicParticlesPhase, MagicParticlesEnabled);
+			const float ExpandedTargetHeight = 5.0f * LineSize;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedTargetHeight * s_MagicParticlesPhase;
+			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
@@ -3281,21 +3297,32 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcMagicParticles, Localize("Magic Particles"), &g_Config.m_BcMagicParticles, &Content, LineSize);
 
-			if(g_Config.m_BcMagicParticles)
+			const float ExpandedHeight = ExpandedTargetHeight * s_MagicParticlesPhase;
+			if(ExpandedHeight > 0.0f)
 			{
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesCount, &g_Config.m_BcMagicParticlesCount, &Row, Localize("Particles count"), 1, 100);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesRadius, &g_Config.m_BcMagicParticlesRadius, &Row, Localize("Radius"), 1, 1000);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesSize, &g_Config.m_BcMagicParticlesSize, &Row, Localize("Size"), 1, 50);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesAlphaDelay, &g_Config.m_BcMagicParticlesAlphaDelay, &Row, Localize("Alpha delay"), 1, 100);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				CUIRect TypeLabel, TypeSelect;
 				Row.VSplitLeft(150.0f, &TypeLabel, &TypeSelect);
 				Ui()->DoLabel(&TypeLabel, Localize("Particle type"), 14.0f, TEXTALIGN_ML);
@@ -3316,10 +3343,25 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 		// Orbit aura (left column block)
 		{
+			static float s_OrbitAuraPhase = 0.0f;
+			static float s_OrbitAuraIdlePhase = 0.0f;
 			const bool OrbitEnabled = g_Config.m_BcOrbitAura != 0;
-			const int ExtraLines = OrbitEnabled ? (g_Config.m_BcOrbitAuraIdle ? 6 : 5) : 0;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraLines * LineSize;
-			CUIRect Content, Label, Row;
+			const bool OrbitIdleEnabled = OrbitEnabled && g_Config.m_BcOrbitAuraIdle != 0;
+			const float Dt = Client()->RenderFrameTime();
+			if(ModuleUiRevealAnimationsEnabled())
+				BCUiAnimations::UpdatePhase(s_OrbitAuraPhase, OrbitEnabled ? 1.0f : 0.0f, Dt, ModuleUiRevealAnimationDuration());
+			else
+				s_OrbitAuraPhase = OrbitEnabled ? 1.0f : 0.0f;
+			if(BCUiAnimations::Enabled())
+				BCUiAnimations::UpdatePhase(s_OrbitAuraIdlePhase, OrbitIdleEnabled ? 1.0f : 0.0f, Dt, 0.16f);
+			else
+				s_OrbitAuraIdlePhase = OrbitIdleEnabled ? 1.0f : 0.0f;
+
+			const float OrbitIdleTargetHeight = 1.0f * LineSize;
+			const float OrbitBaseTargetHeight = 5.0f * LineSize;
+			const float OrbitExtraTargetHeight = OrbitBaseTargetHeight + OrbitIdleTargetHeight * s_OrbitAuraIdlePhase;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + OrbitExtraTargetHeight * s_OrbitAuraPhase;
+			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
@@ -3328,26 +3370,44 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOrbitAura, Localize("Orbit Aura"), &g_Config.m_BcOrbitAura, &Content, LineSize);
 
-			if(OrbitEnabled)
+			const float OrbitExtraHeight = OrbitExtraTargetHeight * s_OrbitAuraPhase;
+			if(OrbitExtraHeight > 0.0f)
 			{
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOrbitAuraIdle, Localize("Enable in idle mode"), &g_Config.m_BcOrbitAuraIdle, &Content, LineSize);
-
-				if(g_Config.m_BcOrbitAuraIdle)
+				Content.HSplitTop(OrbitExtraHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
 				{
-					Content.HSplitTop(LineSize, &Row, &Content);
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, OrbitExtraTargetHeight};
+
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOrbitAuraIdle, Localize("Enable in idle mode"), &g_Config.m_BcOrbitAuraIdle, &Expand, LineSize);
+
+				const float OrbitIdleHeight = OrbitIdleTargetHeight * s_OrbitAuraIdlePhase;
+				if(OrbitIdleHeight > 0.0f)
+				{
+					CUIRect IdleVisible;
+					Expand.HSplitTop(OrbitIdleHeight, &IdleVisible, &Expand);
+					Ui()->ClipEnable(&IdleVisible);
+					SScopedClip IdleClipGuard{Ui()};
+
+					CUIRect IdleExpand = {IdleVisible.x, IdleVisible.y, IdleVisible.w, OrbitIdleTargetHeight};
+					IdleExpand.HSplitTop(LineSize, &Row, &IdleExpand);
 					Ui()->DoScrollbarOption(&g_Config.m_BcOrbitAuraIdleTimer, &g_Config.m_BcOrbitAuraIdleTimer, &Row, Localize("Idle delay"), 1, 30);
 				}
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcOrbitAuraRadius, &g_Config.m_BcOrbitAuraRadius, &Row, Localize("Aura radius"), 8, 200);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcOrbitAuraParticles, &g_Config.m_BcOrbitAuraParticles, &Row, Localize("Particles"), 2, 120);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcOrbitAuraAlpha, &g_Config.m_BcOrbitAuraAlpha, &Row, Localize("Aura alpha"), 0, 100);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcOrbitAuraSpeed, &g_Config.m_BcOrbitAuraSpeed, &Row, Localize("Aura speed"), 10, 200);
 			}
 		}
@@ -3358,14 +3418,21 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const float ColorPickerLineSize = 25.0f;
 			const float ColorPickerLabelSize = 13.0f;
 			const float ColorPickerSpacing = 5.0f;
+			static float s_Bc3dParticlesPhase = 0.0f;
+			static float s_Bc3dParticlesGlowPhase = 0.0f;
 			const bool ParticlesEnabled = g_Config.m_Bc3dParticles != 0;
+			UpdateRevealPhase(s_Bc3dParticlesPhase, ParticlesEnabled);
 			const bool ShowCustomColor = ParticlesEnabled && g_Config.m_Bc3dParticlesColorMode == 1;
 			const bool ShowGlowOptions = ParticlesEnabled && g_Config.m_Bc3dParticlesGlow != 0;
-			const float ExtraHeight = ParticlesEnabled ?
-				(7.0f * LineSize + (ShowCustomColor ? ColorPickerLineSize + ColorPickerSpacing : 0.0f) + (ShowGlowOptions ? 2.0f * LineSize : 0.0f)) :
-				0.0f;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraHeight;
-			CUIRect Content, Label, Row;
+			if(BCUiAnimations::Enabled())
+				BCUiAnimations::UpdatePhase(s_Bc3dParticlesGlowPhase, ShowGlowOptions ? 1.0f : 0.0f, Client()->RenderFrameTime(), 0.16f);
+			else
+				s_Bc3dParticlesGlowPhase = ShowGlowOptions ? 1.0f : 0.0f;
+			const float GlowTargetHeight = 2.0f * LineSize;
+			const float BaseTargetHeight = 7.0f * LineSize + (ShowCustomColor ? ColorPickerLineSize + ColorPickerSpacing : 0.0f);
+			const float ExtraTargetHeight = BaseTargetHeight + GlowTargetHeight * s_Bc3dParticlesGlowPhase;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_Bc3dParticlesPhase;
+			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
@@ -3374,12 +3441,23 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_Bc3dParticles, Localize("3D Particles"), &g_Config.m_Bc3dParticles, &Content, LineSize);
 
-			if(ParticlesEnabled)
+			const float ExpandedHeight = ExtraTargetHeight * s_Bc3dParticlesPhase;
+			if(ExpandedHeight > 0.0f)
 			{
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExtraTargetHeight};
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_Bc3dParticlesCount, &g_Config.m_Bc3dParticlesCount, &Row, Localize("Particles count"), 1, 200);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				CUIRect TypeLabel, TypeSelect;
 				Row.VSplitLeft(150.0f, &TypeLabel, &TypeSelect);
 				Ui()->DoLabel(&TypeLabel, Localize("Particle type"), 14.0f, TEXTALIGN_ML);
@@ -3394,17 +3472,17 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				};
 				g_Config.m_Bc3dParticlesType = Ui()->DoDropDown(&TypeSelect, g_Config.m_Bc3dParticlesType - 1, ap3DParticleTypes, (int)std::size(ap3DParticleTypes), s_3DParticlesTypeState) + 1;
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_Bc3dParticlesSizeMax, &g_Config.m_Bc3dParticlesSizeMax, &Row, Localize("Size"), 2, 200);
 				g_Config.m_Bc3dParticlesSizeMin = std::max(2, g_Config.m_Bc3dParticlesSizeMax - 3);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_Bc3dParticlesSpeed, &g_Config.m_Bc3dParticlesSpeed, &Row, Localize("Speed"), 1, 500);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_Bc3dParticlesAlpha, &g_Config.m_Bc3dParticlesAlpha, &Row, Localize("Alpha"), 1, 100);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				CUIRect ColorModeLabel, ColorModeSelect;
 				Row.VSplitLeft(150.0f, &ColorModeLabel, &ColorModeSelect);
 				Ui()->DoLabel(&ColorModeLabel, Localize("Color mode"), 14.0f, TEXTALIGN_ML);
@@ -3421,17 +3499,23 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				if(g_Config.m_Bc3dParticlesColorMode == 1)
 				{
 					static CButtonContainer s_3DParticlesColorButton;
-					DoLine_ColorPicker(&s_3DParticlesColorButton, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerSpacing, &Content, Localize("Color"), &g_Config.m_Bc3dParticlesColor, ColorRGBA(1.0f, 1.0f, 1.0f), false);
+					DoLine_ColorPicker(&s_3DParticlesColorButton, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerSpacing, &Expand, Localize("Color"), &g_Config.m_Bc3dParticlesColor, ColorRGBA(1.0f, 1.0f, 1.0f), false);
 				}
 
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_Bc3dParticlesGlow, Localize("Glow"), &g_Config.m_Bc3dParticlesGlow, &Content, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_Bc3dParticlesGlow, Localize("Glow"), &g_Config.m_Bc3dParticlesGlow, &Expand, LineSize);
 
-				if(g_Config.m_Bc3dParticlesGlow)
+				const float GlowHeight = GlowTargetHeight * s_Bc3dParticlesGlowPhase;
+				if(GlowHeight > 0.0f)
 				{
-					Content.HSplitTop(LineSize, &Row, &Content);
-					Ui()->DoScrollbarOption(&g_Config.m_Bc3dParticlesGlowAlpha, &g_Config.m_Bc3dParticlesGlowAlpha, &Row, Localize("Glow alpha"), 1, 100);
+					CUIRect GlowVisible;
+					Expand.HSplitTop(GlowHeight, &GlowVisible, &Expand);
+					Ui()->ClipEnable(&GlowVisible);
+					SScopedClip GlowClipGuard{Ui()};
 
-					Content.HSplitTop(LineSize, &Row, &Content);
+					CUIRect GlowExpand = {GlowVisible.x, GlowVisible.y, GlowVisible.w, GlowTargetHeight};
+					GlowExpand.HSplitTop(LineSize, &Row, &GlowExpand);
+					Ui()->DoScrollbarOption(&g_Config.m_Bc3dParticlesGlowAlpha, &g_Config.m_Bc3dParticlesGlowAlpha, &Row, Localize("Glow alpha"), 1, 100);
+					GlowExpand.HSplitTop(LineSize, &Row, &GlowExpand);
 					Ui()->DoScrollbarOption(&g_Config.m_Bc3dParticlesGlowOffset, &g_Config.m_Bc3dParticlesGlowOffset, &Row, Localize("Glow offset"), 1, 20);
 				}
 			}
@@ -3589,9 +3673,12 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 		// Chat bubbles (left column block)
 		{
+			static float s_BcChatBubblesPhase = 0.0f;
 			const bool ChatBubblesEnabled = g_Config.m_BcChatBubbles != 0;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + (ChatBubblesEnabled ? (MarginSmall + 6.0f * LineSize) : 0.0f);
-			CUIRect Content, Label, Row;
+			UpdateRevealPhase(s_BcChatBubblesPhase, ChatBubblesEnabled);
+			const float ExtraTargetHeight = MarginSmall + 6.0f * LineSize;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_BcChatBubblesPhase;
+			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
@@ -3599,19 +3686,30 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Content.HSplitTop(MarginSmall, nullptr, &Content);
 
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubbles, Localize("Chat Bubbles"), &g_Config.m_BcChatBubbles, &Content, LineSize);
-			if(ChatBubblesEnabled)
+			const float ExtraHeight = ExtraTargetHeight * s_BcChatBubblesPhase;
+			if(ExtraHeight > 0.0f)
 			{
-				Content.HSplitTop(MarginSmall, nullptr, &Content);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubblesDemo, Localize("Show Chatbubbles in demo"), &g_Config.m_BcChatBubblesDemo, &Content, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubblesSelf, Localize("Show Chatbubbles above you"), &g_Config.m_BcChatBubblesSelf, &Content, LineSize);
+				Content.HSplitTop(ExtraHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExtraTargetHeight};
+
+				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubblesDemo, Localize("Show Chatbubbles in demo"), &g_Config.m_BcChatBubblesDemo, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubblesSelf, Localize("Show Chatbubbles above you"), &g_Config.m_BcChatBubblesSelf, &Expand, LineSize);
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleSize, &g_Config.m_BcChatBubbleSize, &Row, Localize("Chat Bubble Size"), 20, 30);
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleShowTime, &g_Config.m_BcChatBubbleShowTime, &Row, Localize("Show the Bubbles for"), 200, 1000);
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleFadeIn, &g_Config.m_BcChatBubbleFadeIn, &Row, Localize("fade in for"), 15, 100);
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleFadeOut, &g_Config.m_BcChatBubbleFadeOut, &Row, Localize("fade out for"), 15, 100);
 			}
 		}
@@ -3621,9 +3719,12 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 		// Camera Drift (right column block)
 		{
-			const int ExtraLines = g_Config.m_BcCameraDrift ? 3 : 0;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraLines * LineSize;
-			CUIRect Content, Label, Row;
+			static float s_CameraDriftPhase = 0.0f;
+			const bool CameraDriftEnabled = g_Config.m_BcCameraDrift != 0;
+			UpdateRevealPhase(s_CameraDriftPhase, CameraDriftEnabled);
+			const float ExtraTargetHeight = 3.0f * LineSize;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_CameraDriftPhase;
+			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
@@ -3639,16 +3740,27 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				}
 			}
 
-			if(g_Config.m_BcCameraDrift)
+			const float ExtraHeight = ExtraTargetHeight * s_CameraDriftPhase;
+			if(ExtraHeight > 0.0f)
 			{
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Content.HSplitTop(ExtraHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExtraTargetHeight};
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcCameraDriftAmount, &g_Config.m_BcCameraDriftAmount, &Row, Localize("Camera drift amount"), 1, 200);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcCameraDriftSmoothness, &g_Config.m_BcCameraDriftSmoothness, &Row, Localize("Camera drift smoothness"), 1, 20);
 
 				CUIRect DirectionLabel, DirectionButtons, DirectionForward, DirectionBackward;
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Row.VSplitLeft(150.0f, &DirectionLabel, &DirectionButtons);
 				Ui()->DoLabel(&DirectionLabel, Localize("Drift direction"), 14.0f, TEXTALIGN_ML);
 				DirectionButtons.VSplitMid(&DirectionForward, &DirectionBackward, MarginSmall);
@@ -3665,9 +3777,12 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 		// Dynamic FOV (right column block)
 		{
-			const int ExtraLines = g_Config.m_BcDynamicFov ? 2 : 0;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraLines * LineSize;
-			CUIRect Content, Label, Row;
+			static float s_DynamicFovPhase = 0.0f;
+			const bool DynamicFovEnabled = g_Config.m_BcDynamicFov != 0;
+			UpdateRevealPhase(s_DynamicFovPhase, DynamicFovEnabled);
+			const float ExtraTargetHeight = 2.0f * LineSize;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_DynamicFovPhase;
+			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
@@ -3683,12 +3798,23 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				}
 			}
 
-			if(g_Config.m_BcDynamicFov)
+			const float ExtraHeight = ExtraTargetHeight * s_DynamicFovPhase;
+			if(ExtraHeight > 0.0f)
 			{
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Content.HSplitTop(ExtraHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExtraTargetHeight};
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcDynamicFovAmount, &g_Config.m_BcDynamicFovAmount, &Row, Localize("Dynamic FOV amount"), 1, 200);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcDynamicFovSmoothness, &g_Config.m_BcDynamicFovSmoothness, &Row, Localize("Dynamic FOV smoothness"), 1, 20);
 			}
 		}
@@ -3696,9 +3822,12 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 		// Afterimage (right column block)
 		{
-			const int ExtraLines = g_Config.m_BcAfterimage ? 3 : 0;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraLines * LineSize;
-			CUIRect Content, Label, Row;
+			static float s_AfterimagePhase = 0.0f;
+			const bool AfterimageEnabled = g_Config.m_BcAfterimage != 0;
+			UpdateRevealPhase(s_AfterimagePhase, AfterimageEnabled);
+			const float ExtraTargetHeight = 3.0f * LineSize;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_AfterimagePhase;
+			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
@@ -3707,15 +3836,26 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcAfterimage, Localize("Enable Afterimage"), &g_Config.m_BcAfterimage, &Content, LineSize);
 
-			if(g_Config.m_BcAfterimage)
+			const float ExtraHeight = ExtraTargetHeight * s_AfterimagePhase;
+			if(ExtraHeight > 0.0f)
 			{
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Content.HSplitTop(ExtraHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExtraTargetHeight};
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcAfterimageFrames, &g_Config.m_BcAfterimageFrames, &Row, Localize("Afterimage frames"), 2, 20);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcAfterimageAlpha, &g_Config.m_BcAfterimageAlpha, &Row, Localize("Afterimage alpha"), 1, 100);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcAfterimageSpacing, &g_Config.m_BcAfterimageSpacing, &Row, Localize("Afterimage spacing"), 1, 64);
 			}
 		}
@@ -3744,6 +3884,61 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Ui()->DoLabel(&PreviewLabel, Localize("Sand Shotgun"), 14.0f, TEXTALIGN_ML);
 			Content.HSplitTop(58.0f, &PreviewRect, &Content);
 			DoLaserPreview(&PreviewRect, ColorHSLA(g_Config.m_ClLaserShotgunOutlineColor), ColorHSLA(g_Config.m_ClLaserShotgunInnerColor), LASERTYPE_SHOTGUN);
+		}
+		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+
+		// Animations (right column block)
+		{
+			static float s_AnimationsBlockPhase = 0.0f;
+			const bool AnimationsEnabled = g_Config.m_BcAnimations != 0;
+			const float Dt = Client()->RenderFrameTime();
+			const bool AnimateBlock = g_Config.m_BcModuleUiRevealAnimation != 0;
+			if(AnimateBlock)
+				BCUiAnimations::UpdatePhase(s_AnimationsBlockPhase, AnimationsEnabled ? 1.0f : 0.0f, Dt, ModuleUiRevealAnimationDuration());
+			else
+				s_AnimationsBlockPhase = AnimationsEnabled ? 1.0f : 0.0f;
+
+			const float ExpandedTargetHeight = 10.0f * LineSize;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedTargetHeight * s_AnimationsBlockPhase;
+			CUIRect Content, Label, Row, Visible;
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, Localize("Animations"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcAnimations, Localize("Enable animations"), &g_Config.m_BcAnimations, &Content, LineSize);
+
+			const float ExpandedHeight = ExpandedTargetHeight * s_AnimationsBlockPhase;
+			if(ExpandedHeight > 0.0f)
+			{
+				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcModuleUiRevealAnimation, Localize("Module settings reveals"), &g_Config.m_BcModuleUiRevealAnimation, &Expand, LineSize);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcModuleUiRevealAnimationMs, &g_Config.m_BcModuleUiRevealAnimationMs, &Row, Localize("Module reveal time (ms)"), 1, 500);
+
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcIngameMenuAnimation, Localize("ESC menu animation"), &g_Config.m_BcIngameMenuAnimation, &Expand, LineSize);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcIngameMenuAnimationMs, &g_Config.m_BcIngameMenuAnimationMs, &Row, Localize("ESC menu animation time (ms)"), 1, 500);
+
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatAnimation, Localize("Chat message animations"), &g_Config.m_BcChatAnimation, &Expand, LineSize);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcChatAnimationMs, &g_Config.m_BcChatAnimationMs, &Row, Localize("Chat message animation time (ms)"), 1, 500);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatOpenAnimation, Localize("Chat open animation"), &g_Config.m_BcChatOpenAnimation, &Expand, LineSize);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcChatOpenAnimationMs, &g_Config.m_BcChatOpenAnimationMs, &Row, Localize("Chat open animation time (ms)"), 1, 500);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatTypingAnimation, Localize("Chat typing animation"), &g_Config.m_BcChatTypingAnimation, &Expand, LineSize);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcChatTypingAnimationMs, &g_Config.m_BcChatTypingAnimationMs, &Row, Localize("Chat typing animation time (ms)"), 1, 500);
+			}
 		}
 		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 
