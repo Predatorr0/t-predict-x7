@@ -2226,6 +2226,7 @@ set_src(ENGINE_SHARED GLOB_RECURSE src/engine/shared
   config_domains.h
   config_includes.h
   config_variables.h
+  config_variables_bestclient.h
   config_variables_tclient.h
   console.cpp
   console.h
@@ -2516,6 +2517,8 @@ if(CLIENT)
     component.h
     components/background.cpp
     components/background.h
+    components/bestclient/afterimage.cpp
+    components/bestclient/afterimage.h
     components/binds.cpp
     components/binds.h
     components/broadcast.cpp

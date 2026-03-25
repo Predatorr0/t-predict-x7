@@ -28,6 +28,7 @@
 
 // components
 #include "components/background.h"
+#include "components/bestclient/afterimage.h"
 #include "components/binds.h"
 #include "components/broadcast.h"
 #include "components/camera.h"
@@ -209,6 +210,7 @@ public:
 
 	CRaceDemo m_RaceDemo;
 	CGhost m_Ghost;
+	CAfterimage m_Afterimage;
 
 	CTooltips m_Tooltips;
 

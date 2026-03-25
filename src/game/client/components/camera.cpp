@@ -7,6 +7,7 @@
 
 #include <base/log.h>
 #include <base/math.h>
+#include <base/system.h>
 #include <base/vmath.h>
 
 #include <engine/shared/config.h>
@@ -43,6 +44,11 @@ CCamera::CCamera()
 	m_DyncamTargetCameraOffset = vec2(0, 0);
 	std::fill(std::begin(m_aDyncamCurrentCameraOffset), std::end(m_aDyncamCurrentCameraOffset), vec2(0.0f, 0.0f));
 	m_DyncamSmoothingSpeedBias = 0.5f;
+	m_DriftTargetOffset = vec2(0.0f, 0.0f);
+	m_DriftCurrentOffset = vec2(0.0f, 0.0f);
+	m_DynamicFovTarget = 1.0f;
+	m_DynamicFovCurrent = 1.0f;
+	m_DynamicFovAppliedFactor = 1.0f;
 
 	m_AutoSpecCamera = true;
 	m_AutoSpecCameraZooming = false;
@@ -116,6 +122,12 @@ void CCamera::ResetAutoSpecCamera()
 
 void CCamera::UpdateCamera()
 {
+	if(m_DynamicFovAppliedFactor != 1.0f)
+	{
+		m_Zoom /= m_DynamicFovAppliedFactor;
+		m_DynamicFovAppliedFactor = 1.0f;
+	}
+
 	// use hardcoded smooth camera for spectating unless player explicitly turn it off
 	bool CanUseCameraInfo = !GameClient()->m_MultiViewActivated;
 	if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
@@ -287,6 +299,68 @@ void CCamera::UpdateCamera()
 	m_aDyncamCurrentCameraOffset[g_Config.m_ClDummy] = CurrentCameraOffset;
 	m_CanUseCameraInfo = CanUseCameraInfo;
 	m_UsingAutoSpecCamera = UsingAutoSpecCamera;
+
+	const bool IsOnline = Client()->State() == IClient::STATE_ONLINE;
+	const bool IsFngServer = IsOnline && GameClient()->m_GameInfo.m_PredictFNG;
+	const bool Is0xFServer = IsOnline && str_comp_nocase(GameClient()->m_GameInfo.m_aGameType, "0xf") == 0;
+	const bool IsBlockedCameraServer = IsFngServer || Is0xFServer;
+
+	if(g_Config.m_BcCameraDrift && !IsBlockedCameraServer && !GameClient()->m_Snap.m_SpecInfo.m_Active)
+	{
+		// Use predicted velocity so camera drift follows local simulation (e.g. fast practice),
+		// not delayed server snapshots.
+		vec2 PlayerVel = vec2(GameClient()->m_PredictedChar.m_Vel.x, 0.0f);
+		vec2 DriftDirection = normalize(PlayerVel);
+		if(g_Config.m_BcCameraDriftReverse)
+		{
+			DriftDirection *= -1.0f;
+		}
+
+		float VelocityFactor = length(PlayerVel);
+		float DriftMultiplier = 1.0f + (VelocityFactor / 10.0f);
+		float DriftAmount = VelocityFactor * (g_Config.m_BcCameraDriftAmount / 50.0f) * DriftMultiplier;
+
+		m_DriftTargetOffset = DriftDirection * DriftAmount;
+
+		if(g_Config.m_BcCameraDriftSmoothness > 0)
+		{
+			float SmoothFactor = (1.0f - (g_Config.m_BcCameraDriftSmoothness / 100.0f)) * 10.0f;
+			m_DriftCurrentOffset += (m_DriftTargetOffset - m_DriftCurrentOffset) * minimum(DeltaTime * SmoothFactor, 1.0f);
+		}
+		else
+		{
+			m_DriftCurrentOffset = m_DriftTargetOffset;
+		}
+
+		m_aDyncamCurrentCameraOffset[g_Config.m_ClDummy] += m_DriftCurrentOffset;
+	}
+
+	const bool DynamicFovActive = g_Config.m_BcDynamicFov && !IsBlockedCameraServer && !GameClient()->m_Snap.m_SpecInfo.m_Active;
+	m_DynamicFovTarget = 1.0f;
+	if(DynamicFovActive)
+	{
+		vec2 PlayerVel = GameClient()->m_PredictedChar.m_Vel;
+		float VelocityFactor = length(PlayerVel);
+		float DynamicFovMultiplier = 1.0f + (VelocityFactor / 10.0f);
+		float DynamicFovAmount = VelocityFactor * (g_Config.m_BcDynamicFovAmount / 50.0f) * DynamicFovMultiplier;
+
+		// Convert drift-like amount to a zoom multiplier for a stable FOV increase.
+		m_DynamicFovTarget = std::clamp(1.0f + DynamicFovAmount / 500.0f, 1.0f, 5.0f);
+	}
+
+	if(DynamicFovActive && g_Config.m_BcDynamicFovSmoothness > 0)
+	{
+		float SmoothFactor = (1.0f - (g_Config.m_BcDynamicFovSmoothness / 100.0f)) * 10.0f;
+		m_DynamicFovCurrent += (m_DynamicFovTarget - m_DynamicFovCurrent) * minimum(DeltaTime * SmoothFactor, 1.0f);
+	}
+	else
+	{
+		m_DynamicFovCurrent = m_DynamicFovTarget;
+	}
+
+	m_DynamicFovCurrent = maximum(1.0f, m_DynamicFovCurrent);
+	m_Zoom *= m_DynamicFovCurrent;
+	m_DynamicFovAppliedFactor = m_DynamicFovCurrent;
 }
 
 void CCamera::OnRender()
@@ -421,6 +495,11 @@ void CCamera::OnConsoleInit()
 void CCamera::OnReset()
 {
 	m_CameraSmoothing = false;
+	m_DriftTargetOffset = vec2(0.0f, 0.0f);
+	m_DriftCurrentOffset = vec2(0.0f, 0.0f);
+	m_DynamicFovTarget = 1.0f;
+	m_DynamicFovCurrent = 1.0f;
+	m_DynamicFovAppliedFactor = 1.0f;
 
 	m_Zoom = CCamera::ZoomStepsToValue(g_Config.m_ClDefaultZoom - 10);
 	m_Zooming = false;
