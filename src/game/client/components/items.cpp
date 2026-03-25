@@ -32,7 +32,9 @@ ColorRGBA BlendColor(const ColorRGBA &Base, const ColorRGBA &Overlay, float Amou
 
 bool UseCrystalLaser(int Type)
 {
-	return g_Config.m_BcCrystalLaser && (Type == LASERTYPE_RIFLE || Type == LASERTYPE_SHOTGUN);
+	// Legacy laser snapshots can come without a specific type (< 0).
+	// Treat them as player lasers so sweat weapon stays visible on such servers.
+	return g_Config.m_BcCrystalLaser && (Type == LASERTYPE_RIFLE || Type == LASERTYPE_SHOTGUN || Type < 0);
 }
 
 bool UseSandLaserStyle(int Type)
@@ -492,7 +494,8 @@ void CItems::RenderLaser(vec2 From, vec2 Pos, ColorRGBA OuterColor, ColorRGBA In
 {
 	float Len = distance(Pos, From);
 	const bool CrystalLaser = UseCrystalLaser(Type);
-	float CrystalWidthScale = 1.0f;
+	float CrystalBodyScale = 1.0f;
+	float CrystalHeadScale = 1.0f;
 	SCrystalLaserGeometry CrystalGeometry;
 	const bool HasCrystalGeometry = CrystalLaser && BuildCrystalLaserGeometry(From, Pos, Len, Type, CrystalGeometry);
 
@@ -519,7 +522,10 @@ void CItems::RenderLaser(vec2 From, vec2 Pos, ColorRGBA OuterColor, ColorRGBA In
 		}
 		a = std::clamp(a, 0.0f, 1.0f);
 		float Ia = 1 - a;
-		CrystalWidthScale = Ia;
+		// Keep a small minimum scale so the style does not disappear too early
+		// on servers with aggressive laser timing (e.g. FNG tune settings).
+		CrystalBodyScale = maximum(Ia, 0.12f);
+		CrystalHeadScale = maximum(Ia, 0.32f);
 
 		Graphics()->TextureClear();
 		Graphics()->QuadsBegin();
@@ -548,7 +554,7 @@ void CItems::RenderLaser(vec2 From, vec2 Pos, ColorRGBA OuterColor, ColorRGBA In
 
 		if(HasCrystalGeometry)
 		{
-			RenderCrystalLaserBody(Graphics(), From, Pos, OuterColor, InnerColor, CrystalWidthScale, TicksHead, CrystalGeometry);
+			RenderCrystalLaserBody(Graphics(), From, Pos, OuterColor, InnerColor, CrystalBodyScale, TicksHead, CrystalGeometry);
 		}
 	}
 
@@ -614,7 +620,7 @@ void CItems::RenderLaser(vec2 From, vec2 Pos, ColorRGBA OuterColor, ColorRGBA In
 
 		if(HasCrystalGeometry)
 		{
-			RenderCrystalLaserHead(Graphics(), From, Pos, OuterColor, InnerColor, CrystalWidthScale, TicksHead, CrystalGeometry);
+			RenderCrystalLaserHead(Graphics(), From, Pos, OuterColor, InnerColor, CrystalHeadScale, TicksHead, CrystalGeometry);
 		}
 	}
 }
