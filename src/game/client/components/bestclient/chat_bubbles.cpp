@@ -413,9 +413,12 @@ void CChatBubbles::OnRender()
 		return;
 	if(!HasVisibleBubbles() && Chat()->m_Input.GetString()[0] == '\0')
 		return;
+	float PrevScreenX0, PrevScreenY0, PrevScreenX1, PrevScreenY1;
+	Graphics()->GetScreen(&PrevScreenX0, &PrevScreenY0, &PrevScreenX1, &PrevScreenY1);
+	Graphics()->MapScreenToInterface(GameClient()->m_Camera.m_Center.x, GameClient()->m_Camera.m_Center.y, GameClient()->m_Camera.m_Zoom);
+
 	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
-	Graphics()->MapScreenToInterface(GameClient()->m_Camera.m_Center.x, GameClient()->m_Camera.m_Center.y, GameClient()->m_Camera.m_Zoom);
 	const float BubbleBorder = 256.0f;
 	ScreenX0 -= BubbleBorder;
 	ScreenY0 -= BubbleBorder;
@@ -439,7 +442,7 @@ void CChatBubbles::OnRender()
 		++RenderedClients;
 	}
 
-	Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
+	Graphics()->MapScreen(PrevScreenX0, PrevScreenY0, PrevScreenX1, PrevScreenY1);
 }
 
 void CChatBubbles::Reset()
