@@ -3721,6 +3721,32 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		}
 		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 
+		// Sweat Weapon (right column block)
+		{
+			const float ContentHeight = LineSize + MarginSmall + LineSize + MarginSmall + LineSize + 58.0f + MarginSmall + LineSize + 58.0f;
+			CUIRect Content, Label, PreviewLabel, PreviewRect;
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, Localize("Sweat Weapon"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcCrystalLaser, Localize("Enable"), &g_Config.m_BcCrystalLaser, &Content, LineSize);
+
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+			Content.HSplitTop(LineSize, &PreviewLabel, &Content);
+			Ui()->DoLabel(&PreviewLabel, Localize("Crystal Laser"), 14.0f, TEXTALIGN_ML);
+			Content.HSplitTop(58.0f, &PreviewRect, &Content);
+			DoLaserPreview(&PreviewRect, ColorHSLA(g_Config.m_ClLaserRifleOutlineColor), ColorHSLA(g_Config.m_ClLaserRifleInnerColor), LASERTYPE_RIFLE);
+
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+			Content.HSplitTop(LineSize, &PreviewLabel, &Content);
+			Ui()->DoLabel(&PreviewLabel, Localize("Sand Shotgun"), 14.0f, TEXTALIGN_ML);
+			Content.HSplitTop(58.0f, &PreviewRect, &Content);
+			DoLaserPreview(&PreviewRect, ColorHSLA(g_Config.m_ClLaserShotgunOutlineColor), ColorHSLA(g_Config.m_ClLaserShotgunInnerColor), LASERTYPE_SHOTGUN);
+		}
+		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+
 		// Aspect ratio (right column block)
 		{
 			const int AspectMode = g_Config.m_BcCustomAspectRatioMode >= 0 ? g_Config.m_BcCustomAspectRatioMode : (g_Config.m_BcCustomAspectRatio > 0 ? 1 : 0);
