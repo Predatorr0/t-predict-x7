@@ -24,6 +24,12 @@ constexpr int MEDIA_MAX_FRAMES = 120;
 constexpr int MEDIA_MAX_DIMENSION = 4096;
 constexpr size_t MEDIA_MAX_ANIMATED_MEMORY_BYTES = 64ull * 1024ull * 1024ull;
 
+bool IsPngSignature(const unsigned char *pData, size_t DataSize)
+{
+	static const unsigned char s_aPngSig[8] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+	return pData != nullptr && DataSize >= 8 && mem_comp(pData, s_aPngSig, 8) == 0;
+}
+
 struct CFfmpegMemoryReader
 {
 	const unsigned char *m_pData = nullptr;
@@ -222,7 +228,8 @@ bool DecodeImageToRgba(IGraphics *pGraphics, const unsigned char *pData, size_t 
 {
 	Image.Free();
 
-	if(pGraphics != nullptr && pData != nullptr && DataSize > 0 && pGraphics->LoadPng(Image, pData, DataSize, pContextName))
+	// Try PNG loader only for actual PNG payloads to avoid noisy "signature mismatch" logs for GIF/WEBP/MP4 data.
+	if(pGraphics != nullptr && IsPngSignature(pData, DataSize) && pGraphics->LoadPng(Image, pData, DataSize, pContextName))
 		return true;
 
 	if(!pData || DataSize == 0)
@@ -815,7 +822,8 @@ bool DecodeStaticImageCpu(IGraphics *pGraphics, const unsigned char *pData, size
 		return false;
 
 	CImageInfo Image;
-	if(pGraphics->LoadPng(Image, pData, DataSize, pContextName))
+	// Try PNG loader only for actual PNG payloads to avoid noisy "signature mismatch" logs for GIF/WEBP/MP4 data.
+	if(IsPngSignature(pData, DataSize) && pGraphics->LoadPng(Image, pData, DataSize, pContextName))
 	{
 		ClampImageSize(Image, MaxDimension);
 		DecodedFrames.m_Width = (int)Image.m_Width;

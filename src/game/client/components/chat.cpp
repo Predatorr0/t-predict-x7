@@ -48,7 +48,7 @@ static constexpr int CHAT_MEDIA_MAX_CONCURRENT_DOWNLOADS = 3;
 static constexpr int CHAT_MEDIA_MAX_COMPLETED_DECODE_PER_FRAME = 1;
 static constexpr int CHAT_MEDIA_MAX_TEXTURE_UPLOADS_PER_FRAME = 2;
 static constexpr int64_t CHAT_MEDIA_TEXTURE_UPLOAD_BUDGET_US = 1500; // keep frame hitches low
-static constexpr int64_t CHAT_MEDIA_MAX_RESPONSE_SIZE = 20 * 1024 * 1024;
+static constexpr int64_t CHAT_MEDIA_MAX_RESPONSE_SIZE = 64 * 1024 * 1024;
 static constexpr int CHAT_MEDIA_MAX_GIF_FRAMES = 120;
 static constexpr int CHAT_MEDIA_MAX_DIMENSION = 768;
 static constexpr int CHAT_MEDIA_DOUBLE_CLICK_MS = 300;
@@ -108,10 +108,22 @@ protected:
 			// Long animations fall back to a single-frame thumbnail via m_MaxAnimationDurationMs.
 			Limits.m_DecodeAllFrames = true;
 			m_Success = MediaDecoder::DecodeImageWithFfmpegCpu(m_pGraphics, m_vData.data(), m_vData.size(), m_aContextName, m_DecodedFrames, Limits);
+			if(!m_Success)
+			{
+				// Fallback for problematic GIF/animated WEBP payloads: decode single preview frame.
+				Limits.m_DecodeAllFrames = false;
+				m_Success = MediaDecoder::DecodeImageWithFfmpegCpu(m_pGraphics, m_vData.data(), m_vData.size(), m_aContextName, m_DecodedFrames, Limits);
+			}
 			break;
 		case EMediaKind::VIDEO:
 			Limits.m_DecodeAllFrames = CHAT_MEDIA_ANIMATE_VIDEOS;
 			m_Success = MediaDecoder::DecodeImageWithFfmpegCpu(m_pGraphics, m_vData.data(), m_vData.size(), m_aContextName, m_DecodedFrames, Limits);
+			if(!m_Success)
+			{
+				// Fallback for videos where full animation decode fails: keep a static poster frame.
+				Limits.m_DecodeAllFrames = false;
+				m_Success = MediaDecoder::DecodeImageWithFfmpegCpu(m_pGraphics, m_vData.data(), m_vData.size(), m_aContextName, m_DecodedFrames, Limits);
+			}
 			break;
 		case EMediaKind::UNKNOWN:
 		default:
@@ -811,6 +823,75 @@ static bool IsYouTubeUrl(const std::string &Url)
 		HostIsOrEndsWith(HostLower, "googlevideo.com");
 }
 
+static std::string ExtractUrlPath(const std::string &Url)
+{
+	const size_t SchemePos = Url.find("://");
+	if(SchemePos == std::string::npos)
+		return {};
+
+	const size_t PathStart = Url.find('/', SchemePos + 3);
+	if(PathStart == std::string::npos)
+		return "/";
+
+	const size_t PathEnd = Url.find_first_of("?#", PathStart);
+	return Url.substr(PathStart, PathEnd == std::string::npos ? std::string::npos : PathEnd - PathStart);
+}
+
+static bool ExtractGiphyMediaId(const std::string &Url, std::string &OutMediaId)
+{
+	OutMediaId.clear();
+	const std::string HostLower = ExtractUrlHostLower(Url);
+	if(!HostIsOrEndsWith(HostLower, "giphy.com"))
+		return false;
+
+	const std::string Path = ExtractUrlPath(Url);
+	if(Path.empty() || Path.find("/gifs/") == std::string::npos)
+		return false;
+
+	size_t SegmentStart = Path.find_last_of('/');
+	if(SegmentStart == std::string::npos || SegmentStart + 1 >= Path.size())
+		return false;
+
+	std::string LastSegment = Path.substr(SegmentStart + 1);
+	if(LastSegment.empty())
+		return false;
+
+	const size_t DashPos = LastSegment.find_last_of('-');
+	if(DashPos != std::string::npos && DashPos + 1 < LastSegment.size())
+		LastSegment = LastSegment.substr(DashPos + 1);
+
+	if(LastSegment.size() < 6 || LastSegment.size() > 64)
+		return false;
+
+	for(char c : LastSegment)
+	{
+		if(!std::isalnum((unsigned char)c))
+			return false;
+	}
+
+	OutMediaId = LastSegment;
+	return true;
+}
+
+static void AddDirectGiphyCandidates(const std::string &Url, std::vector<std::string> &vOutCandidates)
+{
+	std::string MediaId;
+	if(!ExtractGiphyMediaId(Url, MediaId))
+		return;
+
+	const char *apHosts[] = {"https://media.giphy.com/media/", "https://media1.giphy.com/media/"};
+	const char *apFormats[] = {"giphy.mp4", "giphy.gif", "giphy.webp"};
+	for(const char *pHost : apHosts)
+	{
+		for(const char *pFormat : apFormats)
+		{
+			std::string Candidate = std::string(pHost) + MediaId + "/" + pFormat;
+			if((int)Candidate.size() <= CHAT_MEDIA_MAX_URL_LENGTH)
+				vOutCandidates.push_back(std::move(Candidate));
+		}
+	}
+}
+
 static bool IsGifSignature(const unsigned char *pData, size_t DataSize)
 {
 	return DataSize >= 6 && (mem_comp(pData, "GIF87a", 6) == 0 || mem_comp(pData, "GIF89a", 6) == 0);
@@ -1500,12 +1581,19 @@ void CChat::ExtractMediaUrlsFromText(const char *pText, std::vector<std::string>
 			continue;
 		}
 
-		if(IsUrlStart(Url.c_str()) && (int)Url.size() <= CHAT_MEDIA_MAX_URL_LENGTH)
+		std::vector<std::string> vExpandedUrls;
+		AddDirectGiphyCandidates(Url, vExpandedUrls);
+		vExpandedUrls.push_back(Url);
+
+		for(const std::string &ExpandedUrl : vExpandedUrls)
 		{
+			if(!IsUrlStart(ExpandedUrl.c_str()) || (int)ExpandedUrl.size() > CHAT_MEDIA_MAX_URL_LENGTH)
+				continue;
+
 			bool Exists = false;
 			for(const auto &ExistingUrl : vOutUrls)
 			{
-				if(str_comp(ExistingUrl.c_str(), Url.c_str()) == 0)
+				if(str_comp(ExistingUrl.c_str(), ExpandedUrl.c_str()) == 0)
 				{
 					Exists = true;
 					break;
@@ -1513,7 +1601,7 @@ void CChat::ExtractMediaUrlsFromText(const char *pText, std::vector<std::string>
 			}
 			if(!Exists)
 			{
-				vOutUrls.push_back(Url);
+				vOutUrls.push_back(ExpandedUrl);
 				if((int)vOutUrls.size() >= CHAT_MEDIA_MAX_HTML_CANDIDATES)
 					return;
 			}
