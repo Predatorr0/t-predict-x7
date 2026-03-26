@@ -4404,7 +4404,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			else
 				s_AnimationsBlockPhase = AnimationsEnabled ? 1.0f : 0.0f;
 
-			const float ExpandedTargetHeight = 10.0f * LineSize;
+			const float ExpandedTargetHeight = 12.0f * LineSize;
 			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedTargetHeight * s_AnimationsBlockPhase;
 			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
@@ -4444,6 +4444,10 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatTypingAnimation, Localize("Chat typing animation"), &g_Config.m_BcChatTypingAnimation, &Expand, LineSize);
 				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcChatTypingAnimationMs, &g_Config.m_BcChatTypingAnimationMs, &Row, Localize("Chat typing animation time (ms)"), 1, 500);
+
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcKillfeedAnimation, Localize("Killfeed animation"), &g_Config.m_BcKillfeedAnimation, &Expand, LineSize);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcKillfeedAnimationMs, &g_Config.m_BcKillfeedAnimationMs, &Row, Localize("Killfeed animation time (ms)"), 1, 500);
 			}
 		}
 		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
