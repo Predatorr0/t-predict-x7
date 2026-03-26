@@ -1670,6 +1670,41 @@ void CMenus::RenderSettings(CUIRect MainView)
 		}
 	};
 
+	auto RenderSettingsPageNewLayout = [&](CUIRect PageView) {
+		const int Page = g_Config.m_UiSettingsPage;
+		const bool NeedsAutoScroll = Page == SETTINGS_APPEARANCE;
+
+		if(!NeedsAutoScroll)
+		{
+			RenderSettingsPage(PageView);
+			return;
+		}
+
+		static CScrollRegion s_aNewLayoutScrollRegions[SETTINGS_LENGTH];
+		CScrollRegionParams ScrollParams;
+		ScrollParams.m_ScrollUnit = 60.0f;
+		ScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
+		ScrollParams.m_ScrollbarMargin = 5.0f;
+
+		vec2 ScrollOffset(0.0f, 0.0f);
+		CScrollRegion &ScrollRegion = s_aNewLayoutScrollRegions[Page];
+		ScrollRegion.Begin(&PageView, &ScrollOffset, &ScrollParams);
+
+		CUIRect ContentView = PageView;
+		ContentView.y += ScrollOffset.y;
+		const float ContentStartY = ContentView.y;
+		const float VirtualHeightBoost = 96.0f;
+		ContentView.h = PageView.h + VirtualHeightBoost;
+
+		RenderSettingsPage(ContentView);
+
+		CUIRect ContentRect = ContentView;
+		ContentRect.y = ContentStartY;
+		ContentRect.h = ContentView.h;
+		ScrollRegion.AddRect(ContentRect);
+		ScrollRegion.End();
+	};
+
 	if(g_Config.m_UiSettingsPage == SETTINGS_LANGUAGE)
 		g_Config.m_UiSettingsPage = SETTINGS_GENERAL;
 	if(g_Config.m_UiSettingsPage == SETTINGS_PLAYER)
@@ -1804,7 +1839,7 @@ void CMenus::RenderSettings(CUIRect MainView)
 			ContentView.HSplitTop(10.0f, nullptr, &ContentView);
 		}
 
-		RenderSettingsPage(ContentView);
+		RenderSettingsPageNewLayout(ContentView);
 		if(NeedRestart)
 			RenderRestartWarning(RestartBar);
 		return;
