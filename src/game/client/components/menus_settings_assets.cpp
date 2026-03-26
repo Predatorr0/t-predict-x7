@@ -7,6 +7,8 @@
 #include <engine/storage.h>
 #include <engine/textrender.h>
 
+#include <generated/client_data.h>
+
 #include <game/client/gameclient.h>
 #include <game/client/ui_listbox.h>
 #include <game/localization.h>
@@ -217,8 +219,7 @@ static void LoadCursorPreview(CMenus::SCustomCursor *pCursorItem, IGraphics *pGr
 	char aPath[IO_MAX_PATH_LENGTH];
 	if(str_comp(pCursorItem->m_aName, "default") == 0)
 	{
-		str_copy(aPath, "gui_cursor.png", sizeof(aPath));
-		pCursorItem->m_RenderTexture = pGraphics->LoadTexture(aPath, IStorage::TYPE_ALL);
+		pCursorItem->m_RenderTexture = g_pData->m_aImages[IMAGE_CURSOR].m_Id;
 		return;
 	}
 
@@ -292,8 +293,7 @@ static void LoadArrowPreview(CMenus::SCustomArrow *pArrowItem, IGraphics *pGraph
 	char aPath[IO_MAX_PATH_LENGTH];
 	if(str_comp(pArrowItem->m_aName, "default") == 0)
 	{
-		str_copy(aPath, "arrow.png", sizeof(aPath));
-		pArrowItem->m_RenderTexture = pGraphics->LoadTexture(aPath, IStorage::TYPE_ALL);
+		pArrowItem->m_RenderTexture = g_pData->m_aImages[IMAGE_ARROW].m_Id;
 		return;
 	}
 
@@ -373,6 +373,28 @@ int CMenus::AudioPackScan(const char *pName, int IsDir, int DirType, void *pUser
 
 	pRealUser->m_LoadedFunc();
 	return 0;
+}
+
+static void ClearCursorAssetList(std::vector<CMenus::SCustomCursor> &vList, IGraphics *pGraphics)
+{
+	for(CMenus::SCustomCursor &Asset : vList)
+	{
+		if(str_comp(Asset.m_aName, "default") == 0)
+			continue;
+		pGraphics->UnloadTexture(&Asset.m_RenderTexture);
+	}
+	vList.clear();
+}
+
+static void ClearArrowAssetList(std::vector<CMenus::SCustomArrow> &vList, IGraphics *pGraphics)
+{
+	for(CMenus::SCustomArrow &Asset : vList)
+	{
+		if(str_comp(Asset.m_aName, "default") == 0)
+			continue;
+		pGraphics->UnloadTexture(&Asset.m_RenderTexture);
+	}
+	vList.clear();
 }
 
 static std::vector<const CMenus::SCustomEntities *> gs_vpSearchEntitiesList;
@@ -484,12 +506,12 @@ void CMenus::ClearCustomItems(int CurTab)
 	}
 	else if(CurTab == ASSETS_TAB_CURSOR)
 	{
-		ClearAssetList(m_vCursorList, Graphics());
+		ClearCursorAssetList(m_vCursorList, Graphics());
 		GameClient()->LoadCursorAsset(g_Config.m_ClAssetCursor);
 	}
 	else if(CurTab == ASSETS_TAB_ARROW)
 	{
-		ClearAssetList(m_vArrowList, Graphics());
+		ClearArrowAssetList(m_vArrowList, Graphics());
 		GameClient()->LoadArrowAsset(g_Config.m_ClAssetArrow);
 	}
 	else if(CurTab == ASSETS_TAB_AUDIO)

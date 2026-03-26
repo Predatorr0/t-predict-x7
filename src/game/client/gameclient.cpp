@@ -5366,8 +5366,21 @@ void CGameClient::LoadCursorAsset(const char *pPath, bool AsDir)
 		m_CursorTextureOverride = IGraphics::CTextureHandle();
 	}
 
-	if(pPath == nullptr || pPath[0] == '\0' || str_comp(pPath, "default") == 0)
+	if(pPath == nullptr || pPath[0] == '\0')
 		return;
+
+	if(str_comp(pPath, "default") == 0)
+	{
+		// Force-load default cursor from data to avoid relying on potentially stale/null generated texture handle.
+		m_CursorTextureOverride = Graphics()->LoadTexture("data/gui_cursor.png", IStorage::TYPE_ALL);
+		if(m_CursorTextureOverride.IsNullTexture())
+			m_CursorTextureOverride = Graphics()->LoadTexture(g_pData->m_aImages[IMAGE_CURSOR].m_pFilename, IStorage::TYPE_ALL);
+		if(m_CursorTextureOverride.IsNullTexture())
+			m_CursorTextureOverride = Graphics()->LoadTexture("gui_cursor.png", IStorage::TYPE_ALL);
+		if(!m_CursorTextureOverride.IsNullTexture())
+			m_CursorTextureOverrideLoaded = true;
+		return;
+	}
 
 	char aPath[IO_MAX_PATH_LENGTH];
 	if(!AsDir)
@@ -5402,8 +5415,21 @@ void CGameClient::LoadArrowAsset(const char *pPath, bool AsDir)
 		m_ArrowTextureOverride = IGraphics::CTextureHandle();
 	}
 
-	if(pPath == nullptr || pPath[0] == '\0' || str_comp(pPath, "default") == 0)
+	if(pPath == nullptr || pPath[0] == '\0')
 		return;
+
+	if(str_comp(pPath, "default") == 0)
+	{
+		// Force-load default arrow from data to avoid relying on potentially stale/null generated texture handle.
+		m_ArrowTextureOverride = Graphics()->LoadTexture("data/arrow.png", IStorage::TYPE_ALL);
+		if(m_ArrowTextureOverride.IsNullTexture())
+			m_ArrowTextureOverride = Graphics()->LoadTexture(g_pData->m_aImages[IMAGE_ARROW].m_pFilename, IStorage::TYPE_ALL);
+		if(m_ArrowTextureOverride.IsNullTexture())
+			m_ArrowTextureOverride = Graphics()->LoadTexture("arrow.png", IStorage::TYPE_ALL);
+		if(!m_ArrowTextureOverride.IsNullTexture())
+			m_ArrowTextureOverrideLoaded = true;
+		return;
+	}
 
 	char aPath[IO_MAX_PATH_LENGTH];
 	if(!AsDir)
