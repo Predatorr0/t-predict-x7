@@ -209,6 +209,15 @@ void CFastActions::OnConsoleInit()
 	Console()->Register("add_fa", "s[name] s[command]", CFGFLAG_CLIENT, ConAddFa, this, "Add a bind to Fast Actions");
 	Console()->Register("remove_fa", "s[name] s[command]", CFGFLAG_CLIENT, ConRemoveFa, this, "Remove a bind from Fast Actions");
 	Console()->Register("delete_all_fa_binds", "", CFGFLAG_CLIENT, ConRemoveAllFaBinds, this, "Removes all Fast Actions binds");
+
+	// Legacy aliases for old configs/scripts. They load old `bs` commands,
+	// while ConfigSaveCallback writes only `fa` commands.
+	Console()->Register("+bs", "", CFGFLAG_CLIENT, ConOpenFa, this, "Legacy alias for +fa");
+	Console()->Register("+bs_execute_hover", "", CFGFLAG_CLIENT, ConFaExecuteHover, this, "Legacy alias for +fa_execute_hover");
+	Console()->Register("bs", "i[index] s[name] s[command]", CFGFLAG_CLIENT, ConAddFaLegacy, this, "Legacy alias for fa");
+	Console()->Register("add_bs", "s[name] s[command]", CFGFLAG_CLIENT, ConAddFa, this, "Legacy alias for add_fa");
+	Console()->Register("remove_bs", "s[name] s[command]", CFGFLAG_CLIENT, ConRemoveFa, this, "Legacy alias for remove_fa");
+	Console()->Register("delete_all_bs_binds", "", CFGFLAG_CLIENT, ConRemoveAllFaBinds, this, "Legacy alias for delete_all_fa_binds");
 }
 
 void CFastActions::OnReset()
