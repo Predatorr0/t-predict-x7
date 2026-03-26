@@ -126,12 +126,14 @@ public:
 private:
 	void RenderRecord();
 	void RenderDDRaceEffects();
+	void RenderSpeedrunTimer();
 	float m_TimeCpDiff;
 	float m_aPlayerRecord[NUM_DUMMIES];
 	float m_FinishTimeDiff;
 	int m_DDRaceTime;
 	int m_FinishTimeLastReceivedTick;
 	int m_TimeCpLastReceivedTick;
+	int m_SpeedrunTimerExpiredTick;
 	bool m_ShowFinishTime;
 
 	inline float GetMovementInformationBoxHeight();

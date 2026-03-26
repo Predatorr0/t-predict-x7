@@ -732,6 +732,12 @@ void CGameClient::OnReset()
 	std::fill(std::begin(m_aLastUpdateTick), std::end(m_aLastUpdateTick), 0);
 
 	m_IsDummySwapping = false;
+	for(int Dummy = 0; Dummy < NUM_DUMMIES; ++Dummy)
+	{
+		m_aAutoTeamLockLastTeam[Dummy] = TEAM_FLOCK;
+		m_aAutoTeamLockDeadlineTick[Dummy] = 0;
+		m_aAutoTeamLockPending[Dummy] = false;
+	}
 	m_CharOrder.Reset();
 	std::fill(std::begin(m_aSwitchStateTeam), std::end(m_aSwitchStateTeam), -1);
 
@@ -1294,6 +1300,62 @@ void CGameClient::OnStateChange(int NewState, int OldState)
 	// then change the state
 	for(auto &pComponent : m_vpAll)
 		pComponent->OnStateChange(NewState, OldState);
+}
+
+void CGameClient::UpdateAutoTeamLock()
+{
+	if(Client()->State() != IClient::STATE_ONLINE)
+	{
+		for(int Dummy = 0; Dummy < NUM_DUMMIES; ++Dummy)
+		{
+			m_aAutoTeamLockLastTeam[Dummy] = TEAM_FLOCK;
+			m_aAutoTeamLockDeadlineTick[Dummy] = 0;
+			m_aAutoTeamLockPending[Dummy] = false;
+		}
+		return;
+	}
+
+	const int Dummy = g_Config.m_ClDummy;
+	const int ClientId = m_aLocalIds[Dummy];
+	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
+	{
+		m_aAutoTeamLockLastTeam[Dummy] = TEAM_FLOCK;
+		m_aAutoTeamLockDeadlineTick[Dummy] = 0;
+		m_aAutoTeamLockPending[Dummy] = false;
+		return;
+	}
+
+	const int Team = m_Teams.Team(ClientId);
+	const bool TeamCanBeLocked = Team > TEAM_FLOCK && Team < TEAM_SUPER;
+	const bool LastTeamCanBeLocked = m_aAutoTeamLockLastTeam[Dummy] > TEAM_FLOCK && m_aAutoTeamLockLastTeam[Dummy] < TEAM_SUPER;
+
+	if(!g_Config.m_BcAutoTeamLock)
+	{
+		m_aAutoTeamLockLastTeam[Dummy] = Team;
+		m_aAutoTeamLockDeadlineTick[Dummy] = 0;
+		m_aAutoTeamLockPending[Dummy] = false;
+		return;
+	}
+
+	if(TeamCanBeLocked && (!LastTeamCanBeLocked || Team != m_aAutoTeamLockLastTeam[Dummy]))
+	{
+		const int DelayTicks = g_Config.m_BcAutoTeamLockDelay * Client()->GameTickSpeed();
+		m_aAutoTeamLockDeadlineTick[Dummy] = (int64_t)Client()->GameTick(Dummy) + DelayTicks;
+		m_aAutoTeamLockPending[Dummy] = true;
+	}
+	else if(!TeamCanBeLocked)
+	{
+		m_aAutoTeamLockDeadlineTick[Dummy] = 0;
+		m_aAutoTeamLockPending[Dummy] = false;
+	}
+
+	if(m_aAutoTeamLockPending[Dummy] && TeamCanBeLocked && Client()->GameTick(Dummy) >= m_aAutoTeamLockDeadlineTick[Dummy])
+	{
+		m_Chat.SendChat(0, "/lock 1");
+		m_aAutoTeamLockPending[Dummy] = false;
+	}
+
+	m_aAutoTeamLockLastTeam[Dummy] = Team;
 }
 
 void CGameClient::OnShutdown()
@@ -2148,9 +2210,11 @@ void CGameClient::OnNewSnapshot()
 			if(m_DemoSpecId > SPEC_FREEVIEW && m_Snap.m_aCharacters[m_DemoSpecId].m_Active)
 				m_Snap.m_SpecInfo.m_SpectatorId = m_DemoSpecId;
 			else
-				m_Snap.m_SpecInfo.m_SpectatorId = SPEC_FREEVIEW;
+			m_Snap.m_SpecInfo.m_SpectatorId = SPEC_FREEVIEW;
 		}
 	}
+
+	UpdateAutoTeamLock();
 
 	// clear out unneeded client data
 	for(int i = 0; i < MAX_CLIENTS; ++i)

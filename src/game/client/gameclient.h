@@ -95,6 +95,7 @@
 #include "components/touch_controls.h"
 #include "components/voting.h"
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -286,6 +287,7 @@ private:
 
 	void ProcessEvents();
 	void UpdatePositions();
+	void UpdateAutoTeamLock();
 
 	int m_EditorMovementDelay = 5;
 	void UpdateEditorIngameMoved();
@@ -1003,6 +1005,9 @@ private:
 	void DetectStrongHook();
 
 	int m_IsDummySwapping;
+	int m_aAutoTeamLockLastTeam[NUM_DUMMIES];
+	int64_t m_aAutoTeamLockDeadlineTick[NUM_DUMMIES];
+	bool m_aAutoTeamLockPending[NUM_DUMMIES];
 	CCharOrder m_CharOrder;
 	int m_aSwitchStateTeam[NUM_DUMMIES];
 

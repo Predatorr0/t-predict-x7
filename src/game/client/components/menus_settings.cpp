@@ -4271,6 +4271,75 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 		const float LeftColumnEndY = Column.y;
 		Column = RightView;
+
+		{
+			const bool SpeedrunExpanded = g_Config.m_BcSpeedrunTimer != 0;
+			const float ContentHeight = LineSize + MarginSmall + LineSize +
+				(SpeedrunExpanded ? (LineSize * 5.0f + MarginSmall * 6.0f) : 0.0f);
+			CUIRect Content, Label, Button;
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, Localize("Speedrun timer"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcSpeedrunTimer, Localize("Enable speedrun timer"), &g_Config.m_BcSpeedrunTimer, &Content, LineSize);
+			if(g_Config.m_BcSpeedrunTimer)
+			{
+				if(g_Config.m_BcSpeedrunTimerHours == 0 &&
+					g_Config.m_BcSpeedrunTimerMinutes == 0 &&
+					g_Config.m_BcSpeedrunTimerSeconds == 0 &&
+					g_Config.m_BcSpeedrunTimerMilliseconds == 0 &&
+					g_Config.m_BcSpeedrunTimerTime > 0)
+				{
+					const int LegacyMinutes = g_Config.m_BcSpeedrunTimerTime / 100;
+					const int LegacySeconds = g_Config.m_BcSpeedrunTimerTime % 100;
+					const int TotalLegacySeconds = LegacyMinutes * 60 + LegacySeconds;
+					g_Config.m_BcSpeedrunTimerHours = TotalLegacySeconds / 3600;
+					g_Config.m_BcSpeedrunTimerMinutes = (TotalLegacySeconds % 3600) / 60;
+					g_Config.m_BcSpeedrunTimerSeconds = TotalLegacySeconds % 60;
+				}
+
+				Content.HSplitTop(MarginSmall, nullptr, &Content);
+				Content.HSplitTop(LineSize, &Button, &Content);
+				Ui()->DoScrollbarOption(&g_Config.m_BcSpeedrunTimerHours, &g_Config.m_BcSpeedrunTimerHours, &Button, Localize("Hours"), 0, 99);
+				Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+				Content.HSplitTop(LineSize, &Button, &Content);
+				Ui()->DoScrollbarOption(&g_Config.m_BcSpeedrunTimerMinutes, &g_Config.m_BcSpeedrunTimerMinutes, &Button, Localize("Minutes"), 0, 59);
+				Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+				Content.HSplitTop(LineSize, &Button, &Content);
+				Ui()->DoScrollbarOption(&g_Config.m_BcSpeedrunTimerSeconds, &g_Config.m_BcSpeedrunTimerSeconds, &Button, Localize("Seconds"), 0, 59);
+				Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+				Content.HSplitTop(LineSize, &Button, &Content);
+				Ui()->DoScrollbarOption(&g_Config.m_BcSpeedrunTimerMilliseconds, &g_Config.m_BcSpeedrunTimerMilliseconds, &Button, Localize("Milliseconds"), 0, 999, &CUi::ms_LinearScrollbarScale, 0, "ms");
+				Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcSpeedrunTimerAutoDisable, Localize("Auto disable after time end"), &g_Config.m_BcSpeedrunTimerAutoDisable, &Content, LineSize);
+			}
+
+			// Keep legacy MMSS setting synchronized for backward compatibility.
+			g_Config.m_BcSpeedrunTimerTime = g_Config.m_BcSpeedrunTimerMinutes * 100 + g_Config.m_BcSpeedrunTimerSeconds;
+		}
+
+		{
+			const float ContentHeight = LineSize * 3.0f + MarginSmall * 2.0f;
+			CUIRect Content, Label, Button;
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, Localize("Auto team lock"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcAutoTeamLock, Localize("Lock team automatically after joining"), &g_Config.m_BcAutoTeamLock, &Content, LineSize);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+			Content.HSplitTop(LineSize, &Button, &Content);
+			Ui()->DoScrollbarOption(&g_Config.m_BcAutoTeamLockDelay, &g_Config.m_BcAutoTeamLockDelay, &Button, Localize("Delay"), 0, 30, &CUi::ms_LinearScrollbarScale, 0, "s");
+		}
+
 		const float RightColumnEndY = Column.y;
 		CUIRect ScrollRegion;
 		ScrollRegion.x = MainView.x;
