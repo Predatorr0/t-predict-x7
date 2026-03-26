@@ -44,6 +44,7 @@ public:
 	CNetObj_PlayerInput m_aFastInput[NUM_DUMMIES];
 	bool m_FastInputHookAction = false;
 	bool m_FastInputFireAction = false;
+	bool m_WeaponsGot = false;
 
 	CControls();
 	int Sizeof() const override { return sizeof(*this); }
@@ -59,6 +60,7 @@ public:
 	void ClampMousePos();
 	void ResetInput(int Dummy);
 	bool CheckNewInput();
+	void GoresMode();
 
 private:
 	static void ConKeyInputState(IConsole::IResult *pResult, void *pUserData);

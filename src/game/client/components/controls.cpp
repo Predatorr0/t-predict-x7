@@ -181,8 +181,35 @@ void CControls::OnMessage(int Msg, void *pRawMsg)
 	}
 }
 
+void CControls::GoresMode()
+{
+	// if turning off kog mode and it was on before, rebind to previous bind
+	if(!GameClient()->m_Snap.m_pLocalCharacter)
+		return;
+	if(!g_Config.m_BcGoresMode)
+		return;
+
+	CCharacterCore Core = GameClient()->m_PredictedPrevChar;
+
+	if(g_Config.m_BcGoresModeDisableIfWeapons)
+	{
+		if(Core.m_aWeapons[WEAPON_GRENADE].m_Got || Core.m_aWeapons[WEAPON_LASER].m_Got || Core.m_aWeapons[WEAPON_SHOTGUN].m_Got)
+			m_WeaponsGot = true;
+		if((!Core.m_aWeapons[WEAPON_GRENADE].m_Got && !Core.m_aWeapons[WEAPON_LASER].m_Got && !Core.m_aWeapons[WEAPON_SHOTGUN].m_Got) && m_WeaponsGot)
+			m_WeaponsGot = false;
+
+		if(m_WeaponsGot)
+			return;
+	}
+
+	if(GameClient()->m_Snap.m_pLocalCharacter->m_Weapon == 0)
+		GameClient()->m_Controls.m_aInputData[g_Config.m_ClDummy].m_WantedWeapon = WEAPON_GUN + 1;
+}
+
 int CControls::SnapInput(int *pData)
 {
+	GoresMode();
+
 	// update player state
 	if(GameClient()->m_Chat.IsActive())
 		m_aInputData[g_Config.m_ClDummy].m_PlayerFlags = PLAYERFLAG_CHATTING;

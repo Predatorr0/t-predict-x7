@@ -4499,6 +4499,38 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			}
 		}
 
+		{
+			static float s_GoresModePhase = 0.0f;
+			const bool GoresModeExpanded = g_Config.m_BcGoresMode != 0;
+			UpdateRevealPhase(s_GoresModePhase, GoresModeExpanded);
+			const float ExpandedTargetHeight = MarginSmall + LineSize;
+			const float ExpandedHeight = ExpandedTargetHeight * s_GoresModePhase;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedHeight;
+			CUIRect Content, Label, Button, Visible;
+			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, Localize("Gores mode"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcGoresMode, Localize("Enable gores mode"), &g_Config.m_BcGoresMode, &Content, LineSize);
+			if(ExpandedHeight > 0.0f)
+			{
+				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
+				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcGoresModeDisableIfWeapons, Localize("Disable if you have shotgun, grenade or laser"), &g_Config.m_BcGoresModeDisableIfWeapons, &Expand, LineSize);
+			}
+		}
+
 		const float RightColumnEndY = Column.y;
 		CUIRect ScrollRegion;
 		ScrollRegion.x = MainView.x;
