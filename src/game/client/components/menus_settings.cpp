@@ -4896,42 +4896,89 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 	}
 	else if(s_CurTab == BESTCLIENT_TAB_OTHERS)
 	{
-			const float LineSize = 20.0f;
-			const float HeadlineFontSize = 20.0f;
-			const float MarginSmall = 5.0f;
+		const float LineSize = 20.0f;
+		const float HeadlineFontSize = 20.0f;
+		const float MarginSmall = 5.0f;
+		const float MarginBetweenViews = 30.0f;
+		const ColorRGBA BlockColor = ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f);
 
-			CUIRect Content = MainView;
-			Content.Margin(8.0f, &Content);
+		static CScrollRegion s_BestClientOthersScrollRegion;
+		vec2 OthersScrollOffset(0.0f, 0.0f);
+		CScrollRegionParams OthersScrollParams;
+		OthersScrollParams.m_ScrollUnit = 60.0f;
+		OthersScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
+		OthersScrollParams.m_ScrollbarMargin = 5.0f;
+		s_BestClientOthersScrollRegion.Begin(&MainView, &OthersScrollOffset, &OthersScrollParams);
 
-			CUIRect Label, Row;
-			Content.HSplitTop(LineSize, &Label, &Content);
-			Ui()->DoLabel(&Label, Localize("Client Indicator"), HeadlineFontSize, TEXTALIGN_ML);
-			Content.HSplitTop(MarginSmall, nullptr, &Content);
+		MainView.y += OthersScrollOffset.y;
+		MainView.VSplitRight(5.0f, &MainView, nullptr);
+		MainView.VSplitLeft(5.0f, nullptr, &MainView);
 
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcClientIndicator, Localize("Enable client indicator"), &g_Config.m_BcClientIndicator, &Content, LineSize);
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcClientIndicatorInNamePlate, Localize("Show indicator in name plates"), &g_Config.m_BcClientIndicatorInNamePlate, &Content, LineSize);
+		static std::vector<CUIRect> s_SectionBoxes;
+		static vec2 s_PrevScrollOffset(0.0f, 0.0f);
+		for(CUIRect &Section : s_SectionBoxes)
+		{
+			float Padding = MarginBetweenViews * 0.6666f;
+			Section.w += Padding;
+			Section.h += Padding;
+			Section.x -= Padding * 0.5f;
+			Section.y -= Padding * 0.5f;
+			Section.y -= s_PrevScrollOffset.y - OthersScrollOffset.y;
+			Section.Draw(BlockColor, IGraphics::CORNER_ALL, 10.0f);
+		}
+		s_PrevScrollOffset = OthersScrollOffset;
+		s_SectionBoxes.clear();
 
-			if(g_Config.m_BcClientIndicatorInNamePlate)
-			{
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcClientIndicatorInNamePlateAboveSelf, Localize("Show above yourself"), &g_Config.m_BcClientIndicatorInNamePlateAboveSelf, &Content, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcClientIndicatorInNamePlateDynamic, Localize("Dynamic icon position"), &g_Config.m_BcClientIndicatorInNamePlateDynamic, &Content, LineSize);
+		auto BeginBlock = [&](CUIRect &ColumnRef, float ContentHeight, CUIRect &Content) {
+			CUIRect Block;
+			ColumnRef.HSplitTop(ContentHeight, &Block, &ColumnRef);
+			s_SectionBoxes.push_back(Block);
+			Content = Block;
+		};
 
-				Content.HSplitTop(LineSize, &Row, &Content);
-				Ui()->DoScrollbarOption(&g_Config.m_BcClientIndicatorInNamePlateSize, &g_Config.m_BcClientIndicatorInNamePlateSize, &Row, Localize("Name plate indicator size"), -50, 100);
+		CUIRect Column = MainView;
+		Column.VSplitLeft(8.0f, nullptr, &Column);
+		Column.VSplitRight(8.0f, &Column, nullptr);
+		Column.HSplitTop(10.0f, nullptr, &Column);
 
-				Content.HSplitTop(LineSize, &Row, &Content);
-				Ui()->DoScrollbarOption(&g_Config.m_BcNameplateClientIndicatorOffsetX, &g_Config.m_BcNameplateClientIndicatorOffsetX, &Row, Localize("Name plate indicator offset X"), -400, 400);
+		const bool ShowNamePlateSettings = g_Config.m_BcClientIndicatorInNamePlate != 0;
+		const bool ShowScoreboardSettings = g_Config.m_BcClientIndicatorInScoreboard != 0;
+		const float NamePlateSettingsHeight = ShowNamePlateSettings ? 2.0f * LineSize : 0.0f;
+		const float ScoreboardSettingsHeight = ShowScoreboardSettings ? LineSize : 0.0f;
+		const float ContentHeight = LineSize + MarginSmall + 3.0f * LineSize + NamePlateSettingsHeight + ScoreboardSettingsHeight;
 
-				Content.HSplitTop(LineSize, &Row, &Content);
-				Ui()->DoScrollbarOption(&g_Config.m_BcNameplateClientIndicatorOffsetY, &g_Config.m_BcNameplateClientIndicatorOffsetY, &Row, Localize("Name plate indicator offset Y"), -400, 400);
-			}
+		CUIRect Content, Label, Row;
+		BeginBlock(Column, ContentHeight, Content);
 
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcClientIndicatorInScoreboard, Localize("Show indicator in scoreboard"), &g_Config.m_BcClientIndicatorInScoreboard, &Content, LineSize);
-			if(g_Config.m_BcClientIndicatorInScoreboard)
-			{
-				Content.HSplitTop(LineSize, &Row, &Content);
-				Ui()->DoScrollbarOption(&g_Config.m_BcClientIndicatorInSoreboardSize, &g_Config.m_BcClientIndicatorInSoreboardSize, &Row, Localize("Scoreboard indicator size"), -50, 100);
-			}
+		Content.HSplitTop(LineSize, &Label, &Content);
+		Ui()->DoLabel(&Label, Localize("Client Indicator"), HeadlineFontSize, TEXTALIGN_ML);
+		Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcClientIndicator, Localize("Enable client indicator"), &g_Config.m_BcClientIndicator, &Content, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcClientIndicatorInNamePlate, Localize("Show indicator in name plates"), &g_Config.m_BcClientIndicatorInNamePlate, &Content, LineSize);
+
+		if(g_Config.m_BcClientIndicatorInNamePlate)
+		{
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcClientIndicatorInNamePlateAboveSelf, Localize("Show above yourself"), &g_Config.m_BcClientIndicatorInNamePlateAboveSelf, &Content, LineSize);
+
+			Content.HSplitTop(LineSize, &Row, &Content);
+			Ui()->DoScrollbarOption(&g_Config.m_BcClientIndicatorInNamePlateSize, &g_Config.m_BcClientIndicatorInNamePlateSize, &Row, Localize("Name plate indicator size"), -50, 100);
+		}
+
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcClientIndicatorInScoreboard, Localize("Show indicator in scoreboard"), &g_Config.m_BcClientIndicatorInScoreboard, &Content, LineSize);
+		if(g_Config.m_BcClientIndicatorInScoreboard)
+		{
+			Content.HSplitTop(LineSize, &Row, &Content);
+			Ui()->DoScrollbarOption(&g_Config.m_BcClientIndicatorInSoreboardSize, &g_Config.m_BcClientIndicatorInSoreboardSize, &Row, Localize("Scoreboard indicator size"), -50, 100);
+		}
+
+		CUIRect ScrollRegion;
+		ScrollRegion.x = MainView.x;
+		ScrollRegion.y = Column.y + MarginSmall * 2.0f;
+		ScrollRegion.w = MainView.w;
+		ScrollRegion.h = 0.0f;
+		s_BestClientOthersScrollRegion.AddRect(ScrollRegion);
+		s_BestClientOthersScrollRegion.End();
 	}
 	else if(s_CurTab == BESTCLIENT_TAB_INFO)
 	{
