@@ -317,7 +317,7 @@ void CClientIndicator::OnUpdate()
 	m_MaxUpdateCostTick = maximum(m_MaxUpdateCostTick, m_LastUpdateCostTick);
 	m_TotalUpdateCostTick += m_LastUpdateCostTick;
 	++m_UpdateSamples;
-	if(g_Config.m_DbgClientIndicator >= 1)
+	if(g_Config.m_DbgClientIndicator >= 2)
 	{
 		if(m_LastPerfReportTick == 0 || Now - m_LastPerfReportTick >= time_freq())
 		{
