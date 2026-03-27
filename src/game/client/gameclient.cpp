@@ -2393,7 +2393,24 @@ void CGameClient::OnNewSnapshot()
 			}
 			else if(Item.m_Type == NETOBJTYPE_SPECTATORCOUNT)
 			{
-				m_Snap.m_pSpectatorCount = (const CNetObj_SpectatorCount *)Item.m_pData;
+				const CNetObj_SpectatorCount *pSpectatorCount = (const CNetObj_SpectatorCount *)Item.m_pData;
+				if(Item.m_Id == 0)
+				{
+					m_Snap.m_pSpectatorCount = pSpectatorCount;
+				}
+				else
+				{
+					const int SpectatorId = Item.m_Id - 1;
+					if(SpectatorId >= 0 && SpectatorId < MAX_CLIENTS && !m_Snap.m_aSpectatorWatchers[SpectatorId])
+					{
+						m_Snap.m_aSpectatorWatchers[SpectatorId] = true;
+						++m_Snap.m_NumSpectatorWatchers;
+					}
+
+					// Fallback for servers that only send extended items without the legacy id=0 object.
+					if(!m_Snap.m_pSpectatorCount)
+						m_Snap.m_pSpectatorCount = pSpectatorCount;
+				}
 			}
 			else if(Item.m_Type == NETOBJTYPE_GAMEINFO)
 			{

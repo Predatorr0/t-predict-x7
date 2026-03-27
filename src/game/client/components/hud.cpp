@@ -1507,19 +1507,36 @@ void CHud::RenderSpectatorCount()
 		return;
 	}
 
+	int aSpectatorIds[MAX_CLIENTS];
+	bool aSpectatorAdded[MAX_CLIENTS] = {};
+	int NumSpectatorIds = 0;
+	bool HasExactSpectatorNames = false;
+	bool HasReliableFallbackSpectatorNames = false;
+	auto AddSpectator = [&](int ClientId) {
+		if(ClientId < 0 || ClientId >= MAX_CLIENTS || aSpectatorAdded[ClientId])
+			return;
+		aSpectatorAdded[ClientId] = true;
+		aSpectatorIds[NumSpectatorIds] = ClientId;
+		++NumSpectatorIds;
+	};
+
 	int Count = 0;
+	const int LocalId = GameClient()->m_aLocalIds[0];
+	const int DummyId = Client()->DummyConnected() ? GameClient()->m_aLocalIds[1] : -1;
 	if(Client()->IsSixup())
 	{
 		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
-			if(i == GameClient()->m_aLocalIds[0] || (GameClient()->Client()->DummyConnected() && i == GameClient()->m_aLocalIds[1]))
+			if(i == LocalId || i == DummyId)
 				continue;
 
 			if(Client()->m_TranslationContext.m_aClients[i].m_PlayerFlags7 & protocol7::PLAYERFLAG_WATCHING)
 			{
-				Count++;
+				AddSpectator(i);
 			}
 		}
+		Count = NumSpectatorIds;
+		HasExactSpectatorNames = true;
 	}
 	else
 	{
@@ -1530,6 +1547,33 @@ void CHud::RenderSpectatorCount()
 			return;
 		}
 		Count = pSpectatorCount->m_NumSpectators;
+
+		if(GameClient()->m_Snap.m_NumSpectatorWatchers > 0)
+		{
+			for(int i = 0; i < MAX_CLIENTS; i++)
+			{
+				if(GameClient()->m_Snap.m_aSpectatorWatchers[i])
+					AddSpectator(i);
+			}
+			HasExactSpectatorNames = true;
+		}
+		else
+		{
+			for(int i = 0; i < MAX_CLIENTS; i++)
+			{
+				if(i == LocalId || i == DummyId)
+					continue;
+
+				const CNetObj_PlayerInfo *pInfo = GameClient()->m_Snap.m_apPlayerInfos[i];
+				if(!pInfo || !GameClient()->m_aClients[i].m_Active)
+					continue;
+
+				const bool IsLikelySpectator = pInfo->m_Team == TEAM_SPECTATORS || GameClient()->m_aClients[i].m_Spec || GameClient()->m_aClients[i].m_Paused;
+				if(IsLikelySpectator)
+					AddSpectator(i);
+			}
+			HasReliableFallbackSpectatorNames = NumSpectatorIds == Count;
+		}
 	}
 
 	if(Count == 0)
@@ -1542,12 +1586,47 @@ void CHud::RenderSpectatorCount()
 	if(Client()->GameTick(g_Config.m_ClDummy) < m_LastSpectatorCountTick + Client()->GameTickSpeed())
 		return;
 
-	char aBuf[16];
-	str_format(aBuf, sizeof(aBuf), "%d", Count);
+	char aCountBuf[16];
+	str_format(aCountBuf, sizeof(aCountBuf), "%d", Count);
+
+	constexpr int MAX_NAME_LINES = 6;
+	char aaNameLines[MAX_NAME_LINES][MAX_NAME_LENGTH + 8] = {};
+	int NumNameLines = 0;
+	if((HasExactSpectatorNames || HasReliableFallbackSpectatorNames) && NumSpectatorIds > 0)
+	{
+		const int MaxVisibleNames = MAX_NAME_LINES - 1;
+		int VisibleNames = minimum(NumSpectatorIds, MaxVisibleNames);
+
+		int ShownNames = 0;
+		for(int i = 0; i < NumSpectatorIds && ShownNames < VisibleNames; i++)
+		{
+			const char *pName = GameClient()->m_aClients[aSpectatorIds[i]].m_aName;
+			if(pName[0] == '\0')
+				continue;
+			str_copy(aaNameLines[NumNameLines], pName);
+			++NumNameLines;
+			++ShownNames;
+		}
+
+		const int Remaining = maximum(0, Count - ShownNames);
+		if(Remaining > 0 && NumNameLines < MAX_NAME_LINES)
+		{
+			str_format(aaNameLines[NumNameLines], sizeof(aaNameLines[NumNameLines]), "+%d", Remaining);
+			++NumNameLines;
+		}
+	}
 
 	const float Fontsize = 6.0f;
-	const float BoxHeight = 14.f;
-	const float BoxWidth = 13.f + TextRender()->TextWidth(Fontsize, aBuf);
+	const float LineHeight = Fontsize + 2.0f;
+	const float PaddingX = 2.0f;
+	const float PaddingY = 2.0f;
+	const float HeaderWidth = Fontsize + 3.0f + TextRender()->TextWidth(Fontsize, aCountBuf);
+	float MaxLineWidth = HeaderWidth;
+	for(int i = 0; i < NumNameLines; i++)
+		MaxLineWidth = maximum(MaxLineWidth, TextRender()->TextWidth(Fontsize, aaNameLines[i]));
+
+	const float BoxHeight = PaddingY * 2.0f + LineHeight * (1 + NumNameLines);
+	const float BoxWidth = PaddingX * 2.0f + MaxLineWidth;
 
 	float StartX = m_Width - BoxWidth;
 	float StartY = 285.0f - BoxHeight - 4; // 4 units distance to the next display;
@@ -1569,13 +1648,20 @@ void CHud::RenderSpectatorCount()
 
 	Graphics()->DrawRect(StartX, StartY, BoxWidth, BoxHeight, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_L, 5.0f);
 
-	float y = StartY + BoxHeight / 3;
-	float x = StartX + 2;
+	float y = StartY + PaddingY;
+	float x = StartX + PaddingX;
 
 	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
 	TextRender()->Text(x, y, Fontsize, FontIcon::EYE, -1.0f);
 	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
-	TextRender()->Text(x + Fontsize + 3.f, y, Fontsize, aBuf, -1.0f);
+	TextRender()->Text(x + Fontsize + 3.f, y, Fontsize, aCountBuf, -1.0f);
+
+	y += LineHeight;
+	for(int i = 0; i < NumNameLines; i++)
+	{
+		TextRender()->Text(x, y, Fontsize, aaNameLines[i], -1.0f);
+		y += LineHeight;
+	}
 }
 
 void CHud::RenderDummyActions()
