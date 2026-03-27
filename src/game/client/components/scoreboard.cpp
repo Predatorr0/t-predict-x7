@@ -52,6 +52,8 @@ float CScoreboard::GetPopupHeight(int ClientId, bool IsLocal, bool IsSpectating)
 	{
 		// Profile, whisper, vote kick, clip name, swap.
 		Height += (ItemSpacing * 2.0f + ButtonSize) * 5.0f;
+		// War list quick actions: enemy/team/helper.
+		Height += ItemSpacing * 2.0f + ActionSize;
 
 		const int LocalId = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
 		const int LocalTeam = GameClient()->m_Teams.Team(LocalId);
@@ -1317,6 +1319,61 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 			str_format(aSwapBuf, sizeof(aSwapBuf), "say /swap %s", Client.m_aName);
 			pScoreboard->Console()->ExecuteLine(aSwapBuf, IConsole::CLIENT_ID_UNSPECIFIED);
 		}
+
+		const float ActionSize = 25.0f;
+		const int ActionsNum = 3;
+		const float ActionSpacing = (View.w - (ActionsNum * ActionSize)) / 2.0f;
+		const int ActionCorners = IGraphics::CORNER_ALL;
+		CWarList &WarList = pScoreboard->GameClient()->m_WarList;
+		const auto &WarData = WarList.GetWarData(pPopupContext->m_ClientId);
+
+		auto IsWarGroupMatch = [&](int WarTypeIndex) {
+			return WarTypeIndex >= 0 &&
+			       WarTypeIndex < static_cast<int>(WarData.m_WarGroupMatches.size()) &&
+			       WarData.m_WarGroupMatches[WarTypeIndex];
+		};
+
+		auto ToggleWarGroup = [&](int WarTypeIndex) {
+			const int WarTypesCount = static_cast<int>(WarList.m_WarTypes.size());
+			if(WarTypeIndex < 0 || WarTypeIndex >= WarTypesCount)
+				return;
+
+			if(IsWarGroupMatch(WarTypeIndex))
+				WarList.RemoveWarEntryInGame(WarTypeIndex, Client.m_aName, false);
+			else
+				WarList.AddWarEntryInGame(WarTypeIndex, Client.m_aName, "", false);
+
+			WarList.UpdateWarPlayers();
+		};
+
+		View.HSplitTop(ItemSpacing * 2, nullptr, &View);
+		View.HSplitTop(ActionSize, &Container, &View);
+
+		Container.VSplitLeft(ActionSize, &Action, &Container);
+		const bool IsInWar = IsWarGroupMatch(1);
+		ColorRGBA WarActionColor = IsInWar ? ColorRGBA(1.0f, 0.32f, 0.32f, 0.85f * pUi->ButtonColorMul(&pPopupContext->m_WarListWarButton)) :
+						     ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_WarListWarButton));
+		if(pUi->DoButton_FontIcon(&pPopupContext->m_WarListWarButton, FontIcon::STAR, IsInWar, &Action, BUTTONFLAG_LEFT, ActionCorners, true, WarActionColor))
+			ToggleWarGroup(1);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_WarListWarButton, &Action, IsInWar ? Localize("Remove from war") : Localize("Add to war"));
+
+		Container.VSplitLeft(ActionSpacing, nullptr, &Container);
+		Container.VSplitLeft(ActionSize, &Action, &Container);
+		const bool IsInTeam = IsWarGroupMatch(2);
+		ColorRGBA TeamActionColor = IsInTeam ? ColorRGBA(0.32f, 0.92f, 0.42f, 0.85f * pUi->ButtonColorMul(&pPopupContext->m_WarListTeamButton)) :
+						      ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_WarListTeamButton));
+		if(pUi->DoButton_FontIcon(&pPopupContext->m_WarListTeamButton, FontIcon::ICON_USERS, IsInTeam, &Action, BUTTONFLAG_LEFT, ActionCorners, true, TeamActionColor))
+			ToggleWarGroup(2);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_WarListTeamButton, &Action, IsInTeam ? Localize("Remove from teammate") : Localize("Add to teammate"));
+
+		Container.VSplitLeft(ActionSpacing, nullptr, &Container);
+		Container.VSplitLeft(ActionSize, &Action, &Container);
+		const bool IsInHelper = IsWarGroupMatch(3);
+		ColorRGBA HelperActionColor = IsInHelper ? ColorRGBA(0.45f, 0.72f, 1.0f, 0.85f * pUi->ButtonColorMul(&pPopupContext->m_WarListHelperButton)) :
+							ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_WarListHelperButton));
+		if(pUi->DoButton_FontIcon(&pPopupContext->m_WarListHelperButton, FontIcon::USER, IsInHelper, &Action, BUTTONFLAG_LEFT, ActionCorners, true, HelperActionColor))
+			ToggleWarGroup(3);
+		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_WarListHelperButton, &Action, IsInHelper ? Localize("Remove from helper") : Localize("Add to helper"));
 
 		const int LocalId = pScoreboard->GameClient()->m_aLocalIds[g_Config.m_ClDummy];
 		const int LocalTeam = pScoreboard->GameClient()->m_Teams.Team(LocalId);
