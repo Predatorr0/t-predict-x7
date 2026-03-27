@@ -2851,6 +2851,9 @@ void CChat::ClampMediaViewerPan(const CLine &Line, float ScreenWidth, float Scre
 
 bool CChat::OnInput(const IInput::CEvent &Event)
 {
+	const bool ChatInputActive = m_Mode != MODE_NONE;
+	const bool ChatInteractionActive = ChatInputActive || m_Show;
+
 	if((Event.m_Flags & IInput::FLAG_PRESS) && Event.m_Key == KEY_MOUSE_1 && g_Config.m_BcChatMediaPreview &&
 		(Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK))
 	{
@@ -2882,16 +2885,16 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 		}
 	}
 
-	if(m_Mode == MODE_NONE)
+	if(!ChatInteractionActive)
 		return false;
 
-	if((Event.m_Flags & IInput::FLAG_PRESS) && Event.m_Key == KEY_ESCAPE && Ui()->IsPopupOpen())
+	if(ChatInputActive && (Event.m_Flags & IInput::FLAG_PRESS) && Event.m_Key == KEY_ESCAPE && Ui()->IsPopupOpen())
 	{
 		Ui()->ClosePopupMenus();
 		return true;
 	}
 
-	if(Event.m_Key == KEY_MOUSE_1 && m_TranslateButtonRectValid)
+	if(ChatInputActive && Event.m_Key == KEY_MOUSE_1 && m_TranslateButtonRectValid)
 	{
 		const vec2 MousePos = ChatMousePos();
 		const bool InsideTranslateButton =
@@ -3081,6 +3084,13 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 			m_HasSelection = false;
 			return true;
 		}
+	}
+
+	if(!ChatInputActive)
+	{
+		if(Event.m_Key == KEY_MOUSE_1 && (Event.m_Flags & (IInput::FLAG_PRESS | IInput::FLAG_RELEASE)))
+			return true;
+		return false;
 	}
 
 	if(Event.m_Flags & IInput::FLAG_PRESS && Event.m_Key == KEY_ESCAPE)
@@ -3555,7 +3565,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 
 bool CChat::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 {
-	if(m_Mode == MODE_NONE)
+	if(m_Mode == MODE_NONE && !m_Show && !m_MediaViewerOpen)
 		return false;
 
 	Ui()->ConvertMouseMove(&x, &y, CursorType);
@@ -4066,6 +4076,7 @@ void CChat::OnPrepareLines(float y, int StartLine, int HoveredTranslateLineIndex
 
 	const bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
 	const bool ShowLargeArea = m_Show || (m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) || g_Config.m_ClShowChat == 2;
+	const bool ChatInteractionActive = m_Mode != MODE_NONE || m_Show;
 	const bool ModeActive = m_Mode != MODE_NONE;
 	const bool ChatSelectionActive = m_HasSelection && !m_MouseIsPress && !m_WantsSelectionCopy && !m_Input.HasSelection();
 	const bool ForceSelectionRefresh = m_MouseIsPress || m_WantsSelectionCopy || ChatSelectionActive != m_PrevChatSelectionActive;
@@ -4320,7 +4331,7 @@ void CChat::OnPrepareLines(float y, int StartLine, int HoveredTranslateLineIndex
 		LineCursor.SetPosition(vec2(TextBegin, Line.m_TextYOffset));
 		LineCursor.m_FontSize = FontSize;
 		LineCursor.m_LineWidth = LineWidth;
-		if(m_Mode != MODE_NONE && !m_Input.HasSelection() && (m_MouseIsPress || m_HasSelection || m_WantsSelectionCopy))
+		if(ChatInteractionActive && !m_Input.HasSelection() && (m_MouseIsPress || m_HasSelection || m_WantsSelectionCopy))
 		{
 			LineCursor.m_CalculateSelectionMode = TEXT_CURSOR_SELECTION_MODE_CALCULATE;
 			LineCursor.m_PressMouse = m_MousePress;
@@ -4559,7 +4570,16 @@ void CChat::OnRender()
 		const float ChatOpenEase = BCUiAnimations::EaseInOutQuart(Progress);
 		ChatOpenOffsetX = -(x + maximum(Width - 190.0f, 190.0f) + 24.0f) * (1.0f - ChatOpenEase);
 	}
-	if(m_Mode != MODE_NONE)
+	const bool ChatInteractionActive = m_Mode != MODE_NONE || m_Show;
+	if(m_MediaViewerOpen && !ChatInteractionActive)
+		CloseMediaViewer();
+	if(!ChatInteractionActive)
+	{
+		m_MouseIsPress = false;
+		m_HasSelection = false;
+		m_WantsSelectionCopy = false;
+	}
+	if(ChatInteractionActive)
 	{
 		if(!m_MediaViewerOpen && !m_ScrollbarDragging)
 		{
@@ -4582,6 +4602,8 @@ void CChat::OnRender()
 			m_MouseIsPress = false;
 		}
 
+		if(m_Mode != MODE_NONE)
+		{
 			// render chat input
 			CTextCursor InputCursor;
 			InputCursor.SetPosition(vec2(x + ChatOpenOffsetX, y));
@@ -4786,6 +4808,7 @@ void CChat::OnRender()
 			}
 		}
 	}
+	}
 
 #if defined(CONF_VIDEORECORDER)
 	if(!((g_Config.m_ClShowChat && !IVideo::Current()) || (g_Config.m_ClVideoShowChat && IVideo::Current())))
@@ -4853,7 +4876,7 @@ void CChat::OnRender()
 	const int MaxScroll = maximum(0, TotalLines - VisibleLines);
 	m_BacklogCurLine = maximum(0, minimum(m_BacklogCurLine, MaxScroll));
 
-	if(m_Mode != MODE_NONE && MaxScroll > 0)
+	if(ChatInteractionActive && MaxScroll > 0)
 	{
 		const float LogTop = HeightLimit;
 		const float LogBottom = y;
@@ -5098,7 +5121,7 @@ void CChat::OnRender()
 					TextRender()->TextColor(TextRender()->DefaultTextColor());
 
 					Line.m_MediaRetryRectValid = false;
-					if(m_Mode != MODE_NONE)
+					if(ChatInteractionActive)
 					{
 						Line.m_MediaPreviewRect.m_X = PreviewX;
 						Line.m_MediaPreviewRect.m_Y = PreviewY;
@@ -5130,7 +5153,7 @@ void CChat::OnRender()
 						Graphics()->TextureClear();
 
 						Line.m_MediaRetryRectValid = false;
-						if(m_Mode != MODE_NONE && g_Config.m_BcChatMediaViewer)
+						if(ChatInteractionActive && g_Config.m_BcChatMediaViewer)
 						{
 							Line.m_MediaPreviewRect.m_X = PreviewX;
 							Line.m_MediaPreviewRect.m_Y = PreviewY;
@@ -5283,7 +5306,7 @@ void CChat::OnRender()
 		Graphics()->MapScreen(0.0f, 0.0f, Width, Height);
 	}
 
-	if(m_Mode != MODE_NONE)
+	if(ChatInteractionActive)
 		RenderTools()->RenderCursor(UiMousePos * UiToChatScale, 12.0f);
 }
 
