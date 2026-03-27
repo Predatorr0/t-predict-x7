@@ -1353,7 +1353,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 		const bool IsInWar = IsWarGroupMatch(1);
 		ColorRGBA WarActionColor = IsInWar ? ColorRGBA(1.0f, 0.32f, 0.32f, 0.85f * pUi->ButtonColorMul(&pPopupContext->m_WarListWarButton)) :
 						     ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_WarListWarButton));
-		if(pUi->DoButton_FontIcon(&pPopupContext->m_WarListWarButton, FontIcon::STAR, IsInWar, &Action, BUTTONFLAG_LEFT, ActionCorners, true, WarActionColor))
+		if(pUi->DoButton_FontIcon(&pPopupContext->m_WarListWarButton, FontIcon::TRIANGLE_EXCLAMATION, IsInWar, &Action, BUTTONFLAG_LEFT, ActionCorners, true, WarActionColor))
 			ToggleWarGroup(1);
 		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_WarListWarButton, &Action, IsInWar ? Localize("Remove from war") : Localize("Add to war"));
 
@@ -1371,7 +1371,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 		const bool IsInHelper = IsWarGroupMatch(3);
 		ColorRGBA HelperActionColor = IsInHelper ? ColorRGBA(0.45f, 0.72f, 1.0f, 0.85f * pUi->ButtonColorMul(&pPopupContext->m_WarListHelperButton)) :
 							ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_WarListHelperButton));
-		if(pUi->DoButton_FontIcon(&pPopupContext->m_WarListHelperButton, FontIcon::USER, IsInHelper, &Action, BUTTONFLAG_LEFT, ActionCorners, true, HelperActionColor))
+		if(pUi->DoButton_FontIcon(&pPopupContext->m_WarListHelperButton, FontIcon::STAR, IsInHelper, &Action, BUTTONFLAG_LEFT, ActionCorners, true, HelperActionColor))
 			ToggleWarGroup(3);
 		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_WarListHelperButton, &Action, IsInHelper ? Localize("Remove from helper") : Localize("Add to helper"));
 
