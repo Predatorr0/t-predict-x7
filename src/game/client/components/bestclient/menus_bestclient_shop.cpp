@@ -1,4 +1,5 @@
 #include <base/fs.h>
+#include <base/io.h>
 #include <base/math.h>
 #include <base/str.h>
 #include <base/system.h>
@@ -16,9 +17,12 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <zlib.h>
 
 using namespace FontIcon;
 
@@ -26,7 +30,7 @@ namespace
 {
 static constexpr const char *BESTCLIENT_SHOP_HOST = "https://data.teeworlds.xyz";
 static constexpr const char *BESTCLIENT_SHOP_BROWSE_API_URL = "https://data.teeworlds.xyz/api/skins?page=%d&limit=10&type=%s";
-static constexpr const char *BESTCLIENT_SHOP_SEARCH_API_URL = "https://data.teeworlds.xyz/api/skins?search=%s&limit=10&type=%s";
+static constexpr const char *BESTCLIENT_SHOP_SEARCH_API_URL = "https://data.teeworlds.xyz/api/skins?page=%d&limit=10&type=%s&search=%s";
 static constexpr CTimeout BESTCLIENT_SHOP_TIMEOUT{8000, 0, 1024, 8};
 static constexpr int64_t BESTCLIENT_SHOP_PAGE_MAX_RESPONSE_SIZE = 2 * 1024 * 1024;
 static constexpr int64_t BESTCLIENT_SHOP_IMAGE_MAX_RESPONSE_SIZE = 32 * 1024 * 1024;
@@ -49,7 +53,9 @@ enum
 	BESTCLIENT_SHOP_EMOTICONS,
 	BESTCLIENT_SHOP_PARTICLES,
 	BESTCLIENT_SHOP_HUD,
+	BESTCLIENT_SHOP_ARROWS,
 	BESTCLIENT_SHOP_CURSORS,
+	BESTCLIENT_SHOP_AUDIO,
 	NUM_BESTCLIENT_SHOP_TABS,
 };
 
@@ -60,7 +66,9 @@ enum
 	BESTCLIENT_ASSETS_TAB_EMOTICONS = 2,
 	BESTCLIENT_ASSETS_TAB_PARTICLES = 3,
 	BESTCLIENT_ASSETS_TAB_HUD = 4,
+	BESTCLIENT_ASSETS_TAB_ARROW = 7,
 	BESTCLIENT_ASSETS_TAB_CURSOR = 6,
+	BESTCLIENT_ASSETS_TAB_AUDIO = 8,
 };
 
 struct SBestClientShopTypeInfo
@@ -77,7 +85,9 @@ static const SBestClientShopTypeInfo gs_aBestClientShopTypeInfos[NUM_BESTCLIENT_
 	{"Emoticons", "emoticon", "assets/emoticons", BESTCLIENT_ASSETS_TAB_EMOTICONS},
 	{"Particles", "particle", "assets/particles", BESTCLIENT_ASSETS_TAB_PARTICLES},
 	{"HUD", "hud", "assets/hud", BESTCLIENT_ASSETS_TAB_HUD},
+	{"Arrows", "arrows", "assets/arrow", BESTCLIENT_ASSETS_TAB_ARROW},
 	{"Cursors", "cursor", "assets/cursor", BESTCLIENT_ASSETS_TAB_CURSOR},
+	{"Audio", "sounds", "assets/audio", BESTCLIENT_ASSETS_TAB_AUDIO},
 };
 
 struct SBestClientShopItem
@@ -391,7 +401,19 @@ static void BestClientShopBuildPreviewPath(int Tab, const char *pItemId, char *p
 
 static void BestClientShopBuildAssetPath(int Tab, const char *pAssetName, char *pOutput, size_t OutputSize)
 {
-	str_format(pOutput, OutputSize, "%s/%s.png", gs_aBestClientShopTypeInfos[Tab].m_pAssetDirectory, pAssetName);
+	if(Tab == BESTCLIENT_SHOP_AUDIO)
+	{
+		str_format(pOutput, OutputSize, "%s/%s", gs_aBestClientShopTypeInfos[Tab].m_pAssetDirectory, pAssetName);
+	}
+	else
+	{
+		str_format(pOutput, OutputSize, "%s/%s.png", gs_aBestClientShopTypeInfos[Tab].m_pAssetDirectory, pAssetName);
+	}
+}
+
+static void BestClientShopBuildAssetDirectoryPath(int Tab, const char *pAssetName, char *pOutput, size_t OutputSize)
+{
+	str_format(pOutput, OutputSize, "%s/%s", gs_aBestClientShopTypeInfos[Tab].m_pAssetDirectory, pAssetName);
 }
 
 static bool BestClientShopWriteFile(CMenus *pMenus, const char *pRelativePath, const void *pData, size_t DataSize)
@@ -419,11 +441,337 @@ static bool BestClientShopIsPngBuffer(const unsigned char *pData, size_t DataSiz
 	return DataSize >= sizeof(s_aSignature) && mem_comp(pData, s_aSignature, sizeof(s_aSignature)) == 0;
 }
 
+static bool BestClientShopIsZipBuffer(const unsigned char *pData, size_t DataSize)
+{
+	static const unsigned char s_aSignature[4] = {'P', 'K', 0x03, 0x04};
+	return DataSize >= sizeof(s_aSignature) && mem_comp(pData, s_aSignature, sizeof(s_aSignature)) == 0;
+}
+
+static bool BestClientShopDirectoryExists(CMenus *pMenus, const char *pRelativePath)
+{
+	char aAbsolutePath[IO_MAX_PATH_LENGTH];
+	pMenus->MenuStorage()->GetCompletePath(IStorage::TYPE_SAVE, pRelativePath, aAbsolutePath, sizeof(aAbsolutePath));
+	return fs_is_dir(aAbsolutePath) == 1;
+}
+
+static int BestClientShopCollectDirectoryEntries(const char *pName, int IsDir, int DirType, void *pUser)
+{
+	(void)IsDir;
+	(void)DirType;
+	auto *pEntries = static_cast<std::vector<std::string> *>(pUser);
+	if(str_comp(pName, ".") == 0 || str_comp(pName, "..") == 0)
+	{
+		return 0;
+	}
+	pEntries->emplace_back(pName);
+	return 0;
+}
+
+static bool BestClientShopRemoveAbsoluteDirectoryRecursive(const char *pAbsolutePath)
+{
+	std::vector<std::string> vEntries;
+	fs_listdir(pAbsolutePath, BestClientShopCollectDirectoryEntries, 0, &vEntries);
+
+	bool Success = true;
+	for(const std::string &Entry : vEntries)
+	{
+		char aChildPath[IO_MAX_PATH_LENGTH];
+		str_format(aChildPath, sizeof(aChildPath), "%s/%s", pAbsolutePath, Entry.c_str());
+		if(fs_is_dir(aChildPath) == 1)
+		{
+			Success &= BestClientShopRemoveAbsoluteDirectoryRecursive(aChildPath);
+		}
+		else
+		{
+			Success &= fs_remove(aChildPath) == 0;
+		}
+	}
+
+	Success &= fs_removedir(pAbsolutePath) == 0;
+	return Success;
+}
+
+static uint16_t BestClientShopReadLe16(const unsigned char *pData)
+{
+	return (uint16_t)pData[0] | ((uint16_t)pData[1] << 8);
+}
+
+static uint32_t BestClientShopReadLe32(const unsigned char *pData)
+{
+	return (uint32_t)pData[0] | ((uint32_t)pData[1] << 8) | ((uint32_t)pData[2] << 16) | ((uint32_t)pData[3] << 24);
+}
+
+static bool BestClientShopSanitizeArchivePath(const std::string &Path, std::string &OutPath)
+{
+	OutPath.clear();
+	if(Path.empty())
+	{
+		return false;
+	}
+
+	OutPath.reserve(Path.size());
+	for(char Ch : Path)
+	{
+		OutPath.push_back(Ch == '\\' ? '/' : Ch);
+	}
+
+	while(!OutPath.empty() && OutPath[0] == '/')
+	{
+		OutPath.erase(OutPath.begin());
+	}
+
+	if(OutPath.empty())
+	{
+		return false;
+	}
+
+	if((OutPath.size() >= 2 && OutPath[1] == ':') || str_startswith(OutPath.c_str(), "../") || str_find(OutPath.c_str(), "/../") != nullptr || str_endswith(OutPath.c_str(), "/.."))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+static bool BestClientShopExtractZipToDirectory(CMenus *pMenus, const unsigned char *pData, size_t DataSize, const char *pOutputBasePath)
+{
+	if(!BestClientShopIsZipBuffer(pData, DataSize) || DataSize < 22)
+	{
+		return false;
+	}
+
+	struct SZipEntry
+	{
+		std::string m_Path;
+		uint32_t m_LocalHeaderOffset = 0;
+		uint32_t m_CompressedSize = 0;
+		uint32_t m_UncompressedSize = 0;
+		uint16_t m_CompressionMethod = 0;
+	};
+
+	size_t EocdOffset = (size_t)-1;
+	const size_t SearchStart = DataSize > 65557 ? DataSize - 65557 : 0;
+	for(size_t Pos = DataSize - 22 + 1; Pos-- > SearchStart;)
+	{
+		if(Pos + 4 <= DataSize && BestClientShopReadLe32(pData + Pos) == 0x06054b50U)
+		{
+			EocdOffset = Pos;
+			break;
+		}
+	}
+
+	if(EocdOffset == (size_t)-1 || EocdOffset + 22 > DataSize)
+	{
+		return false;
+	}
+
+	const uint16_t NumEntries = BestClientShopReadLe16(pData + EocdOffset + 10);
+	const uint32_t CentralDirSize = BestClientShopReadLe32(pData + EocdOffset + 12);
+	const uint32_t CentralDirOffset = BestClientShopReadLe32(pData + EocdOffset + 16);
+	if((size_t)CentralDirOffset + (size_t)CentralDirSize > DataSize)
+	{
+		return false;
+	}
+
+	std::vector<SZipEntry> vEntries;
+	vEntries.reserve(NumEntries);
+
+	size_t CentralPos = CentralDirOffset;
+	for(uint16_t EntryIndex = 0; EntryIndex < NumEntries; ++EntryIndex)
+	{
+		if(CentralPos + 46 > DataSize || BestClientShopReadLe32(pData + CentralPos) != 0x02014b50U)
+		{
+			return false;
+		}
+
+		const uint16_t CompressionMethod = BestClientShopReadLe16(pData + CentralPos + 10);
+		const uint32_t CompressedSize = BestClientShopReadLe32(pData + CentralPos + 20);
+		const uint32_t UncompressedSize = BestClientShopReadLe32(pData + CentralPos + 24);
+		const uint16_t NameLength = BestClientShopReadLe16(pData + CentralPos + 28);
+		const uint16_t ExtraLength = BestClientShopReadLe16(pData + CentralPos + 30);
+		const uint16_t CommentLength = BestClientShopReadLe16(pData + CentralPos + 32);
+		const uint32_t LocalHeaderOffset = BestClientShopReadLe32(pData + CentralPos + 42);
+
+		const size_t NameOffset = CentralPos + 46;
+		const size_t NextEntryPos = NameOffset + NameLength + ExtraLength + CommentLength;
+		if(NameOffset + NameLength > DataSize || NextEntryPos > DataSize)
+		{
+			return false;
+		}
+
+		std::string RawPath((const char *)(pData + NameOffset), NameLength);
+		std::string SanitizedPath;
+		if(!RawPath.empty() && RawPath.back() != '/')
+		{
+			if(!BestClientShopSanitizeArchivePath(RawPath, SanitizedPath))
+			{
+				return false;
+			}
+			vEntries.push_back({SanitizedPath, LocalHeaderOffset, CompressedSize, UncompressedSize, CompressionMethod});
+		}
+
+		CentralPos = NextEntryPos;
+	}
+
+	if(vEntries.empty())
+	{
+		return false;
+	}
+
+	std::string CommonPrefix;
+	{
+		std::string Candidate;
+		bool CandidateReady = false;
+		bool PrefixMismatch = false;
+		for(const SZipEntry &Entry : vEntries)
+		{
+			const size_t SlashPos = Entry.m_Path.find('/');
+			if(SlashPos == std::string::npos || SlashPos == 0 || SlashPos + 1 >= Entry.m_Path.size())
+			{
+				PrefixMismatch = true;
+				break;
+			}
+
+			const std::string Prefix = Entry.m_Path.substr(0, SlashPos);
+			if(!CandidateReady)
+			{
+				Candidate = Prefix;
+				CandidateReady = true;
+			}
+			else if(Candidate != Prefix)
+			{
+				PrefixMismatch = true;
+				break;
+			}
+		}
+
+		if(CandidateReady && !PrefixMismatch)
+		{
+			CommonPrefix = Candidate + "/";
+		}
+	}
+
+	for(const SZipEntry &Entry : vEntries)
+	{
+		std::string RelativePath = Entry.m_Path;
+		if(!CommonPrefix.empty() && str_startswith(RelativePath.c_str(), CommonPrefix.c_str()) != nullptr)
+		{
+			RelativePath = RelativePath.substr(CommonPrefix.size());
+		}
+		if(RelativePath.empty())
+		{
+			continue;
+		}
+
+		const size_t LocalPos = Entry.m_LocalHeaderOffset;
+		if(LocalPos + 30 > DataSize || BestClientShopReadLe32(pData + LocalPos) != 0x04034b50U)
+		{
+			return false;
+		}
+
+		const uint16_t LocalNameLength = BestClientShopReadLe16(pData + LocalPos + 26);
+		const uint16_t LocalExtraLength = BestClientShopReadLe16(pData + LocalPos + 28);
+		const size_t CompressedOffset = LocalPos + 30 + LocalNameLength + LocalExtraLength;
+		if(CompressedOffset + (size_t)Entry.m_CompressedSize > DataSize)
+		{
+			return false;
+		}
+
+		const unsigned char *pCompressedData = pData + CompressedOffset;
+		std::vector<unsigned char> vFileData;
+		if(Entry.m_CompressionMethod == 0)
+		{
+			vFileData.assign(pCompressedData, pCompressedData + Entry.m_CompressedSize);
+		}
+		else if(Entry.m_CompressionMethod == 8)
+		{
+			if(Entry.m_UncompressedSize == 0)
+			{
+				vFileData.clear();
+			}
+			else
+			{
+				vFileData.resize(Entry.m_UncompressedSize);
+				z_stream Stream = {};
+				Stream.next_in = const_cast<Bytef *>(reinterpret_cast<const Bytef *>(pCompressedData));
+				Stream.avail_in = Entry.m_CompressedSize;
+				Stream.next_out = reinterpret_cast<Bytef *>(vFileData.data());
+				Stream.avail_out = Entry.m_UncompressedSize;
+
+				if(inflateInit2(&Stream, -MAX_WBITS) != Z_OK)
+				{
+					return false;
+				}
+				const int InflateResult = inflate(&Stream, Z_FINISH);
+				inflateEnd(&Stream);
+				if(InflateResult != Z_STREAM_END || Stream.total_out != Entry.m_UncompressedSize)
+				{
+					return false;
+				}
+			}
+		}
+		else
+		{
+			return false;
+		}
+
+		char aOutputPath[IO_MAX_PATH_LENGTH];
+		str_format(aOutputPath, sizeof(aOutputPath), "%s/%s", pOutputBasePath, RelativePath.c_str());
+		if(!BestClientShopWriteFile(pMenus, aOutputPath, vFileData.data(), vFileData.size()))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static bool BestClientShopAssetExists(CMenus *pMenus, int Tab, const char *pAssetName)
 {
+	if(Tab == BESTCLIENT_SHOP_AUDIO)
+	{
+		char aDirectoryPath[IO_MAX_PATH_LENGTH];
+		BestClientShopBuildAssetDirectoryPath(Tab, pAssetName, aDirectoryPath, sizeof(aDirectoryPath));
+		if(BestClientShopDirectoryExists(pMenus, aDirectoryPath))
+		{
+			return true;
+		}
+		str_format(aDirectoryPath, sizeof(aDirectoryPath), "audio/%s", pAssetName);
+		return BestClientShopDirectoryExists(pMenus, aDirectoryPath);
+	}
+
+	if(Tab == BESTCLIENT_SHOP_ARROWS)
+	{
+		char aPath[IO_MAX_PATH_LENGTH];
+		str_format(aPath, sizeof(aPath), "assets/arrow/%s.png", pAssetName);
+		if(pMenus->MenuStorage()->FileExists(aPath, IStorage::TYPE_ALL))
+		{
+			return true;
+		}
+		str_format(aPath, sizeof(aPath), "assets/arrow/%s/arrow.png", pAssetName);
+		if(pMenus->MenuStorage()->FileExists(aPath, IStorage::TYPE_ALL))
+		{
+			return true;
+		}
+		str_format(aPath, sizeof(aPath), "assets/arrows/%s.png", pAssetName);
+		if(pMenus->MenuStorage()->FileExists(aPath, IStorage::TYPE_ALL))
+		{
+			return true;
+		}
+		str_format(aPath, sizeof(aPath), "assets/arrows/%s/arrow.png", pAssetName);
+		return pMenus->MenuStorage()->FileExists(aPath, IStorage::TYPE_ALL);
+	}
+
 	char aPath[IO_MAX_PATH_LENGTH];
 	BestClientShopBuildAssetPath(Tab, pAssetName, aPath, sizeof(aPath));
-	return pMenus->MenuStorage()->FileExists(aPath, IStorage::TYPE_ALL);
+	if(pMenus->MenuStorage()->FileExists(aPath, IStorage::TYPE_ALL))
+	{
+		return true;
+	}
+
+	char aDirectoryPath[IO_MAX_PATH_LENGTH];
+	BestClientShopBuildAssetDirectoryPath(Tab, pAssetName, aDirectoryPath, sizeof(aDirectoryPath));
+	return BestClientShopDirectoryExists(pMenus, aDirectoryPath);
 }
 
 static bool BestClientShopAssetSelected(int Tab, const char *pAssetName)
@@ -440,8 +788,12 @@ static bool BestClientShopAssetSelected(int Tab, const char *pAssetName)
 		return str_comp(g_Config.m_ClAssetParticles, pAssetName) == 0;
 	case BESTCLIENT_SHOP_HUD:
 		return str_comp(g_Config.m_ClAssetHud, pAssetName) == 0;
+	case BESTCLIENT_SHOP_ARROWS:
+		return str_comp(g_Config.m_ClAssetArrow, pAssetName) == 0;
 	case BESTCLIENT_SHOP_CURSORS:
 		return str_comp(g_Config.m_ClAssetCursor, pAssetName) == 0;
+	case BESTCLIENT_SHOP_AUDIO:
+		return str_comp(g_Config.m_SndPack, pAssetName) == 0;
 	default:
 		return false;
 	}
@@ -466,8 +818,14 @@ static void BestClientShopReloadAsset(CMenus *pMenus, int Tab, const char *pAsse
 	case BESTCLIENT_SHOP_HUD:
 		pMenus->MenuGameClient()->LoadHudSkin(pAssetName);
 		break;
+	case BESTCLIENT_SHOP_ARROWS:
+		pMenus->MenuGameClient()->LoadArrowAsset(pAssetName);
+		break;
 	case BESTCLIENT_SHOP_CURSORS:
 		pMenus->MenuGameClient()->LoadCursorAsset(pAssetName);
+		break;
+	case BESTCLIENT_SHOP_AUDIO:
+		pMenus->MenuGameClient()->m_Sounds.Clear();
 		break;
 	}
 }
@@ -491,8 +849,14 @@ static void BestClientShopApplyAsset(CMenus *pMenus, int Tab, const char *pAsset
 	case BESTCLIENT_SHOP_HUD:
 		str_copy(g_Config.m_ClAssetHud, pAssetName);
 		break;
+	case BESTCLIENT_SHOP_ARROWS:
+		str_copy(g_Config.m_ClAssetArrow, pAssetName);
+		break;
 	case BESTCLIENT_SHOP_CURSORS:
 		str_copy(g_Config.m_ClAssetCursor, pAssetName);
+		break;
+	case BESTCLIENT_SHOP_AUDIO:
+		str_copy(g_Config.m_SndPack, pAssetName);
 		break;
 	default:
 		return;
@@ -510,9 +874,92 @@ static void BestClientShopApplyAsset(CMenus *pMenus, int Tab, const char *pAsset
 
 static bool BestClientShopDeleteAsset(CMenus *pMenus, int Tab, const char *pAssetName)
 {
-	char aPath[IO_MAX_PATH_LENGTH];
-	BestClientShopBuildAssetPath(Tab, pAssetName, aPath, sizeof(aPath));
-	if(!pMenus->MenuStorage()->FileExists(aPath, IStorage::TYPE_SAVE))
+	bool AnyDeleted = false;
+	bool DeleteSuccess = true;
+
+	if(Tab == BESTCLIENT_SHOP_AUDIO)
+	{
+		const char *apAudioDirectories[] = {
+			"assets/audio/%s",
+			"audio/%s",
+		};
+		for(const char *pAudioDirectory : apAudioDirectories)
+		{
+			char aDirectoryPath[IO_MAX_PATH_LENGTH];
+			str_format(aDirectoryPath, sizeof(aDirectoryPath), pAudioDirectory, pAssetName);
+			char aAbsolutePath[IO_MAX_PATH_LENGTH];
+			pMenus->MenuStorage()->GetCompletePath(IStorage::TYPE_SAVE, aDirectoryPath, aAbsolutePath, sizeof(aAbsolutePath));
+			if(fs_is_dir(aAbsolutePath) == 1)
+			{
+				AnyDeleted = true;
+				DeleteSuccess &= BestClientShopRemoveAbsoluteDirectoryRecursive(aAbsolutePath);
+			}
+		}
+	}
+	else if(Tab == BESTCLIENT_SHOP_ARROWS)
+	{
+		char aPath[IO_MAX_PATH_LENGTH];
+		const char *apArrowPaths[] = {
+			"assets/arrow/%s.png",
+			"assets/arrow/%s/arrow.png",
+			"assets/arrows/%s.png",
+			"assets/arrows/%s/arrow.png",
+		};
+		for(const char *pArrowPath : apArrowPaths)
+		{
+			str_format(aPath, sizeof(aPath), pArrowPath, pAssetName);
+			if(pMenus->MenuStorage()->FileExists(aPath, IStorage::TYPE_SAVE))
+			{
+				AnyDeleted = true;
+				DeleteSuccess &= pMenus->MenuStorage()->RemoveFile(aPath, IStorage::TYPE_SAVE);
+			}
+		}
+
+		const char *apArrowDirectories[] = {
+			"assets/arrow/%s",
+			"assets/arrows/%s",
+		};
+		for(const char *pArrowDirectory : apArrowDirectories)
+		{
+			char aDirectoryPath[IO_MAX_PATH_LENGTH];
+			str_format(aDirectoryPath, sizeof(aDirectoryPath), pArrowDirectory, pAssetName);
+			char aAbsolutePath[IO_MAX_PATH_LENGTH];
+			pMenus->MenuStorage()->GetCompletePath(IStorage::TYPE_SAVE, aDirectoryPath, aAbsolutePath, sizeof(aAbsolutePath));
+			if(fs_is_dir(aAbsolutePath) == 1)
+			{
+				AnyDeleted = true;
+				DeleteSuccess &= BestClientShopRemoveAbsoluteDirectoryRecursive(aAbsolutePath);
+			}
+		}
+	}
+	else
+	{
+		char aPath[IO_MAX_PATH_LENGTH];
+		BestClientShopBuildAssetPath(Tab, pAssetName, aPath, sizeof(aPath));
+		if(pMenus->MenuStorage()->FileExists(aPath, IStorage::TYPE_SAVE))
+		{
+			AnyDeleted = true;
+			DeleteSuccess = pMenus->MenuStorage()->RemoveFile(aPath, IStorage::TYPE_SAVE);
+		}
+		else
+		{
+			char aDirectoryPath[IO_MAX_PATH_LENGTH];
+			BestClientShopBuildAssetDirectoryPath(Tab, pAssetName, aDirectoryPath, sizeof(aDirectoryPath));
+			char aAbsolutePath[IO_MAX_PATH_LENGTH];
+			pMenus->MenuStorage()->GetCompletePath(IStorage::TYPE_SAVE, aDirectoryPath, aAbsolutePath, sizeof(aAbsolutePath));
+			if(fs_is_dir(aAbsolutePath) == 1)
+			{
+				AnyDeleted = true;
+				DeleteSuccess = BestClientShopRemoveAbsoluteDirectoryRecursive(aAbsolutePath);
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+
+	if(!AnyDeleted)
 	{
 		return false;
 	}
@@ -526,7 +973,7 @@ static bool BestClientShopDeleteAsset(CMenus *pMenus, int Tab, const char *pAsse
 		pMenus->RefreshCustomAssetsTab(gs_aBestClientShopTypeInfos[Tab].m_AssetsTab);
 	}
 
-	return pMenus->MenuStorage()->RemoveFile(aPath, IStorage::TYPE_SAVE);
+	return DeleteSuccess;
 }
 
 static void BestClientShopOpenAssetDirectory(CMenus *pMenus, int Tab)
@@ -554,6 +1001,11 @@ static SBestClientShopItem *BestClientShopFindItem(const char *pItemId)
 
 static bool BestClientShopLoadPreviewTexture(CMenus *pMenus, SBestClientShopItem &Item, int Tab)
 {
+	if(Tab == BESTCLIENT_SHOP_AUDIO)
+	{
+		return false;
+	}
+
 	if(Item.m_PreviewTexture.IsValid() || Item.m_aId[0] == '\0')
 	{
 		return Item.m_PreviewTexture.IsValid();
@@ -677,7 +1129,7 @@ static void BestClientShopStartFetch(CMenus *pMenus)
 	{
 		char aEscapedQuery[384];
 		EscapeUrl(aEscapedQuery, sizeof(aEscapedQuery), gs_BestClientShopState.m_aAppliedSearch);
-		str_format(aUrl, sizeof(aUrl), BESTCLIENT_SHOP_SEARCH_API_URL, aEscapedQuery, pApiType);
+		str_format(aUrl, sizeof(aUrl), BESTCLIENT_SHOP_SEARCH_API_URL, 1, pApiType, aEscapedQuery);
 	}
 	else
 	{
@@ -715,6 +1167,11 @@ static void BestClientShopEnsureFetch(CMenus *pMenus)
 
 static void BestClientShopStartPreviewFetch(CMenus *pMenus)
 {
+	if(gs_BestClientShopState.m_Tab == BESTCLIENT_SHOP_AUDIO)
+	{
+		return;
+	}
+
 	if(gs_BestClientShopState.m_pPreviewTask != nullptr)
 	{
 		return;
@@ -952,14 +1409,34 @@ static bool BestClientShopInstallDownloadedData(CMenus *pMenus, const unsigned c
 	{
 		return false;
 	}
-	if(!BestClientShopIsPngBuffer(pData, DataSize))
+
+	const int InstallTab = gs_BestClientShopState.m_InstallTab;
+	if(BestClientShopIsPngBuffer(pData, DataSize))
 	{
-		return false;
+		if(InstallTab == BESTCLIENT_SHOP_AUDIO)
+		{
+			return false;
+		}
+
+		char aAssetPath[IO_MAX_PATH_LENGTH];
+		BestClientShopBuildAssetPath(InstallTab, gs_BestClientShopState.m_aInstallAssetName, aAssetPath, sizeof(aAssetPath));
+		return BestClientShopWriteFile(pMenus, aAssetPath, pData, DataSize);
 	}
 
-	char aAssetPath[IO_MAX_PATH_LENGTH];
-	BestClientShopBuildAssetPath(gs_BestClientShopState.m_InstallTab, gs_BestClientShopState.m_aInstallAssetName, aAssetPath, sizeof(aAssetPath));
-	return BestClientShopWriteFile(pMenus, aAssetPath, pData, DataSize);
+	if(BestClientShopIsZipBuffer(pData, DataSize))
+	{
+		char aAssetDirectoryPath[IO_MAX_PATH_LENGTH];
+		BestClientShopBuildAssetDirectoryPath(InstallTab, gs_BestClientShopState.m_aInstallAssetName, aAssetDirectoryPath, sizeof(aAssetDirectoryPath));
+		char aAbsolutePath[IO_MAX_PATH_LENGTH];
+		pMenus->MenuStorage()->GetCompletePath(IStorage::TYPE_SAVE, aAssetDirectoryPath, aAbsolutePath, sizeof(aAbsolutePath));
+		if(fs_is_dir(aAbsolutePath) == 1 && !BestClientShopRemoveAbsoluteDirectoryRecursive(aAbsolutePath))
+		{
+			return false;
+		}
+		return BestClientShopExtractZipToDirectory(pMenus, pData, DataSize, aAssetDirectoryPath);
+	}
+
+	return false;
 }
 
 static void BestClientShopStartInstallRequest(CMenus *pMenus)
