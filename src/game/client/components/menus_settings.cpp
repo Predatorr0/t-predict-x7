@@ -5032,7 +5032,7 @@ void CMenus::RenderSettingsBestClientInfo(CUIRect MainView)
 		{
 			static CButtonContainer s_RestartUpdateButton;
 			if(DoButtonLineSize_Menu(&s_RestartUpdateButton, TCLocalize("Restart"), 0, &ButtonRight, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
-				Updater()->ApplyUpdateAndRestart();
+				Client()->Restart();
 		}
 		else if(ShowUpdateProgress)
 		{
