@@ -5903,7 +5903,7 @@ void CMenus::RenderSettingsBestClientInfo(CUIRect MainView)
 		"Gameplay",
 		Localize("Others"),
 		Localize("Fun"),
-		"shop",
+		"Shop",
 		Localize("Editors"),
 		"info",
 	};
