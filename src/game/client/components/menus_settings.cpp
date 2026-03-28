@@ -4842,6 +4842,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		Column.HSplitTop(10.0f, nullptr, &Column);
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_GAMEPLAY_INPUT))
 		{
+			const bool IsSnapTapBlocked = GameClient()->IsSnapTapBlockedByCommunity();
 			static float s_FastInputPhase = 0.0f;
 			const bool FastInputExpanded = g_Config.m_TcFastInput != 0;
 			UpdateRevealPhase(s_FastInputPhase, FastInputExpanded);
@@ -4972,7 +4973,9 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const bool SnapTapExpanded = g_Config.m_BcSnapTap != 0;
 			UpdateRevealPhase(s_SnapTapPhase, SnapTapExpanded);
 			const float SnapTapExtraTargetHeight = MarginSmall + LineSize;
+			const float SnapTapBlockedHintHeight = IsSnapTapBlocked ? (MarginSmall + LineSize) : 0.0f;
 			const float SnapTapContentHeight = LineSize + MarginSmall + LineSize +
+				SnapTapBlockedHintHeight +
 				SnapTapExtraTargetHeight * s_SnapTapPhase;
 
 			BeginBlock(Column, SnapTapContentHeight, Content);
@@ -5020,6 +5023,14 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				const float NewRel = Ui()->DoScrollbarH(&g_Config.m_BcSnapTapDelay, &ScrollBar, Rel);
 				Value = (int)(Min + NewRel * (Max - Min) + 0.5f);
 				g_Config.m_BcSnapTapDelay = std::clamp(Value, Min, Max);
+			}
+			if(IsSnapTapBlocked)
+			{
+				Content.HSplitTop(MarginSmall, nullptr, &Content);
+				Content.HSplitTop(LineSize, &Label, &Content);
+				TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
+				Ui()->DoLabel(&Label, Localize("Looks like you're on a server where this feature is forbidden"), FontSize, TEXTALIGN_ML);
+				TextRender()->TextColor(TextRender()->DefaultTextColor());
 			}
 
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
