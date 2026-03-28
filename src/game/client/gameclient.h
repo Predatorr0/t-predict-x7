@@ -392,6 +392,7 @@ public:
 	bool m_SuppressEvents;
 	bool m_NewTick;
 	bool m_NewPredictedTick;
+	bool m_aPredictedHammerHitEvent[NUM_DUMMIES];
 	int m_aFlagDropTick[2];
 
 	enum

@@ -1,13 +1,383 @@
 #include "bestclient.h"
 
+#include <base/color.h>
+#include <base/log.h>
+#include <base/system.h>
+
 #include <engine/client/enums.h>
 #include <engine/shared/config.h>
 
+#include <game/client/components/hud_layout.h>
+#include <game/client/components/sounds.h>
 #include <game/client/gameclient.h>
+
+#include <algorithm>
+
+static constexpr int s_HookComboBaseTextCount = 15;
+static constexpr int s_HookComboVariantLimit = 100;
+static constexpr int s_HookComboSoundCount = 7;
+static constexpr int s_HookComboBrilliantSoundIndex = 5; // 0-based => sound #6
+static constexpr int s_HookComboModeHook = 0;
+static constexpr int s_HookComboModeHammer = 1;
+static constexpr int s_HookComboModeHookAndHammer = 2;
+
+static constexpr const char *const s_apHookComboTexts[s_HookComboBaseTextCount] = {
+	"cool",
+	"nice",
+	"great",
+	"awesome",
+	"excellent",
+	"amazing",
+	"fantastic",
+	"incredible",
+	"spectacular",
+	"legendary",
+	"mythic",
+	"unstoppable",
+	"dominant",
+	"masterful",
+	"BRILLIANT"};
+
+static const ColorRGBA s_aHookComboColors[s_HookComboBaseTextCount] = {
+	ColorRGBA(0.36f, 1.0f, 0.50f, 1.0f),
+	ColorRGBA(0.28f, 0.78f, 1.0f, 1.0f),
+	ColorRGBA(0.40f, 1.0f, 0.92f, 1.0f),
+	ColorRGBA(1.0f, 0.75f, 0.26f, 1.0f),
+	ColorRGBA(1.0f, 0.52f, 0.23f, 1.0f),
+	ColorRGBA(1.0f, 0.40f, 0.70f, 1.0f),
+	ColorRGBA(0.96f, 0.96f, 0.34f, 1.0f),
+	ColorRGBA(0.65f, 0.90f, 1.0f, 1.0f),
+	ColorRGBA(0.75f, 1.0f, 0.82f, 1.0f),
+	ColorRGBA(1.0f, 0.66f, 0.38f, 1.0f),
+	ColorRGBA(0.92f, 0.74f, 1.0f, 1.0f),
+	ColorRGBA(1.0f, 0.58f, 0.58f, 1.0f),
+	ColorRGBA(1.0f, 0.85f, 0.48f, 1.0f),
+	ColorRGBA(0.80f, 0.95f, 0.50f, 1.0f),
+	ColorRGBA(1.0f, 0.97f, 0.35f, 1.0f)};
+
+static void FormatHookComboText(int Sequence, char *pBuf, int BufSize)
+{
+	if(Sequence <= s_HookComboBaseTextCount)
+	{
+		str_copy(pBuf, s_apHookComboTexts[Sequence - 1], BufSize);
+		return;
+	}
+
+	if(Sequence <= s_HookComboVariantLimit)
+	{
+		static constexpr const char *const s_apAdvancedTitles[] = {
+			"brilliant",
+			"godlike",
+			"unreal",
+			"mythic",
+			"supreme",
+			"transcendent",
+			"unstoppable",
+			"devastating",
+			"apex",
+			"ascendant"};
+		static constexpr int s_AdvancedTitleCount = 10;
+		const int Step = Sequence - s_HookComboBaseTextCount - 1;
+		const int GroupSize = 9;
+		const int Group = std::min(Step / GroupSize, s_AdvancedTitleCount - 1);
+		str_format(pBuf, BufSize, "%s %d", s_apAdvancedTitles[Group], Sequence);
+		return;
+	}
+
+	str_copy(pBuf, "BRILLIANT", BufSize);
+}
 
 CBestClient::CBestClient()
 {
 	OnReset();
+}
+
+void CBestClient::OnInit()
+{
+	LoadHookComboSounds();
+	ResetHookComboState();
+}
+
+void CBestClient::OnShutdown()
+{
+	ResetHookComboState();
+	UnloadHookComboSounds();
+}
+
+void CBestClient::OnReset()
+{
+	ResetHookComboState();
+}
+
+void CBestClient::OnStateChange(int NewState, int OldState)
+{
+	(void)NewState;
+	(void)OldState;
+	ResetHookComboState();
+}
+
+void CBestClient::OnRender()
+{
+	if(HasHookComboWork())
+		UpdateHookCombo();
+}
+
+void CBestClient::LoadHookComboSounds(bool LogErrors)
+{
+	for(int &SoundId : m_aHookComboSoundIds)
+		SoundId = -1;
+
+	for(int i = 0; i < (int)m_aHookComboSoundIds.size(); ++i)
+	{
+		auto TryLoad = [this, i](const char *pPath, int StorageType) {
+			if(m_aHookComboSoundIds[i] != -1)
+				return;
+			if(!Storage()->FileExists(pPath, StorageType))
+				return;
+			m_aHookComboSoundIds[i] = Sound()->LoadWV(pPath, StorageType);
+		};
+
+		char aPathWv[96];
+		char aDataPathWv[128];
+		char aParentRelativeDataPathWv[144];
+		char aBinaryDataPathWv[IO_MAX_PATH_LENGTH];
+		char aParentDataPathWv[IO_MAX_PATH_LENGTH];
+		str_format(aPathWv, sizeof(aPathWv), "bestclient/combo/combo%d.wv", i + 1);
+		str_format(aDataPathWv, sizeof(aDataPathWv), "data/bestclient/combo/combo%d.wv", i + 1);
+		str_format(aParentRelativeDataPathWv, sizeof(aParentRelativeDataPathWv), "../%s", aDataPathWv);
+		Storage()->GetBinaryPathAbsolute(aDataPathWv, aBinaryDataPathWv, sizeof(aBinaryDataPathWv));
+		Storage()->GetBinaryPathAbsolute(aParentRelativeDataPathWv, aParentDataPathWv, sizeof(aParentDataPathWv));
+
+		TryLoad(aPathWv, IStorage::TYPE_ALL);
+		TryLoad(aDataPathWv, IStorage::TYPE_ALL);
+		TryLoad(aBinaryDataPathWv, IStorage::TYPE_ABSOLUTE);
+		TryLoad(aParentDataPathWv, IStorage::TYPE_ABSOLUTE);
+
+		if(LogErrors && m_aHookComboSoundIds[i] == -1)
+			log_warn("hook_combo", "Failed to load combo sound #%d (expected data/bestclient/combo/combo%d.wv)", i + 1, i + 1);
+	}
+}
+
+void CBestClient::UnloadHookComboSounds()
+{
+	for(int &SoundId : m_aHookComboSoundIds)
+	{
+		if(SoundId != -1)
+		{
+			Sound()->UnloadSample(SoundId);
+			SoundId = -1;
+		}
+	}
+}
+
+void CBestClient::ResetHookComboState()
+{
+	m_HookComboCounter = 0;
+	m_HookComboLastHookTime = -1.0f;
+	m_HookComboTrackedClientId = -1;
+	m_HookComboLastHookedPlayer = -1;
+	m_HookComboSoundErrorShown = false;
+	m_vHookComboPopups.clear();
+}
+
+void CBestClient::TriggerHookComboStep()
+{
+	m_HookComboCounter++;
+
+	SHookComboPopup Popup;
+	Popup.m_Sequence = m_HookComboCounter;
+	Popup.m_Age = 0.0f;
+	m_vHookComboPopups.push_back(Popup);
+	if(m_vHookComboPopups.size() > 16)
+		m_vHookComboPopups.erase(m_vHookComboPopups.begin());
+
+	if(!GameClient()->m_SuppressEvents && g_Config.m_SndEnable)
+	{
+		int SoundIndex = 0;
+		if(m_HookComboCounter > s_HookComboVariantLimit)
+			SoundIndex = s_HookComboBrilliantSoundIndex;
+		else if(m_HookComboCounter <= s_HookComboSoundCount)
+			SoundIndex = m_HookComboCounter - 1;
+		else
+			SoundIndex = (m_HookComboCounter - 1) % s_HookComboSoundCount;
+
+		int SoundId = m_aHookComboSoundIds[SoundIndex];
+		if(SoundId == -1)
+		{
+			// Retry at runtime, because startup path/audio init may differ from gameplay runtime.
+			LoadHookComboSounds(false);
+			SoundId = m_aHookComboSoundIds[SoundIndex];
+		}
+		if(SoundId != -1)
+		{
+			const float GameVol = (g_Config.m_SndGame && g_Config.m_SndGameVolume > 0) ? (float)g_Config.m_SndGameVolume : 0.0f;
+			const float ChatVol = (g_Config.m_SndChat && g_Config.m_SndChatVolume > 0) ? (float)g_Config.m_SndChatVolume : 0.0f;
+			const int Channel = GameVol >= ChatVol ? CSounds::CHN_GLOBAL : CSounds::CHN_GUI;
+			const float ComboVol = std::clamp(g_Config.m_BcHookComboSoundVolume / 100.0f, 0.0f, 1.0f);
+			if(ComboVol > 0.0f)
+				Sound()->Play(Channel, SoundId, 0, ComboVol);
+		}
+		else if(!m_HookComboSoundErrorShown)
+		{
+			m_HookComboSoundErrorShown = true;
+			GameClient()->Echo("[[red]] Hook combo sounds not found. Put files as data/bestclient/combo/combo1.wv ... combo7.wv");
+		}
+	}
+}
+
+void CBestClient::UpdateHookCombo()
+{
+	constexpr float PopupLifetime = 1.1f;
+	const float FrameTime = Client()->RenderFrameTime();
+	for(auto &Popup : m_vHookComboPopups)
+		Popup.m_Age += FrameTime;
+	m_vHookComboPopups.erase(std::remove_if(m_vHookComboPopups.begin(), m_vHookComboPopups.end(), [](const SHookComboPopup &Popup) {
+		return Popup.m_Age >= PopupLifetime;
+	}),
+		m_vHookComboPopups.end());
+
+	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
+	{
+		ResetHookComboState();
+		return;
+	}
+
+	if(!g_Config.m_BcHookCombo)
+	{
+		ResetHookComboState();
+		return;
+	}
+
+	if(GameClient()->m_Snap.m_SpecInfo.m_Active)
+		return;
+
+	const int ComboMode = std::clamp(g_Config.m_BcHookComboMode, s_HookComboModeHook, s_HookComboModeHookAndHammer);
+	const bool HammerEventFrame = GameClient()->m_aPredictedHammerHitEvent[g_Config.m_ClDummy];
+	if(!GameClient()->m_NewPredictedTick && !(HammerEventFrame && ComboMode != s_HookComboModeHook))
+		return;
+
+	int LocalId = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
+	if(LocalId < 0 || LocalId >= MAX_CLIENTS)
+		LocalId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalId < 0 || LocalId >= MAX_CLIENTS || !GameClient()->m_aClients[LocalId].m_Active)
+		return;
+
+	if(LocalId != m_HookComboTrackedClientId)
+	{
+		m_HookComboTrackedClientId = LocalId;
+		m_HookComboLastHookedPlayer = -1;
+	}
+
+	const int HookedPlayer = GameClient()->m_aClients[LocalId].m_Predicted.HookedPlayer();
+	const bool NewPlayerHook = HookedPlayer >= 0 && (m_HookComboLastHookedPlayer < 0 || HookedPlayer != m_HookComboLastHookedPlayer);
+	m_HookComboLastHookedPlayer = HookedPlayer;
+
+	const bool NewHammerAttack = GameClient()->m_aPredictedHammerHitEvent[g_Config.m_ClDummy];
+
+	bool TriggerCombo = false;
+	if(ComboMode == s_HookComboModeHook)
+		TriggerCombo = NewPlayerHook;
+	else if(ComboMode == s_HookComboModeHammer)
+		TriggerCombo = NewHammerAttack;
+	else
+		TriggerCombo = NewPlayerHook || NewHammerAttack;
+
+	if(TriggerCombo)
+	{
+		const float ResetTime = g_Config.m_BcHookComboResetTime / 1000.0f;
+		const float Now = Client()->LocalTime();
+		if(m_HookComboLastHookTime >= 0.0f && (Now - m_HookComboLastHookTime) > ResetTime)
+			m_HookComboCounter = 0;
+		m_HookComboLastHookTime = Now;
+		TriggerHookComboStep();
+	}
+}
+
+bool CBestClient::HasHookComboWork() const
+{
+	if(IsComponentDisabled(COMPONENT_GAMEPLAY_HOOK_COMBO))
+		return false;
+	return g_Config.m_BcHookCombo != 0 || !m_vHookComboPopups.empty();
+}
+
+void CBestClient::RenderHookCombo(bool ForcePreview)
+{
+	if(!ForcePreview && IsComponentDisabled(COMPONENT_GAMEPLAY_HOOK_COMBO))
+		return;
+
+	if(!ForcePreview && (!g_Config.m_BcHookCombo || m_vHookComboPopups.empty()))
+		return;
+	if(GameClient()->m_Scoreboard.IsActive() || (GameClient()->m_Menus.IsActive() && !ForcePreview))
+		return;
+
+	constexpr float PopupLifetime = 1.1f;
+	constexpr float FadeIn = 0.15f;
+	constexpr float FadeOut = 0.25f;
+
+	const float Width = 300.0f * Graphics()->ScreenAspect();
+	const float Height = HudLayout::CANVAS_HEIGHT;
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_HOOK_COMBO, Width, Height);
+	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+	const bool BackgroundEnabled = Layout.m_BackgroundEnabled;
+	const ColorRGBA BackgroundColor = color_cast<ColorRGBA>(ColorHSLA(Layout.m_BackgroundColor, true));
+	const float AnchorCenterX = Width * 0.5f;
+	const float BaseY = Height * 0.84f;
+	const float StackStep = 14.0f * Scale;
+
+	int Stack = 0;
+	SHookComboPopup PreviewPopup;
+	PreviewPopup.m_Sequence = 7;
+	PreviewPopup.m_Age = PopupLifetime * 0.35f;
+
+	auto RenderPopup = [&](const SHookComboPopup &Popup) {
+		const float Age = std::clamp(Popup.m_Age, 0.0f, PopupLifetime);
+		const float In = std::clamp(Age / FadeIn, 0.0f, 1.0f);
+		const float Out = Age > PopupLifetime - FadeOut ? std::clamp((PopupLifetime - Age) / FadeOut, 0.0f, 1.0f) : 1.0f;
+		const float Alpha = ForcePreview ? 1.0f : In * Out;
+		if(Alpha <= 0.0f)
+			return;
+
+		const int Sequence = std::max(Popup.m_Sequence, 1);
+		const int ColorIndex = (Sequence - 1) % s_HookComboBaseTextCount;
+
+		char aText[64];
+		FormatHookComboText(Sequence, aText, sizeof(aText));
+		char aBuf[96];
+		str_format(aBuf, sizeof(aBuf), "%s (x%d)", aText, Sequence);
+
+		ColorRGBA TextColor = s_aHookComboColors[ColorIndex];
+		TextColor.a *= Alpha;
+		TextRender()->TextColor(TextColor);
+
+		const float FontSize = (ForcePreview ? 13.0f : (11.0f + In * 2.0f)) * Scale;
+		const float TextWidth = TextRender()->TextWidth(FontSize, aBuf, -1, -1.0f);
+		const float BoxWidth = TextWidth + 8.0f * Scale;
+		const float BoxHeight = FontSize + 4.0f * Scale;
+		const float Intro = 1.0f - (1.0f - In) * (1.0f - In);
+		const float Rise = ForcePreview ? 0.0f : (20.0f * Intro + Age * 10.0f) * Scale;
+		const float RectX = std::clamp(AnchorCenterX - BoxWidth * 0.5f, 0.0f, std::max(0.0f, Width - BoxWidth));
+		const float RectY = std::clamp(ForcePreview ? BaseY : (BaseY + (1.0f - In) * 12.0f * Scale - Stack * StackStep - Rise), 0.0f, std::max(0.0f, Height - BoxHeight));
+		if(BackgroundEnabled)
+		{
+			ColorRGBA BgColor = BackgroundColor;
+			BgColor.a *= Alpha;
+			const int Corners = HudLayout::BackgroundCorners(IGraphics::CORNER_ALL, RectX, RectY, BoxWidth, BoxHeight, Width, Height);
+			Graphics()->DrawRect(RectX, RectY, BoxWidth, BoxHeight, BgColor, Corners, 4.0f * Scale);
+		}
+		TextRender()->Text(RectX + 4.0f * Scale, RectY + 2.0f * Scale, FontSize, aBuf, -1.0f);
+	};
+
+	if(ForcePreview)
+	{
+		RenderPopup(PreviewPopup);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
+		return;
+	}
+
+	for(auto It = m_vHookComboPopups.rbegin(); It != m_vHookComboPopups.rend(); ++It, ++Stack)
+		RenderPopup(*It);
+
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
 }
 
 bool CBestClient::IsComponentDisabledByMask(int Component, int MaskLo, int MaskHi)

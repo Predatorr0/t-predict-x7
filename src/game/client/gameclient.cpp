@@ -1054,6 +1054,7 @@ void CGameClient::OnReset()
 	m_SuppressEvents = false;
 	m_NewTick = false;
 	m_NewPredictedTick = false;
+	std::fill(std::begin(m_aPredictedHammerHitEvent), std::end(m_aPredictedHammerHitEvent), false);
 
 	m_aFlagDropTick[TEAM_RED] = 0;
 	m_aFlagDropTick[TEAM_BLUE] = 0;
@@ -1274,6 +1275,7 @@ void CGameClient::OnRender()
 	// clear new tick flags
 	m_NewTick = false;
 	m_NewPredictedTick = false;
+	std::fill(std::begin(m_aPredictedHammerHitEvent), std::end(m_aPredictedHammerHitEvent), false);
 
 	if(g_Config.m_ClDummy && !Client()->DummyConnected())
 		g_Config.m_ClDummy = 0;
@@ -1920,6 +1922,25 @@ void CGameClient::ProcessEvents()
 			if(!m_PredictedWorld.CheckPredictedEventHandled(CGameWorld::CPredictedEvent(Item.m_Type, HammerHitPos, -1, Client()->GameTick(g_Config.m_ClDummy))))
 			{
 				m_Effects.HammerHit(HammerHitPos, Alpha, Volume);
+			}
+
+			// Hook combo (hammer mode): count only our own hammer attacks, not when we get hit.
+			// Server hammer hit events are placed near the victim, so we gate by local "firing hammer"
+			// state and proximity to the event to avoid counting incoming hits.
+			constexpr float ComboHammerHitRadius = 120.0f;
+			for(int Conn = 0; Conn < NUM_DUMMIES; ++Conn)
+			{
+				const int LocalId = m_aLocalIds[Conn];
+				if(LocalId < 0 || LocalId >= MAX_CLIENTS || !m_aClients[LocalId].m_Active)
+					continue;
+
+				const auto &Core = m_aClients[LocalId].m_Predicted;
+				const bool FiringHammer = Core.m_ActiveWeapon == WEAPON_HAMMER && (Core.m_Input.m_Fire & 1);
+				if(!FiringHammer)
+					continue;
+
+				if(distance(Core.m_Pos, HammerHitPos) <= ComboHammerHitRadius)
+					m_aPredictedHammerHitEvent[Conn] = true;
 			}
 		}
 		else if(Item.m_Type == NETEVENTTYPE_BIRTHDAY)

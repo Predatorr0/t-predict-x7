@@ -92,6 +92,7 @@ static const SBestClientComponentEntry gs_aBestClientComponentEntries[] = {
 	{CBestClient::COMPONENT_GAMEPLAY_SPEEDRUN_TIMER, "Speedrun Timer", COMPONENTS_GROUP_GAMEPLAY},
 	{CBestClient::COMPONENT_GAMEPLAY_AUTO_TEAM_LOCK, "Auto Team Lock", COMPONENTS_GROUP_GAMEPLAY},
 	{CBestClient::COMPONENT_GAMEPLAY_GORES_MODE, "Gores Mode", COMPONENTS_GROUP_GAMEPLAY},
+	{CBestClient::COMPONENT_GAMEPLAY_HOOK_COMBO, "Hook Combo", COMPONENTS_GROUP_GAMEPLAY},
 	{CBestClient::COMPONENT_OTHERS_CLIENT_INDICATOR, "Client Indicator", COMPONENTS_GROUP_OTHERS},
 	{CBestClient::COMPONENT_TCLIENT_SETTINGS_TAB, "Settings tab", COMPONENTS_GROUP_TCLIENT},
 	{CBestClient::COMPONENT_TCLIENT_BIND_WHEEL_TAB, "Bind wheel tab", COMPONENTS_GROUP_TCLIENT},
@@ -5267,6 +5268,66 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
 				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
 				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcGoresModeDisableIfWeapons, Localize("Disable if you have shotgun, grenade or laser"), &g_Config.m_BcGoresModeDisableIfWeapons, &Expand, LineSize);
+			}
+		}
+
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_GAMEPLAY_HOOK_COMBO))
+		{
+			static float s_HookComboPhase = 0.0f;
+			const bool HookComboExpanded = g_Config.m_BcHookCombo != 0;
+			UpdateRevealPhase(s_HookComboPhase, HookComboExpanded);
+			const float ExpandedTargetHeight = MarginSmall + LineSize * 5.0f;
+			const float ExpandedHeight = ExpandedTargetHeight * s_HookComboPhase;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedHeight;
+			CUIRect Content, Label, Button, Visible;
+			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, Localize("Hook combo"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcHookCombo, Localize("Enable hook combo effect"), &g_Config.m_BcHookCombo, &Content, LineSize);
+			if(ExpandedHeight > 0.0f)
+			{
+				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
+				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+
+				CUIRect ModeLabel, ModeRow;
+				Expand.HSplitTop(LineSize, &ModeLabel, &Expand);
+				Ui()->DoLabel(&ModeLabel, Localize("Mode"), FontSize, TEXTALIGN_ML);
+
+				Expand.HSplitTop(LineSize, &ModeRow, &Expand);
+				CUIRect HookButton, HammerButton, HookHammerButton;
+				ModeRow.VSplitLeft(ModeRow.w / 3.0f, &HookButton, &ModeRow);
+				ModeRow.VSplitLeft(ModeRow.w / 2.0f, &HammerButton, &HookHammerButton);
+
+				static CButtonContainer s_HookComboModeHook;
+				static CButtonContainer s_HookComboModeHammer;
+				static CButtonContainer s_HookComboModeHookHammer;
+				if(DoButton_Menu(&s_HookComboModeHook, Localize("Hook"), g_Config.m_BcHookComboMode == 0, &HookButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+					g_Config.m_BcHookComboMode = 0;
+				if(DoButton_Menu(&s_HookComboModeHammer, Localize("Hammer"), g_Config.m_BcHookComboMode == 1, &HammerButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+					g_Config.m_BcHookComboMode = 1;
+				if(DoButton_Menu(&s_HookComboModeHookHammer, Localize("Hook&Hammer"), g_Config.m_BcHookComboMode == 2, &HookHammerButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+					g_Config.m_BcHookComboMode = 2;
+
+				Expand.HSplitTop(LineSize, &Button, &Expand);
+				DoSliderWithScaledValue(&g_Config.m_BcHookComboResetTime, &g_Config.m_BcHookComboResetTime, &Button, Localize("Max time between hooks"), 100, 5000, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
+
+				Expand.HSplitTop(LineSize, &Button, &Expand);
+				DoSliderWithScaledValue(&g_Config.m_BcHookComboSoundVolume, &g_Config.m_BcHookComboSoundVolume, &Button, Localize("Hook combo sound volume"), 0, 100, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "%");
+
+				Expand.HSplitTop(LineSize, &Button, &Expand);
+				DoSliderWithScaledValue(&g_Config.m_BcHookComboSize, &g_Config.m_BcHookComboSize, &Button, Localize("Hook combo size"), 50, 200, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "%");
 			}
 		}
 

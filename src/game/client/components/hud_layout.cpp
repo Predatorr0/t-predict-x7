@@ -2,6 +2,8 @@
 
 #include <base/math.h>
 
+#include <engine/shared/config.h>
+
 #include <algorithm>
 
 namespace HudLayout
@@ -91,7 +93,13 @@ SModuleLayout ResolveBaseLayout(EModule Module, float HudWidth, float HudHeight)
 
 SModuleLayout Get(EModule Module, float HudWidth, float HudHeight)
 {
-	return ResolveBaseLayout(Module, HudWidth, HudHeight);
+	SModuleLayout Layout = ResolveBaseLayout(Module, HudWidth, HudHeight);
+	if(Module == MODULE_HOOK_COMBO)
+	{
+		const float UserScale = std::clamp(g_Config.m_BcHookComboSize / 100.0f, 0.5f, 2.0f);
+		Layout.m_Scale = round_to_int(Layout.m_Scale * UserScale);
+	}
+	return Layout;
 }
 
 float CanvasXToHud(float CanvasX, float HudWidth)

@@ -5,8 +5,33 @@
 
 #include <game/client/component.h>
 
+#include <array>
+#include <vector>
+
 class CBestClient : public CComponent
 {
+	class SHookComboPopup
+	{
+	public:
+		int m_Sequence = 1;
+		float m_Age = 0.0f;
+	};
+
+	std::array<int, 7> m_aHookComboSoundIds{};
+	std::vector<SHookComboPopup> m_vHookComboPopups;
+	int m_HookComboCounter = 0;
+	float m_HookComboLastHookTime = -1.0f;
+	int m_HookComboTrackedClientId = -1;
+	int m_HookComboLastHookedPlayer = -1;
+	bool m_HookComboSoundErrorShown = false;
+
+	void LoadHookComboSounds(bool LogErrors = true);
+	void UnloadHookComboSounds();
+	void ResetHookComboState();
+	void UpdateHookCombo();
+	void TriggerHookComboStep();
+	bool HasHookComboWork() const;
+
 	static void ConToggle45Degrees(IConsole::IResult *pResult, void *pUserData);
 	static void ConToggleSmallSens(IConsole::IResult *pResult, void *pUserData);
 	static void ConToggleDeepfly(IConsole::IResult *pResult, void *pUserData);
@@ -43,6 +68,7 @@ public:
 		COMPONENT_GAMEPLAY_SPEEDRUN_TIMER,
 		COMPONENT_GAMEPLAY_AUTO_TEAM_LOCK,
 		COMPONENT_GAMEPLAY_GORES_MODE,
+		COMPONENT_GAMEPLAY_HOOK_COMBO,
 		COMPONENT_OTHERS_CLIENT_INDICATOR,
 		COMPONENT_TCLIENT_SETTINGS_TAB,
 		COMPONENT_TCLIENT_BIND_WHEEL_TAB,
@@ -73,9 +99,15 @@ public:
 
 	CBestClient();
 	int Sizeof() const override { return sizeof(*this); }
+	void OnInit() override;
+	void OnShutdown() override;
+	void OnReset() override;
+	void OnStateChange(int NewState, int OldState) override;
+	void OnRender() override;
 	void OnConsoleInit() override;
 	bool IsComponentDisabled(EBestClientComponent Component) const;
 	static bool IsComponentDisabledByMask(int Component, int MaskLo, int MaskHi);
+	void RenderHookCombo(bool ForcePreview = false);
 };
 
 #endif
