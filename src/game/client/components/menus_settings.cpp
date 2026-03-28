@@ -72,27 +72,27 @@ struct SBestClientComponentEntry
 };
 
 static const SBestClientComponentEntry gs_aBestClientComponentEntries[] = {
-	{CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER, "Music Player", COMPONENTS_GROUP_VISUALS},
-	{CBestClient::COMPONENT_VISUALS_CRYSTAL_LASER, "Crystal Laser", COMPONENTS_GROUP_VISUALS},
-	{CBestClient::COMPONENT_VISUALS_MEDIA_BACKGROUND, "Media Background", COMPONENTS_GROUP_VISUALS},
+	{CBestClient::COMPONENT_VISUALS_CAMERA_DRIFT, "Camera Drift", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_MAGIC_PARTICLES, "Magic Particles", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_ORBIT_AURA, "Orbit Aura", COMPONENTS_GROUP_VISUALS},
-	{CBestClient::COMPONENT_VISUALS_OPTIMIZER, "Optimizer", COMPONENTS_GROUP_VISUALS},
-	{CBestClient::COMPONENT_VISUALS_ANIMATIONS, "Animations", COMPONENTS_GROUP_VISUALS},
-	{CBestClient::COMPONENT_VISUALS_CAMERA_DRIFT, "Camera Drift", COMPONENTS_GROUP_VISUALS},
+	{CBestClient::COMPONENT_VISUALS_3D_PARTICLES, "3D Particles", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_DYNAMIC_FOV, "Dynamic FOV", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_AFTERIMAGE, "Afterimage", COMPONENTS_GROUP_VISUALS},
-	{CBestClient::COMPONENT_VISUALS_FOCUS_MODE, "Focus Mode", COMPONENTS_GROUP_VISUALS},
-	{CBestClient::COMPONENT_VISUALS_CHAT_BUBBLES, "Chat Bubbles", COMPONENTS_GROUP_VISUALS},
-	{CBestClient::COMPONENT_VISUALS_3D_PARTICLES, "3D Particles", COMPONENTS_GROUP_VISUALS},
+	{CBestClient::COMPONENT_VISUALS_CRYSTAL_LASER, "Crystal Laser", COMPONENTS_GROUP_VISUALS},
+	{CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER, "Music Player", COMPONENTS_GROUP_VISUALS},
+	{CBestClient::COMPONENT_VISUALS_MEDIA_BACKGROUND, "Media Background", COMPONENTS_GROUP_VISUALS},
+	{CBestClient::COMPONENT_VISUALS_ANIMATIONS, "Animations", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_ASPECT_RATIO, "Aspect Ratio", COMPONENTS_GROUP_VISUALS},
+	{CBestClient::COMPONENT_GAMEPLAY_HOOK_COMBO, "Hook Combo", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_GAMEPLAY_INPUT, "Input", COMPONENTS_GROUP_GAMEPLAY},
 	{CBestClient::COMPONENT_GAMEPLAY_FAST_ACTIONS, "Fast Actions", COMPONENTS_GROUP_GAMEPLAY},
 	{CBestClient::COMPONENT_GAMEPLAY_SPEEDRUN_TIMER, "Speedrun Timer", COMPONENTS_GROUP_GAMEPLAY},
 	{CBestClient::COMPONENT_GAMEPLAY_AUTO_TEAM_LOCK, "Auto Team Lock", COMPONENTS_GROUP_GAMEPLAY},
 	{CBestClient::COMPONENT_GAMEPLAY_GORES_MODE, "Gores Mode", COMPONENTS_GROUP_GAMEPLAY},
-	{CBestClient::COMPONENT_GAMEPLAY_HOOK_COMBO, "Hook Combo", COMPONENTS_GROUP_GAMEPLAY},
+	{CBestClient::COMPONENT_VISUALS_OPTIMIZER, "Optimizer", COMPONENTS_GROUP_GAMEPLAY},
+	{CBestClient::COMPONENT_VISUALS_FOCUS_MODE, "Focus Mode", COMPONENTS_GROUP_GAMEPLAY},
 	{CBestClient::COMPONENT_OTHERS_CLIENT_INDICATOR, "Client Indicator", COMPONENTS_GROUP_OTHERS},
+	{CBestClient::COMPONENT_VISUALS_CHAT_BUBBLES, "Chat Bubbles", COMPONENTS_GROUP_OTHERS},
 	{CBestClient::COMPONENT_TCLIENT_SETTINGS_TAB, "Settings tab", COMPONENTS_GROUP_TCLIENT},
 	{CBestClient::COMPONENT_TCLIENT_BIND_WHEEL_TAB, "Bind wheel tab", COMPONENTS_GROUP_TCLIENT},
 	{CBestClient::COMPONENT_TCLIENT_WAR_LIST_TAB, "War list tab", COMPONENTS_GROUP_TCLIENT},
@@ -3663,42 +3663,6 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		CUIRect Column = LeftView;
 		Column.HSplitTop(10.0f, nullptr, &Column);
 
-		// Misc (left column block)
-		{
-			const float ColorPickerLineSize = 25.0f;
-			const float ColorPickerLabelSize = 13.0f;
-			const float ColorPickerLineSpacing = 5.0f;
-			const bool ShowRealHitboxEnabled = g_Config.m_BcShowRealHitbox != 0;
-			const float ColorPickerHeight = ShowRealHitboxEnabled ? (ColorPickerLineSize + ColorPickerLineSpacing) : 0.0f;
-			const float ContentHeight = LineSize + MarginSmall + 8.0f * LineSize + ColorPickerHeight;
-			CUIRect Content, Label, Row;
-			BeginBlock(Column, ContentHeight, Content);
-
-			Content.HSplitTop(LineSize, &Label, &Content);
-			Ui()->DoLabel(&Label, Localize("Misc"), HeadlineFontSize, TEXTALIGN_ML);
-			Content.HSplitTop(MarginSmall, nullptr, &Content);
-
-			static CButtonContainer s_SettingsLayoutButton;
-			int UseNewMenuLayout = g_Config.m_BcSettingsLayout == 0 ? 1 : 0;
-			DoButton_CheckBoxAutoVMarginAndSet(&s_SettingsLayoutButton, Localize("Use new menu layout"), &UseNewMenuLayout, &Content, LineSize);
-			g_Config.m_BcSettingsLayout = UseNewMenuLayout ? 0 : 1;
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcHideHudInSettings, Localize("Hide hud in settings"), &g_Config.m_BcHideHudInSettings, &Content, LineSize);
-
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcEmoticonShadow, Localize("Shadow of Emotions"), &g_Config.m_BcEmoticonShadow, &Content, LineSize);
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatSaveDraft, Localize("Save unsent messages"), &g_Config.m_BcChatSaveDraft, &Content, LineSize);
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcShowhudDummyCoordIndicator, TCLocalize("Show player below indicator"), &g_Config.m_BcShowhudDummyCoordIndicator, &Content, LineSize);
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcShowRealHitbox, Localize("Show real hitbox"), &g_Config.m_BcShowRealHitbox, &Content, LineSize);
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcUseShortKogServerName, Localize("Use short KoG server name"), &g_Config.m_BcUseShortKogServerName, &Content, LineSize);
-			Content.HSplitTop(LineSize, &Row, &Content);
-			Ui()->DoScrollbarOption(&g_Config.m_UiScale, &g_Config.m_UiScale, &Row, Localize("UI scale"), 50, 200, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_DELAYUPDATE, "%");
-			if(g_Config.m_BcShowRealHitbox)
-			{
-				static CButtonContainer s_RealHitboxDotColorButton;
-				DoLine_ColorPicker(&s_RealHitboxDotColorButton, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Content, Localize("Real hitbox dot color"), &g_Config.m_BcShowRealHitboxColor, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::BcShowRealHitboxColor, true)), false, nullptr, true);
-			}
-		}
-		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-
 		// Magic particles (left column block)
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_MAGIC_PARTICLES))
 		{
@@ -4149,210 +4113,9 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		}
 
-		// Chat media (left column block)
-		{
-			static float s_ChatMediaPhase = 0.0f;
-			const bool ChatMediaEnabled = g_Config.m_BcChatMediaPreview != 0;
-			const bool ContentFilterEnabled = g_Config.m_BcChatMediaContentFilter != 0;
-			UpdateRevealPhase(s_ChatMediaPhase, ChatMediaEnabled);
-			const float KeyReaderHeight = LineSize + 2.5f;
-			const float BaseExpandedHeight = 6.0f * LineSize + KeyReaderHeight;
-			const float FilterSettingsHeight = 2.0f * LineSize;
-			const float ExpandedTargetHeight = BaseExpandedHeight + (ContentFilterEnabled ? FilterSettingsHeight : 0.0f);
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedTargetHeight * s_ChatMediaPhase;
-			CUIRect Content, Label, Row, Visible;
-			BeginBlock(Column, ContentHeight, Content);
-
-			Content.HSplitTop(LineSize, &Label, &Content);
-			Ui()->DoLabel(&Label, Localize("Chat Media"), HeadlineFontSize, TEXTALIGN_ML);
-			Content.HSplitTop(MarginSmall, nullptr, &Content);
-
-			CChat &Chat = GameClient()->m_Chat;
-			if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatMediaPreview, Localize("Render media previews from chat links"), &g_Config.m_BcChatMediaPreview, &Content, LineSize))
-				Chat.RebuildChat();
-
-			const float ExpandedHeight = ExpandedTargetHeight * s_ChatMediaPhase;
-			if(ExpandedHeight > 0.0f)
-			{
-				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
-				Ui()->ClipEnable(&Visible);
-				struct SScopedClip
-				{
-					CUi *m_pUi;
-					~SScopedClip() { m_pUi->ClipDisable(); }
-				} ClipGuard{Ui()};
-
-				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
-
-				if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatMediaPhotos, Localize("Show photos in chat media"), &g_Config.m_BcChatMediaPhotos, &Expand, LineSize))
-					Chat.RebuildChat();
-
-				if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatMediaGifs, Localize("Show GIFs in chat media"), &g_Config.m_BcChatMediaGifs, &Expand, LineSize))
-					Chat.RebuildChat();
-
-				if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatMediaContentFilter, Localize("Content filtering"), &g_Config.m_BcChatMediaContentFilter, &Expand, LineSize))
-					Chat.RebuildChat();
-
-				if(g_Config.m_BcChatMediaContentFilter)
-				{
-					Expand.HSplitTop(LineSize, &Row, &Expand);
-					Ui()->DoLabel(&Row, Localize("Allowed media domains"), 12.0f, TEXTALIGN_ML);
-
-					Expand.HSplitTop(LineSize, &Row, &Expand);
-					static CLineInput s_ChatMediaAllowedDomains(g_Config.m_BcChatMediaAllowedDomains, sizeof(g_Config.m_BcChatMediaAllowedDomains));
-					s_ChatMediaAllowedDomains.SetEmptyText("tenor.com; imgur.com; giphy.com");
-					if(Ui()->DoClearableEditBox(&s_ChatMediaAllowedDomains, &Row, 14.0f))
-						Chat.RebuildChat();
-					GameClient()->m_Tooltips.DoToolTip(&s_ChatMediaAllowedDomains, &Row, Localize("Semicolon-separated allowlist, for example: tenor.com; imgur.com; giphy.com; cdn.discordapp.com"));
-				}
-
-				Expand.HSplitTop(LineSize, &Row, &Expand);
-				if(Ui()->DoScrollbarOption(&g_Config.m_BcChatMediaPreviewMaxWidth, &g_Config.m_BcChatMediaPreviewMaxWidth, &Row, Localize("Media preview width"), 120, 400))
-					Chat.RebuildChat();
-
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatMediaViewer, Localize("Enable fullscreen media viewer in chat"), &g_Config.m_BcChatMediaViewer, &Expand, LineSize);
-
-				Expand.HSplitTop(LineSize, &Row, &Expand);
-				Ui()->DoScrollbarOption(&g_Config.m_BcChatMediaViewerMaxZoom, &g_Config.m_BcChatMediaViewerMaxZoom, &Row, Localize("Viewer max zoom"), 100, 2000, &CUi::ms_LinearScrollbarScale, 0u, "%");
-
-				static CButtonContainer s_HideMediaBindReader;
-				static CButtonContainer s_HideMediaBindClear;
-				DoLine_KeyReader(Expand, s_HideMediaBindReader, s_HideMediaBindClear, Localize("Hide media bind"), "toggle_chat_media_hidden");
-			}
-		}
-		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-
-		// Chat bubbles (left column block)
-		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_CHAT_BUBBLES))
-		{
-			static float s_BcChatBubblesPhase = 0.0f;
-			const bool ChatBubblesEnabled = g_Config.m_BcChatBubbles != 0;
-			UpdateRevealPhase(s_BcChatBubblesPhase, ChatBubblesEnabled);
-			const float ExtraTargetHeight = MarginSmall + 6.0f * LineSize;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_BcChatBubblesPhase;
-			CUIRect Content, Label, Row, Visible;
-			BeginBlock(Column, ContentHeight, Content);
-
-			Content.HSplitTop(LineSize, &Label, &Content);
-			Ui()->DoLabel(&Label, Localize("Chat Bubbles"), HeadlineFontSize, TEXTALIGN_ML);
-			Content.HSplitTop(MarginSmall, nullptr, &Content);
-
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubbles, Localize("Chat Bubbles"), &g_Config.m_BcChatBubbles, &Content, LineSize);
-			const float ExtraHeight = ExtraTargetHeight * s_BcChatBubblesPhase;
-			if(ExtraHeight > 0.0f)
-			{
-				Content.HSplitTop(ExtraHeight, &Visible, &Content);
-				Ui()->ClipEnable(&Visible);
-				struct SScopedClip
-				{
-					CUi *m_pUi;
-					~SScopedClip() { m_pUi->ClipDisable(); }
-				} ClipGuard{Ui()};
-
-				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExtraTargetHeight};
-
-				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubblesDemo, Localize("Show Chatbubbles in demo"), &g_Config.m_BcChatBubblesDemo, &Expand, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubblesSelf, Localize("Show Chatbubbles above you"), &g_Config.m_BcChatBubblesSelf, &Expand, LineSize);
-
-				Expand.HSplitTop(LineSize, &Row, &Expand);
-				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleSize, &g_Config.m_BcChatBubbleSize, &Row, Localize("Chat Bubble Size"), 20, 30);
-				Expand.HSplitTop(LineSize, &Row, &Expand);
-				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleShowTime, &g_Config.m_BcChatBubbleShowTime, &Row, Localize("Show the Bubbles for"), 200, 1000);
-				Expand.HSplitTop(LineSize, &Row, &Expand);
-				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleFadeIn, &g_Config.m_BcChatBubbleFadeIn, &Row, Localize("fade in for"), 15, 100);
-				Expand.HSplitTop(LineSize, &Row, &Expand);
-				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleFadeOut, &g_Config.m_BcChatBubbleFadeOut, &Row, Localize("fade out for"), 15, 100);
-			}
-		}
-
 		const float LeftColumnEndY = Column.y;
 		Column = RightView;
 		Column.HSplitTop(10.0f, nullptr, &Column);
-
-		// Optimizer (right column block)
-		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_OPTIMIZER))
-		{
-			static float s_OptimizerPhase = 0.0f;
-			static float s_OptimizerFogPhase = 0.0f;
-			const float Dt = Client()->RenderFrameTime();
-			const bool Enabled = g_Config.m_BcOptimizer != 0;
-			const bool FogOn = Enabled && g_Config.m_BcOptimizerFpsFog != 0;
-			if(ModuleUiRevealAnimationsEnabled())
-			{
-				BCUiAnimations::UpdatePhase(s_OptimizerPhase, Enabled ? 1.0f : 0.0f, Dt, ModuleUiRevealAnimationDuration());
-				BCUiAnimations::UpdatePhase(s_OptimizerFogPhase, FogOn ? 1.0f : 0.0f, Dt, 0.16f);
-			}
-			else
-			{
-				s_OptimizerPhase = Enabled ? 1.0f : 0.0f;
-				s_OptimizerFogPhase = FogOn ? 1.0f : 0.0f;
-			}
-
-			const float RadioTargetHeight = 22.0f;
-			const float FogTargetHeight = 3.0f * LineSize + RadioTargetHeight;
-			const float BaseTargetHeight = 5.0f * LineSize;
-			const float ExtraTargetHeight = BaseTargetHeight + FogTargetHeight * s_OptimizerFogPhase;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_OptimizerPhase;
-			CUIRect Content, Label, Row, Visible;
-			BeginBlock(Column, ContentHeight, Content);
-
-			Content.HSplitTop(LineSize, &Label, &Content);
-			Ui()->DoLabel(&Label, Localize("Optimizer"), HeadlineFontSize, TEXTALIGN_ML);
-			Content.HSplitTop(MarginSmall, nullptr, &Content);
-
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizer, Localize("Enable optimizer"), &g_Config.m_BcOptimizer, &Content, LineSize);
-
-			const float ExpandedHeight = ExtraTargetHeight * s_OptimizerPhase;
-			if(ExpandedHeight > 0.0f)
-			{
-				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
-				Ui()->ClipEnable(&Visible);
-				struct SScopedClip
-				{
-					CUi *m_pUi;
-					~SScopedClip() { m_pUi->ClipDisable(); }
-				} ClipGuard{Ui()};
-
-				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExtraTargetHeight};
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerDisableParticles, Localize("Disable all particles render"), &g_Config.m_BcOptimizerDisableParticles, &Expand, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_GfxHighDetail, Localize("High Detail"), &g_Config.m_GfxHighDetail, &Expand, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerFpsFog, Localize("FPS fog (cull outside limit)"), &g_Config.m_BcOptimizerFpsFog, &Expand, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerDdnetPriorityHigh, Localize("DDNet priority: High"), &g_Config.m_BcOptimizerDdnetPriorityHigh, &Expand, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerDiscordPriorityBelowNormal, Localize("Discord priority: Below Normal"), &g_Config.m_BcOptimizerDiscordPriorityBelowNormal, &Expand, LineSize);
-
-				const float FogHeight = FogTargetHeight * s_OptimizerFogPhase;
-				if(FogHeight > 0.0f)
-				{
-					CUIRect FogVisible;
-					Expand.HSplitTop(FogHeight, &FogVisible, &Expand);
-					Ui()->ClipEnable(&FogVisible);
-					SScopedClip FogClipGuard{Ui()};
-
-					CUIRect FogExpand = {FogVisible.x, FogVisible.y, FogVisible.w, FogTargetHeight};
-					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerFpsFogRenderRect, Localize("Render FPS fog rectangle"), &g_Config.m_BcOptimizerFpsFogRenderRect, &FogExpand, LineSize);
-					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerFpsFogCullMapTiles, Localize("Cull map tiles outside FPS fog"), &g_Config.m_BcOptimizerFpsFogCullMapTiles, &FogExpand, LineSize);
-
-					static std::vector<CButtonContainer> s_OptimizerFogModeButtons = {{}, {}};
-					int FogMode = g_Config.m_BcOptimizerFpsFogMode;
-					if(DoLine_RadioMenu(FogExpand, Localize("FPS fog mode"),
-						   s_OptimizerFogModeButtons,
-						   {Localize("Manual radius"), Localize("By zoom")},
-						   {0, 1},
-						   FogMode))
-					{
-						g_Config.m_BcOptimizerFpsFogMode = FogMode;
-					}
-
-					FogExpand.HSplitTop(LineSize, &Row, &FogExpand);
-					if(g_Config.m_BcOptimizerFpsFogMode == 0)
-						Ui()->DoScrollbarOption(&g_Config.m_BcOptimizerFpsFogRadiusTiles, &g_Config.m_BcOptimizerFpsFogRadiusTiles, &Row, Localize("Radius (tiles)"), 5, 300);
-					else
-						Ui()->DoScrollbarOption(&g_Config.m_BcOptimizerFpsFogZoomPercent, &g_Config.m_BcOptimizerFpsFogZoomPercent, &Row, Localize("Visible area (%)"), 10, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
-				}
-			}
-			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-		}
 
 		// Camera Drift (right column block)
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_CAMERA_DRIFT))
@@ -4640,52 +4403,6 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		}
 
-		// Focus mode (right column block)
-		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_FOCUS_MODE))
-		{
-			static float s_FocusModePhase = 0.0f;
-			const bool Enabled = g_Config.m_ClFocusMode != 0;
-			UpdateRevealPhase(s_FocusModePhase, Enabled);
-
-			const float KeyReaderHeight = LineSize + MarginSmall;
-			const float ExpandedTargetHeight = KeyReaderHeight + 7.0f * LineSize;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedTargetHeight * s_FocusModePhase;
-			CUIRect Content, Label, Visible;
-			BeginBlock(Column, ContentHeight, Content);
-
-			Content.HSplitTop(LineSize, &Label, &Content);
-			Ui()->DoLabel(&Label, Localize("Focus Mode"), HeadlineFontSize, TEXTALIGN_ML);
-			Content.HSplitTop(MarginSmall, nullptr, &Content);
-
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusMode, Localize("Enable Focus Mode"), &g_Config.m_ClFocusMode, &Content, LineSize);
-			static CButtonContainer s_FocusModeBindReader;
-			static CButtonContainer s_FocusModeBindClear;
-
-			const float CurHeight = ExpandedTargetHeight * s_FocusModePhase;
-			if(CurHeight > 0.0f)
-			{
-				Content.HSplitTop(CurHeight, &Visible, &Content);
-				Ui()->ClipEnable(&Visible);
-				struct SScopedClip
-				{
-					CUi *m_pUi;
-					~SScopedClip() { m_pUi->ClipDisable(); }
-				} ClipGuard{Ui()};
-
-				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideNames, Localize("Hide Player Names"), &g_Config.m_ClFocusModeHideNames, &Expand, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideEffects, Localize("Hide Visual Effects"), &g_Config.m_ClFocusModeHideEffects, &Expand, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideHud, Localize("Hide HUD"), &g_Config.m_ClFocusModeHideHud, &Expand, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideSongPlayer, Localize("Hide Song Player"), &g_Config.m_ClFocusModeHideSongPlayer, &Expand, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideUI, Localize("Hide Unnecessary UI"), &g_Config.m_ClFocusModeHideUI, &Expand, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideChat, Localize("Hide Chat"), &g_Config.m_ClFocusModeHideChat, &Expand, LineSize);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideScoreboard, Localize("Hide Scoreboard"), &g_Config.m_ClFocusModeHideScoreboard, &Expand, LineSize);
-				DoLine_KeyReader(Expand, s_FocusModeBindReader, s_FocusModeBindClear, Localize("Focus mode bind"), "toggle p_focus_mode 0 1");
-			}
-
-			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
-		}
-
 		// Animations (right column block)
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_ANIMATIONS))
 		{
@@ -4959,6 +4676,66 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				s_CustomPendingDirty = false;
 				s_CustomPendingAspectValue = -1;
 				s_LastAppliedAspectValue = -1;
+			}
+		}
+
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_GAMEPLAY_HOOK_COMBO))
+		{
+			static float s_HookComboPhase = 0.0f;
+			const bool HookComboExpanded = g_Config.m_BcHookCombo != 0;
+			UpdateRevealPhase(s_HookComboPhase, HookComboExpanded);
+			const float ExpandedTargetHeight = MarginSmall + LineSize * 5.0f;
+			const float ExpandedHeight = ExpandedTargetHeight * s_HookComboPhase;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedHeight;
+			CUIRect Content, Label, Button, Visible;
+			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, Localize("Hook combo"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcHookCombo, Localize("Enable hook combo effect"), &g_Config.m_BcHookCombo, &Content, LineSize);
+			if(ExpandedHeight > 0.0f)
+			{
+				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
+				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+
+				CUIRect ModeLabel, ModeRow;
+				Expand.HSplitTop(LineSize, &ModeLabel, &Expand);
+				Ui()->DoLabel(&ModeLabel, Localize("Mode"), 14.0f, TEXTALIGN_ML);
+
+				Expand.HSplitTop(LineSize, &ModeRow, &Expand);
+				CUIRect HookButton, HammerButton, HookHammerButton;
+				ModeRow.VSplitLeft(ModeRow.w / 3.0f, &HookButton, &ModeRow);
+				ModeRow.VSplitLeft(ModeRow.w / 2.0f, &HammerButton, &HookHammerButton);
+
+				static CButtonContainer s_HookComboModeHook;
+				static CButtonContainer s_HookComboModeHammer;
+				static CButtonContainer s_HookComboModeHookHammer;
+				if(DoButton_Menu(&s_HookComboModeHook, "hook", g_Config.m_BcHookComboMode == 0, &HookButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+					g_Config.m_BcHookComboMode = 0;
+				if(DoButton_Menu(&s_HookComboModeHammer, "hammer", g_Config.m_BcHookComboMode == 1, &HammerButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+					g_Config.m_BcHookComboMode = 1;
+				if(DoButton_Menu(&s_HookComboModeHookHammer, "hook&hammer", g_Config.m_BcHookComboMode == 2, &HookHammerButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+					g_Config.m_BcHookComboMode = 2;
+
+				Expand.HSplitTop(LineSize, &Button, &Expand);
+				DoSliderWithScaledValue(&g_Config.m_BcHookComboResetTime, &g_Config.m_BcHookComboResetTime, &Button, Localize("Max time between hooks"), 100, 5000, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
+
+				Expand.HSplitTop(LineSize, &Button, &Expand);
+				DoSliderWithScaledValue(&g_Config.m_BcHookComboSoundVolume, &g_Config.m_BcHookComboSoundVolume, &Button, Localize("Hook combo sound volume"), 0, 100, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "%");
+
+				Expand.HSplitTop(LineSize, &Button, &Expand);
+				DoSliderWithScaledValue(&g_Config.m_BcHookComboSize, &g_Config.m_BcHookComboSize, &Button, Localize("Hook combo size"), 50, 200, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "%");
 			}
 		}
 
@@ -5531,23 +5308,40 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			}
 		}
 
-		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_GAMEPLAY_HOOK_COMBO))
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_OPTIMIZER))
 		{
-			static float s_HookComboPhase = 0.0f;
-			const bool HookComboExpanded = g_Config.m_BcHookCombo != 0;
-			UpdateRevealPhase(s_HookComboPhase, HookComboExpanded);
-			const float ExpandedTargetHeight = MarginSmall + LineSize * 5.0f;
-			const float ExpandedHeight = ExpandedTargetHeight * s_HookComboPhase;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedHeight;
-			CUIRect Content, Label, Button, Visible;
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+			static float s_OptimizerPhase = 0.0f;
+			static float s_OptimizerFogPhase = 0.0f;
+			const float Dt = Client()->RenderFrameTime();
+			const bool Enabled = g_Config.m_BcOptimizer != 0;
+			const bool FogOn = Enabled && g_Config.m_BcOptimizerFpsFog != 0;
+			if(ModuleUiRevealAnimationsEnabled())
+			{
+				BCUiAnimations::UpdatePhase(s_OptimizerPhase, Enabled ? 1.0f : 0.0f, Dt, ModuleUiRevealAnimationDuration());
+				BCUiAnimations::UpdatePhase(s_OptimizerFogPhase, FogOn ? 1.0f : 0.0f, Dt, 0.16f);
+			}
+			else
+			{
+				s_OptimizerPhase = Enabled ? 1.0f : 0.0f;
+				s_OptimizerFogPhase = FogOn ? 1.0f : 0.0f;
+			}
+
+			const float RadioTargetHeight = 22.0f;
+			const float FogTargetHeight = 3.0f * LineSize + RadioTargetHeight;
+			const float BaseTargetHeight = 5.0f * LineSize;
+			const float ExtraTargetHeight = BaseTargetHeight + FogTargetHeight * s_OptimizerFogPhase;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_OptimizerPhase;
+			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
-			Ui()->DoLabel(&Label, Localize("Hook combo"), HeadlineFontSize, TEXTALIGN_ML);
+			Ui()->DoLabel(&Label, Localize("Optimizer"), HeadlineFontSize, TEXTALIGN_ML);
 			Content.HSplitTop(MarginSmall, nullptr, &Content);
 
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcHookCombo, Localize("Enable hook combo effect"), &g_Config.m_BcHookCombo, &Content, LineSize);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizer, Localize("Enable optimizer"), &g_Config.m_BcOptimizer, &Content, LineSize);
+
+			const float ExpandedHeight = ExtraTargetHeight * s_OptimizerPhase;
 			if(ExpandedHeight > 0.0f)
 			{
 				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
@@ -5558,36 +5352,86 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 					~SScopedClip() { m_pUi->ClipDisable(); }
 				} ClipGuard{Ui()};
 
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExtraTargetHeight};
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerDisableParticles, Localize("Disable all particles render"), &g_Config.m_BcOptimizerDisableParticles, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_GfxHighDetail, Localize("High Detail"), &g_Config.m_GfxHighDetail, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerFpsFog, Localize("FPS fog (cull outside limit)"), &g_Config.m_BcOptimizerFpsFog, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerDdnetPriorityHigh, Localize("DDNet priority: High"), &g_Config.m_BcOptimizerDdnetPriorityHigh, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerDiscordPriorityBelowNormal, Localize("Discord priority: Below Normal"), &g_Config.m_BcOptimizerDiscordPriorityBelowNormal, &Expand, LineSize);
+
+				const float FogHeight = FogTargetHeight * s_OptimizerFogPhase;
+				if(FogHeight > 0.0f)
+				{
+					CUIRect FogVisible;
+					Expand.HSplitTop(FogHeight, &FogVisible, &Expand);
+					Ui()->ClipEnable(&FogVisible);
+					SScopedClip FogClipGuard{Ui()};
+
+					CUIRect FogExpand = {FogVisible.x, FogVisible.y, FogVisible.w, FogTargetHeight};
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerFpsFogRenderRect, Localize("Render FPS fog rectangle"), &g_Config.m_BcOptimizerFpsFogRenderRect, &FogExpand, LineSize);
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcOptimizerFpsFogCullMapTiles, Localize("Cull map tiles outside FPS fog"), &g_Config.m_BcOptimizerFpsFogCullMapTiles, &FogExpand, LineSize);
+
+					static std::vector<CButtonContainer> s_OptimizerFogModeButtons = {{}, {}};
+					int FogMode = g_Config.m_BcOptimizerFpsFogMode;
+					if(DoLine_RadioMenu(FogExpand, Localize("FPS fog mode"),
+						   s_OptimizerFogModeButtons,
+						   {Localize("Manual radius"), Localize("By zoom")},
+						   {0, 1},
+						   FogMode))
+					{
+						g_Config.m_BcOptimizerFpsFogMode = FogMode;
+					}
+
+					FogExpand.HSplitTop(LineSize, &Row, &FogExpand);
+					if(g_Config.m_BcOptimizerFpsFogMode == 0)
+						Ui()->DoScrollbarOption(&g_Config.m_BcOptimizerFpsFogRadiusTiles, &g_Config.m_BcOptimizerFpsFogRadiusTiles, &Row, Localize("Radius (tiles)"), 5, 300);
+					else
+						Ui()->DoScrollbarOption(&g_Config.m_BcOptimizerFpsFogZoomPercent, &g_Config.m_BcOptimizerFpsFogZoomPercent, &Row, Localize("Visible area (%)"), 10, 100, &CUi::ms_LinearScrollbarScale, 0, "%");
+				}
+			}
+		}
+
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_FOCUS_MODE))
+		{
+			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+			static float s_FocusModePhase = 0.0f;
+			const bool Enabled = g_Config.m_ClFocusMode != 0;
+			UpdateRevealPhase(s_FocusModePhase, Enabled);
+
+			const float KeyReaderHeight = LineSize + MarginSmall;
+			const float ExpandedTargetHeight = KeyReaderHeight + 7.0f * LineSize;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedTargetHeight * s_FocusModePhase;
+			CUIRect Content, Label, Visible;
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, Localize("Focus Mode"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusMode, Localize("Enable Focus Mode"), &g_Config.m_ClFocusMode, &Content, LineSize);
+			static CButtonContainer s_FocusModeBindReader;
+			static CButtonContainer s_FocusModeBindClear;
+
+			const float CurHeight = ExpandedTargetHeight * s_FocusModePhase;
+			if(CurHeight > 0.0f)
+			{
+				Content.HSplitTop(CurHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
 				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
-				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
-
-				CUIRect ModeLabel, ModeRow;
-				Expand.HSplitTop(LineSize, &ModeLabel, &Expand);
-				Ui()->DoLabel(&ModeLabel, Localize("Mode"), FontSize, TEXTALIGN_ML);
-
-				Expand.HSplitTop(LineSize, &ModeRow, &Expand);
-				CUIRect HookButton, HammerButton, HookHammerButton;
-				ModeRow.VSplitLeft(ModeRow.w / 3.0f, &HookButton, &ModeRow);
-				ModeRow.VSplitLeft(ModeRow.w / 2.0f, &HammerButton, &HookHammerButton);
-
-				static CButtonContainer s_HookComboModeHook;
-				static CButtonContainer s_HookComboModeHammer;
-				static CButtonContainer s_HookComboModeHookHammer;
-				if(DoButton_Menu(&s_HookComboModeHook, "hook", g_Config.m_BcHookComboMode == 0, &HookButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
-					g_Config.m_BcHookComboMode = 0;
-				if(DoButton_Menu(&s_HookComboModeHammer, "hammer", g_Config.m_BcHookComboMode == 1, &HammerButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
-					g_Config.m_BcHookComboMode = 1;
-				if(DoButton_Menu(&s_HookComboModeHookHammer, "hook&hammer", g_Config.m_BcHookComboMode == 2, &HookHammerButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
-					g_Config.m_BcHookComboMode = 2;
-
-				Expand.HSplitTop(LineSize, &Button, &Expand);
-				DoSliderWithScaledValue(&g_Config.m_BcHookComboResetTime, &g_Config.m_BcHookComboResetTime, &Button, Localize("Max time between hooks"), 100, 5000, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
-
-				Expand.HSplitTop(LineSize, &Button, &Expand);
-				DoSliderWithScaledValue(&g_Config.m_BcHookComboSoundVolume, &g_Config.m_BcHookComboSoundVolume, &Button, Localize("Hook combo sound volume"), 0, 100, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "%");
-
-				Expand.HSplitTop(LineSize, &Button, &Expand);
-				DoSliderWithScaledValue(&g_Config.m_BcHookComboSize, &g_Config.m_BcHookComboSize, &Button, Localize("Hook combo size"), 50, 200, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "%");
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideNames, Localize("Hide Player Names"), &g_Config.m_ClFocusModeHideNames, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideEffects, Localize("Hide Visual Effects"), &g_Config.m_ClFocusModeHideEffects, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideHud, Localize("Hide HUD"), &g_Config.m_ClFocusModeHideHud, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideSongPlayer, Localize("Hide Song Player"), &g_Config.m_ClFocusModeHideSongPlayer, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideUI, Localize("Hide Unnecessary UI"), &g_Config.m_ClFocusModeHideUI, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideChat, Localize("Hide Chat"), &g_Config.m_ClFocusModeHideChat, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClFocusModeHideScoreboard, Localize("Hide Scoreboard"), &g_Config.m_ClFocusModeHideScoreboard, &Expand, LineSize);
+				DoLine_KeyReader(Expand, s_FocusModeBindReader, s_FocusModeBindClear, Localize("Focus mode bind"), "toggle p_focus_mode 0 1");
 			}
 		}
 
@@ -5610,7 +5454,20 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		const float HeadlineFontSize = 20.0f;
 		const float MarginSmall = 5.0f;
 		const float MarginBetweenViews = 30.0f;
+		const float MarginBetweenSections = 30.0f;
 		const ColorRGBA BlockColor = ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f);
+		const auto ModuleUiRevealAnimationsEnabled = [&]() {
+			return BCUiAnimations::Enabled() && g_Config.m_BcModuleUiRevealAnimation != 0;
+		};
+		const auto ModuleUiRevealAnimationDuration = [&]() {
+			return BCUiAnimations::MsToSeconds(g_Config.m_BcModuleUiRevealAnimationMs);
+		};
+		const auto UpdateRevealPhase = [&](float &Phase, bool Expanded) {
+			if(ModuleUiRevealAnimationsEnabled())
+				BCUiAnimations::UpdatePhase(Phase, Expanded ? 1.0f : 0.0f, Client()->RenderFrameTime(), ModuleUiRevealAnimationDuration());
+			else
+				Phase = Expanded ? 1.0f : 0.0f;
+		};
 
 		static CScrollRegion s_BestClientOthersScrollRegion;
 		vec2 OthersScrollOffset(0.0f, 0.0f);
@@ -5646,9 +5503,123 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Content = Block;
 		};
 
-		CUIRect Column = MainView;
-		Column.VSplitLeft(8.0f, nullptr, &Column);
-		Column.VSplitRight(8.0f, &Column, nullptr);
+		CUIRect LeftView, RightView;
+		MainView.VSplitMid(&LeftView, &RightView, MarginBetweenViews);
+		LeftView.VSplitLeft(MarginSmall, nullptr, &LeftView);
+		RightView.VSplitRight(MarginSmall, &RightView, nullptr);
+
+		CUIRect Column = LeftView;
+		Column.HSplitTop(10.0f, nullptr, &Column);
+
+		{
+			const float ColorPickerLineSize = 25.0f;
+			const float ColorPickerLabelSize = 13.0f;
+			const float ColorPickerLineSpacing = 5.0f;
+			const bool ShowRealHitboxEnabled = g_Config.m_BcShowRealHitbox != 0;
+			const float ColorPickerHeight = ShowRealHitboxEnabled ? (ColorPickerLineSize + ColorPickerLineSpacing) : 0.0f;
+			const float ContentHeight = LineSize + MarginSmall + 8.0f * LineSize + ColorPickerHeight;
+			CUIRect Content, Label, Row;
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, Localize("Misc"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			static CButtonContainer s_SettingsLayoutButton;
+			int UseNewMenuLayout = g_Config.m_BcSettingsLayout == 0 ? 1 : 0;
+			DoButton_CheckBoxAutoVMarginAndSet(&s_SettingsLayoutButton, Localize("Use new menu layout"), &UseNewMenuLayout, &Content, LineSize);
+			g_Config.m_BcSettingsLayout = UseNewMenuLayout ? 0 : 1;
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcHideHudInSettings, Localize("Hide hud in settings"), &g_Config.m_BcHideHudInSettings, &Content, LineSize);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcEmoticonShadow, Localize("Shadow of Emotions"), &g_Config.m_BcEmoticonShadow, &Content, LineSize);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatSaveDraft, Localize("Save unsent messages"), &g_Config.m_BcChatSaveDraft, &Content, LineSize);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcShowhudDummyCoordIndicator, TCLocalize("Show player below indicator"), &g_Config.m_BcShowhudDummyCoordIndicator, &Content, LineSize);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcShowRealHitbox, Localize("Show real hitbox"), &g_Config.m_BcShowRealHitbox, &Content, LineSize);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcUseShortKogServerName, Localize("Use short KoG server name"), &g_Config.m_BcUseShortKogServerName, &Content, LineSize);
+			Content.HSplitTop(LineSize, &Row, &Content);
+			Ui()->DoScrollbarOption(&g_Config.m_UiScale, &g_Config.m_UiScale, &Row, Localize("UI scale"), 50, 200, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_DELAYUPDATE, "%");
+			if(g_Config.m_BcShowRealHitbox)
+			{
+				static CButtonContainer s_RealHitboxDotColorButton;
+				DoLine_ColorPicker(&s_RealHitboxDotColorButton, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Content, Localize("Real hitbox dot color"), &g_Config.m_BcShowRealHitboxColor, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::BcShowRealHitboxColor, true)), false, nullptr, true);
+			}
+		}
+		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+
+		{
+			static float s_ChatMediaPhase = 0.0f;
+			const bool ChatMediaEnabled = g_Config.m_BcChatMediaPreview != 0;
+			const bool ContentFilterEnabled = g_Config.m_BcChatMediaContentFilter != 0;
+			UpdateRevealPhase(s_ChatMediaPhase, ChatMediaEnabled);
+			const float KeyReaderHeight = LineSize + 2.5f;
+			const float BaseExpandedHeight = 6.0f * LineSize + KeyReaderHeight;
+			const float FilterSettingsHeight = 2.0f * LineSize;
+			const float ExpandedTargetHeight = BaseExpandedHeight + (ContentFilterEnabled ? FilterSettingsHeight : 0.0f);
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedTargetHeight * s_ChatMediaPhase;
+			CUIRect Content, Label, Row, Visible;
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, Localize("Chat Media"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			CChat &Chat = GameClient()->m_Chat;
+			if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatMediaPreview, Localize("Render media previews from chat links"), &g_Config.m_BcChatMediaPreview, &Content, LineSize))
+				Chat.RebuildChat();
+
+			const float ExpandedHeight = ExpandedTargetHeight * s_ChatMediaPhase;
+			if(ExpandedHeight > 0.0f)
+			{
+				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
+
+				if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatMediaPhotos, Localize("Show photos in chat media"), &g_Config.m_BcChatMediaPhotos, &Expand, LineSize))
+					Chat.RebuildChat();
+
+				if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatMediaGifs, Localize("Show GIFs in chat media"), &g_Config.m_BcChatMediaGifs, &Expand, LineSize))
+					Chat.RebuildChat();
+
+				if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatMediaContentFilter, Localize("Content filtering"), &g_Config.m_BcChatMediaContentFilter, &Expand, LineSize))
+					Chat.RebuildChat();
+
+				if(g_Config.m_BcChatMediaContentFilter)
+				{
+					Expand.HSplitTop(LineSize, &Row, &Expand);
+					Ui()->DoLabel(&Row, Localize("Allowed media domains"), 12.0f, TEXTALIGN_ML);
+
+					Expand.HSplitTop(LineSize, &Row, &Expand);
+					static CLineInput s_ChatMediaAllowedDomains(g_Config.m_BcChatMediaAllowedDomains, sizeof(g_Config.m_BcChatMediaAllowedDomains));
+					s_ChatMediaAllowedDomains.SetEmptyText("tenor.com; imgur.com; giphy.com");
+					if(Ui()->DoClearableEditBox(&s_ChatMediaAllowedDomains, &Row, 14.0f))
+						Chat.RebuildChat();
+					GameClient()->m_Tooltips.DoToolTip(&s_ChatMediaAllowedDomains, &Row, Localize("Semicolon-separated allowlist, for example: tenor.com; imgur.com; giphy.com; cdn.discordapp.com"));
+				}
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				if(Ui()->DoScrollbarOption(&g_Config.m_BcChatMediaPreviewMaxWidth, &g_Config.m_BcChatMediaPreviewMaxWidth, &Row, Localize("Media preview width"), 120, 400))
+					Chat.RebuildChat();
+
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatMediaViewer, Localize("Enable fullscreen media viewer in chat"), &g_Config.m_BcChatMediaViewer, &Expand, LineSize);
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcChatMediaViewerMaxZoom, &g_Config.m_BcChatMediaViewerMaxZoom, &Row, Localize("Viewer max zoom"), 100, 2000, &CUi::ms_LinearScrollbarScale, 0u, "%");
+
+				static CButtonContainer s_HideMediaBindReader;
+				static CButtonContainer s_HideMediaBindClear;
+				DoLine_KeyReader(Expand, s_HideMediaBindReader, s_HideMediaBindClear, Localize("Hide media bind"), "toggle_chat_media_hidden");
+			}
+		}
+		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+
+		const float LeftColumnEndY = Column.y;
+		Column = RightView;
 		Column.HSplitTop(10.0f, nullptr, &Column);
 
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_OTHERS_CLIENT_INDICATOR))
@@ -5683,10 +5654,55 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				Ui()->DoScrollbarOption(&g_Config.m_BcClientIndicatorInSoreboardSize, &g_Config.m_BcClientIndicatorInSoreboardSize, &Row, Localize("Scoreboard indicator size"), -50, 100);
 			}
 		}
+		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_CHAT_BUBBLES))
+		{
+			static float s_BcChatBubblesPhase = 0.0f;
+			const bool ChatBubblesEnabled = g_Config.m_BcChatBubbles != 0;
+			UpdateRevealPhase(s_BcChatBubblesPhase, ChatBubblesEnabled);
+			const float ExtraTargetHeight = MarginSmall + 6.0f * LineSize;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_BcChatBubblesPhase;
+			CUIRect Content, Label, Row, Visible;
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, Localize("Chat Bubbles"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubbles, Localize("Chat Bubbles"), &g_Config.m_BcChatBubbles, &Content, LineSize);
+			const float ExtraHeight = ExtraTargetHeight * s_BcChatBubblesPhase;
+			if(ExtraHeight > 0.0f)
+			{
+				Content.HSplitTop(ExtraHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExtraTargetHeight};
+
+				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubblesDemo, Localize("Show Chatbubbles in demo"), &g_Config.m_BcChatBubblesDemo, &Expand, LineSize);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubblesSelf, Localize("Show Chatbubbles above you"), &g_Config.m_BcChatBubblesSelf, &Expand, LineSize);
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleSize, &g_Config.m_BcChatBubbleSize, &Row, Localize("Chat Bubble Size"), 20, 30);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleShowTime, &g_Config.m_BcChatBubbleShowTime, &Row, Localize("Show the Bubbles for"), 200, 1000);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleFadeIn, &g_Config.m_BcChatBubbleFadeIn, &Row, Localize("fade in for"), 15, 100);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcChatBubbleFadeOut, &g_Config.m_BcChatBubbleFadeOut, &Row, Localize("fade out for"), 15, 100);
+			}
+		}
+
+		const float RightColumnEndY = Column.y;
 		CUIRect ScrollRegion;
 		ScrollRegion.x = MainView.x;
-		ScrollRegion.y = Column.y + MarginSmall * 2.0f;
+		ScrollRegion.y = maximum(LeftColumnEndY, RightColumnEndY) + MarginSmall * 2.0f;
 		ScrollRegion.w = MainView.w;
 		ScrollRegion.h = 0.0f;
 		s_BestClientOthersScrollRegion.AddRect(ScrollRegion);
