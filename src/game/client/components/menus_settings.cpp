@@ -5421,7 +5421,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const bool ShowScoreboardSettings = g_Config.m_BcClientIndicatorInScoreboard != 0;
 			const float NamePlateSettingsHeight = ShowNamePlateSettings ? 2.0f * LineSize : 0.0f;
 			const float ScoreboardSettingsHeight = ShowScoreboardSettings ? LineSize : 0.0f;
-			const float ContentHeight = LineSize + MarginSmall + 3.0f * LineSize + NamePlateSettingsHeight + ScoreboardSettingsHeight;
+			const float ContentHeight = LineSize + MarginSmall + 2.0f * LineSize + NamePlateSettingsHeight + ScoreboardSettingsHeight;
 
 			CUIRect Content, Label, Row;
 			BeginBlock(Column, ContentHeight, Content);
@@ -5430,7 +5430,6 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Ui()->DoLabel(&Label, Localize("Client Indicator"), HeadlineFontSize, TEXTALIGN_ML);
 			Content.HSplitTop(MarginSmall, nullptr, &Content);
 
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcClientIndicator, Localize("Enable client indicator"), &g_Config.m_BcClientIndicator, &Content, LineSize);
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcClientIndicatorInNamePlate, Localize("Show indicator in name plates"), &g_Config.m_BcClientIndicatorInNamePlate, &Content, LineSize);
 
 			if(g_Config.m_BcClientIndicatorInNamePlate)
