@@ -1020,6 +1020,61 @@ static void AddDirectGiphyCandidates(const std::string &Url, std::vector<std::st
 	}
 }
 
+static bool ExtractImgurMediaId(const std::string &Url, std::string &OutMediaId)
+{
+	OutMediaId.clear();
+	const std::string HostLower = ExtractUrlHostLower(Url);
+	if(!HostIsOrEndsWith(HostLower, "imgur.com"))
+		return false;
+
+	const std::string Path = ExtractUrlPath(Url);
+	if(Path.empty() || Path == "/")
+		return false;
+
+	const char *apPrefixes[] = {"/a/", "/gallery/", "/t/"};
+	for(const char *pPrefix : apPrefixes)
+	{
+		if(str_startswith(Path.c_str(), pPrefix))
+			return false;
+	}
+
+	size_t SegmentStart = Path.find_last_of('/');
+	if(SegmentStart == std::string::npos || SegmentStart + 1 >= Path.size())
+		return false;
+
+	std::string LastSegment = Path.substr(SegmentStart + 1);
+	const size_t DotPos = LastSegment.find('.');
+	if(DotPos != std::string::npos)
+		LastSegment.resize(DotPos);
+
+	if(LastSegment.size() < 4 || LastSegment.size() > 16)
+		return false;
+
+	for(char c : LastSegment)
+	{
+		if(!std::isalnum((unsigned char)c))
+			return false;
+	}
+
+	OutMediaId = LastSegment;
+	return true;
+}
+
+static void AddDirectImgurCandidates(const std::string &Url, std::vector<std::string> &vOutCandidates)
+{
+	std::string MediaId;
+	if(!ExtractImgurMediaId(Url, MediaId))
+		return;
+
+	const char *apFormats[] = {"mp4", "gif", "webm", "jpg", "jpeg", "png", "webp"};
+	for(const char *pFormat : apFormats)
+	{
+		std::string Candidate = "https://i.imgur.com/" + MediaId + "." + pFormat;
+		if((int)Candidate.size() <= CHAT_MEDIA_MAX_URL_LENGTH)
+			vOutCandidates.push_back(std::move(Candidate));
+	}
+}
+
 static bool IsGifSignature(const unsigned char *pData, size_t DataSize)
 {
 	return DataSize >= 6 && (mem_comp(pData, "GIF87a", 6) == 0 || mem_comp(pData, "GIF89a", 6) == 0);
@@ -1711,6 +1766,7 @@ void CChat::ExtractMediaUrlsFromText(const char *pText, std::vector<std::string>
 
 		std::vector<std::string> vExpandedUrls;
 		AddDirectGiphyCandidates(Url, vExpandedUrls);
+		AddDirectImgurCandidates(Url, vExpandedUrls);
 		vExpandedUrls.push_back(Url);
 
 		for(const std::string &ExpandedUrl : vExpandedUrls)

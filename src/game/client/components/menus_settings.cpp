@@ -4142,10 +4142,10 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 					Expand.HSplitTop(LineSize, &Row, &Expand);
 					static CLineInput s_ChatMediaAllowedDomains(g_Config.m_BcChatMediaAllowedDomains, sizeof(g_Config.m_BcChatMediaAllowedDomains));
-					s_ChatMediaAllowedDomains.SetEmptyText("tenor.com; imgur.com");
+					s_ChatMediaAllowedDomains.SetEmptyText("tenor.com; imgur.com; giphy.com");
 					if(Ui()->DoClearableEditBox(&s_ChatMediaAllowedDomains, &Row, 14.0f))
 						Chat.RebuildChat();
-					GameClient()->m_Tooltips.DoToolTip(&s_ChatMediaAllowedDomains, &Row, Localize("Semicolon-separated allowlist, for example: tenor.com; imgur.com; cdn.discordapp.com"));
+					GameClient()->m_Tooltips.DoToolTip(&s_ChatMediaAllowedDomains, &Row, Localize("Semicolon-separated allowlist, for example: tenor.com; imgur.com; giphy.com; cdn.discordapp.com"));
 				}
 
 				Expand.HSplitTop(LineSize, &Row, &Expand);
