@@ -398,15 +398,21 @@ bool CUpdater::WriteApplyScript(char *pScriptPath, int ScriptPathSize, char *pIn
 		")\n"
 		"$ErrorActionPreference = 'Stop'\n"
 		"try {\n"
+		"    $updateDir = Join-Path $InstallDir 'update'\n"
+		"    New-Item -ItemType Directory -Path $updateDir -Force | Out-Null\n"
+		"    $logPath = Join-Path $updateDir 'apply_update.log'\n"
+		"    Add-Content -LiteralPath $logPath -Value ('[' + (Get-Date).ToString('s') + '] updater started')\n"
 		"    while(Get-Process -Id $PidToWait -ErrorAction SilentlyContinue) {\n"
 		"        Start-Sleep -Milliseconds 200\n"
 		"    }\n"
+		"    Add-Content -LiteralPath $logPath -Value ('[' + (Get-Date).ToString('s') + '] client process stopped')\n"
 		"    $extractDir = Join-Path $InstallDir 'update\\extract'\n"
 		"    if(Test-Path -LiteralPath $extractDir) {\n"
 		"        Remove-Item -LiteralPath $extractDir -Recurse -Force\n"
 		"    }\n"
 		"    New-Item -ItemType Directory -Path $extractDir -Force | Out-Null\n"
 		"    Expand-Archive -LiteralPath $ArchivePath -DestinationPath $extractDir -Force\n"
+		"    Add-Content -LiteralPath $logPath -Value ('[' + (Get-Date).ToString('s') + '] archive extracted')\n"
 		"    $copyRoot = $extractDir\n"
 		"    $items = @(Get-ChildItem -LiteralPath $extractDir -Force)\n"
 		"    if($items.Count -eq 1 -and $items[0].PSIsContainer) {\n"
@@ -415,9 +421,11 @@ bool CUpdater::WriteApplyScript(char *pScriptPath, int ScriptPathSize, char *pIn
 		"    foreach($item in Get-ChildItem -LiteralPath $copyRoot -Force) {\n"
 		"        Copy-Item -Path $item.FullName -Destination $InstallDir -Recurse -Force\n"
 		"    }\n"
+		"    Add-Content -LiteralPath $logPath -Value ('[' + (Get-Date).ToString('s') + '] files copied')\n"
 		"    Remove-Item -LiteralPath $ArchivePath -Force -ErrorAction SilentlyContinue\n"
 		"    Remove-Item -LiteralPath $extractDir -Recurse -Force -ErrorAction SilentlyContinue\n"
-		"    Start-Process -FilePath $ExePath\n"
+		"    Start-Process -FilePath $ExePath -WorkingDirectory $InstallDir\n"
+		"    Add-Content -LiteralPath $logPath -Value ('[' + (Get-Date).ToString('s') + '] client relaunched')\n"
 		"} catch {\n"
 		"    $logPath = Join-Path $InstallDir 'update\\apply_update_error.txt'\n"
 		"    $_ | Out-String | Set-Content -LiteralPath $logPath -Encoding UTF8\n"
@@ -457,6 +465,9 @@ bool CUpdater::LaunchApplyScriptAndQuit()
 	str_format(aPid, sizeof(aPid), "%d", process_id());
 	const char *apArguments[] = {
 		"-NoProfile",
+		"-NonInteractive",
+		"-ExecutionPolicy",
+		"Bypass",
 		"-File",
 		aScriptPath,
 		"-PidToWait",
