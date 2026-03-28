@@ -3456,14 +3456,14 @@ void CMenus::RenderSettingsDDNet(CUIRect MainView)
 	// Updater
 #if defined(CONF_AUTOUPDATE)
 	{
-		const bool NeedUpdate = GameClient()->m_TClient.NeedUpdate();
+		const bool NeedUpdate = GameClient()->m_BestClient.NeedUpdate();
 		IUpdater::EUpdaterState State = Updater()->GetCurrentState();
 
 		// Update Button
 		char aBuf[256];
 		if(NeedUpdate && State <= IUpdater::CLEAN)
 		{
-			str_format(aBuf, sizeof(aBuf), Localize("TClient %s is available:"), GameClient()->m_TClient.m_aVersionStr);
+			str_format(aBuf, sizeof(aBuf), "BestClient %s Is release", GameClient()->m_BestClient.m_aVersionStr);
 			UpdaterRect.VSplitLeft(TextRender()->TextWidth(14.0f, aBuf, -1, -1.0f) + 10.0f, &UpdaterRect, &Button);
 			Button.VSplitLeft(100.0f, &Button, nullptr);
 			static CButtonContainer s_ButtonUpdate;
@@ -3476,7 +3476,7 @@ void CMenus::RenderSettingsDDNet(CUIRect MainView)
 			str_copy(aBuf, Localize("Updating…"));
 		else if(State == IUpdater::NEED_RESTART)
 		{
-			str_copy(aBuf, Localize("TClient Client updated!"));
+			str_copy(aBuf, Localize("BestClient Client updated!"));
 			m_NeedRestartUpdate = true;
 		}
 		else
@@ -3487,7 +3487,7 @@ void CMenus::RenderSettingsDDNet(CUIRect MainView)
 			static CButtonContainer s_ButtonUpdate;
 			if(DoButton_Menu(&s_ButtonUpdate, Localize("Check now"), 0, &Button))
 			{
-				GameClient()->m_TClient.FetchTClientInfo();
+				GameClient()->m_BestClient.FetchBestClientInfo();
 			}
 		}
 		Ui()->DoLabel(&UpdaterRect, aBuf, 14.0f, TEXTALIGN_ML);
@@ -5769,10 +5769,10 @@ void CMenus::RenderSettingsBestClientInfo(CUIRect MainView)
 	if(DoButtonLineSize_Menu(&s_WebsiteButton, TCLocalize("Website"), 0, &ButtonLeft, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 		Client()->ViewLink("https://bestclient.fun");
 	if(DoButtonLineSize_Menu(&s_CheckUpdateButton, TCLocalize("Check update"), 0, &ButtonRight, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
-		GameClient()->m_TClient.FetchTClientInfo();
+		GameClient()->m_BestClient.FetchBestClientInfo();
 
 #if defined(CONF_AUTOUPDATE)
-	const bool NeedUpdate = GameClient()->m_TClient.NeedUpdate();
+	const bool NeedUpdate = GameClient()->m_BestClient.NeedUpdate();
 	const IUpdater::EUpdaterState UpdateState = Updater()->GetCurrentState();
 	const bool ShowDownloadButton = NeedUpdate && UpdateState == IUpdater::CLEAN;
 	const bool ShowRetryButton = NeedUpdate && UpdateState == IUpdater::FAIL;
@@ -5786,7 +5786,7 @@ void CMenus::RenderSettingsBestClientInfo(CUIRect MainView)
 
 		char aUpdateLabel[128] = "";
 		if(ShowDownloadButton)
-			str_format(aUpdateLabel, sizeof(aUpdateLabel), "BestClient %s Is release", GameClient()->m_TClient.m_aVersionStr);
+			str_format(aUpdateLabel, sizeof(aUpdateLabel), "BestClient %s Is release", GameClient()->m_BestClient.m_aVersionStr);
 		else if(ShowUpdateProgress)
 		{
 			if(UpdateState == IUpdater::GETTING_MANIFEST)
@@ -5814,7 +5814,7 @@ void CMenus::RenderSettingsBestClientInfo(CUIRect MainView)
 		{
 			static CButtonContainer s_RestartUpdateButton;
 			if(DoButtonLineSize_Menu(&s_RestartUpdateButton, TCLocalize("Restart"), 0, &ButtonRight, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
-				Client()->Restart();
+				Updater()->ApplyUpdateAndRestart();
 		}
 		else if(ShowUpdateProgress)
 		{

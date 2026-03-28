@@ -1,17 +1,132 @@
 #include "bestclient.h"
+#include "version.h"
 
 #include <base/color.h>
 #include <base/log.h>
 #include <base/system.h>
 
+#include <engine/client.h>
 #include <engine/client/enums.h>
 #include <engine/shared/config.h>
+#include <engine/shared/json.h>
 
 #include <game/client/components/hud_layout.h>
 #include <game/client/components/sounds.h>
 #include <game/client/gameclient.h>
+#include <game/version.h>
 
 #include <algorithm>
+#include <cctype>
+#include <vector>
+
+static constexpr const char *BestClient_INFO_URL = "https://api.github.com/repos/RoflikBEST/bestdownload/releases?per_page=10";
+
+static void NormalizeBestClientVersion(const char *pVersion, char *pBuf, int BufSize)
+{
+	if(BufSize <= 0)
+		return;
+
+	if(!pVersion)
+	{
+		pBuf[0] = '\0';
+		return;
+	}
+
+	while(*pVersion != '\0' && std::isspace(static_cast<unsigned char>(*pVersion)))
+		++pVersion;
+
+	if((pVersion[0] == 'v' || pVersion[0] == 'V') && std::isdigit(static_cast<unsigned char>(pVersion[1])))
+		++pVersion;
+
+	str_copy(pBuf, pVersion, BufSize);
+}
+
+static std::vector<int> ExtractBestClientVersionNumbers(const char *pVersion)
+{
+	std::vector<int> vNumbers;
+	if(!pVersion)
+		return vNumbers;
+
+	int Current = -1;
+	for(const unsigned char *p = reinterpret_cast<const unsigned char *>(pVersion); *p != '\0'; ++p)
+	{
+		if(std::isdigit(*p))
+		{
+			if(Current < 0)
+				Current = 0;
+			Current = Current * 10 + (*p - '0');
+		}
+		else if(Current >= 0)
+		{
+			vNumbers.push_back(Current);
+			Current = -1;
+		}
+	}
+
+	if(Current >= 0)
+		vNumbers.push_back(Current);
+
+	return vNumbers;
+}
+
+static int CompareBestClientVersions(const char *pLeft, const char *pRight)
+{
+	char aLeft[64];
+	char aRight[64];
+	NormalizeBestClientVersion(pLeft, aLeft, sizeof(aLeft));
+	NormalizeBestClientVersion(pRight, aRight, sizeof(aRight));
+
+	const std::vector<int> vLeft = ExtractBestClientVersionNumbers(aLeft);
+	const std::vector<int> vRight = ExtractBestClientVersionNumbers(aRight);
+	const size_t Num = maximum(vLeft.size(), vRight.size());
+	for(size_t i = 0; i < Num; ++i)
+	{
+		const int Left = i < vLeft.size() ? vLeft[i] : 0;
+		const int Right = i < vRight.size() ? vRight[i] : 0;
+		if(Left < Right)
+			return -1;
+		if(Left > Right)
+			return 1;
+	}
+
+	return str_comp_nocase(aLeft, aRight);
+}
+
+static void BuildBestClientInfoUrl(char *pBuf, int BufSize)
+{
+	str_format(pBuf, BufSize, "%s&t=%lld", BestClient_INFO_URL, (long long)time_timestamp());
+}
+
+static const char *FindBestClientReleaseVersion(const json_value *pJson)
+{
+	if(!pJson)
+		return nullptr;
+
+	if(pJson->type == json_object)
+	{
+		const char *pVersion = json_string_get(json_object_get(pJson, "tag_name"));
+		if(!pVersion)
+			pVersion = json_string_get(json_object_get(pJson, "name"));
+		return pVersion;
+	}
+
+	if(pJson->type == json_array)
+	{
+		for(int i = 0; i < json_array_length(pJson); ++i)
+		{
+			const json_value *pRelease = json_array_get(pJson, i);
+			if(!pRelease || pRelease->type != json_object)
+				continue;
+			const char *pVersion = json_string_get(json_object_get(pRelease, "tag_name"));
+			if(!pVersion)
+				pVersion = json_string_get(json_object_get(pRelease, "name"));
+			if(pVersion)
+				return pVersion;
+		}
+	}
+
+	return nullptr;
+}
 
 static constexpr int s_HookComboBaseTextCount = 15;
 static constexpr int s_HookComboVariantLimit = 100;
@@ -96,10 +211,12 @@ void CBestClient::OnInit()
 {
 	LoadHookComboSounds();
 	ResetHookComboState();
+	FetchBestClientInfo();
 }
 
 void CBestClient::OnShutdown()
 {
+	ResetBestClientInfoTask();
 	ResetHookComboState();
 	UnloadHookComboSounds();
 }
@@ -118,6 +235,19 @@ void CBestClient::OnStateChange(int NewState, int OldState)
 
 void CBestClient::OnRender()
 {
+	if(m_pBestClientInfoTask)
+	{
+		if(m_pBestClientInfoTask->State() == EHttpState::DONE)
+		{
+			FinishBestClientInfo();
+			ResetBestClientInfoTask();
+		}
+		else if(m_pBestClientInfoTask->State() == EHttpState::ERROR || m_pBestClientInfoTask->State() == EHttpState::ABORTED)
+		{
+			ResetBestClientInfoTask();
+		}
+	}
+
 	if(HasHookComboWork())
 		UpdateHookCombo();
 }
@@ -527,6 +657,58 @@ void CBestClient::ConToggleCinematicCamera(IConsole::IResult *pResult, void *pUs
 	CBestClient *pSelf = static_cast<CBestClient *>(pUserData);
 	g_Config.m_BcCinematicCamera = !g_Config.m_BcCinematicCamera;
 	pSelf->GameClient()->Echo(g_Config.m_BcCinematicCamera ? "[[green]] Cinematic camera on" : "[[red]] Cinematic camera off");
+}
+
+bool CBestClient::NeedUpdate()
+{
+	return str_comp(m_aVersionStr, "0") != 0;
+}
+
+void CBestClient::ResetBestClientInfoTask()
+{
+	if(m_pBestClientInfoTask)
+	{
+		m_pBestClientInfoTask->Abort();
+		m_pBestClientInfoTask = nullptr;
+	}
+}
+
+void CBestClient::FetchBestClientInfo()
+{
+	if(m_pBestClientInfoTask && !m_pBestClientInfoTask->Done())
+		return;
+
+	char aUrl[512];
+	BuildBestClientInfoUrl(aUrl, sizeof(aUrl));
+	m_pBestClientInfoTask = HttpGet(aUrl);
+	m_pBestClientInfoTask->HeaderString("Accept", "application/vnd.github+json");
+	m_pBestClientInfoTask->HeaderString("User-Agent", CLIENT_NAME);
+	m_pBestClientInfoTask->HeaderString("X-GitHub-Api-Version", "2022-11-28");
+	m_pBestClientInfoTask->HeaderString("Cache-Control", "no-cache");
+	m_pBestClientInfoTask->HeaderString("Pragma", "no-cache");
+	m_pBestClientInfoTask->Timeout(CTimeout{10000, 0, 500, 10});
+	m_pBestClientInfoTask->IpResolve(IPRESOLVE::V4);
+	Http()->Run(m_pBestClientInfoTask);
+}
+
+void CBestClient::FinishBestClientInfo()
+{
+	json_value *pJson = m_pBestClientInfoTask->ResultJson();
+	if(!pJson)
+		return;
+
+	const char *pCurrentVersion = FindBestClientReleaseVersion(pJson);
+
+	if(pCurrentVersion && CompareBestClientVersions(pCurrentVersion, BESTCLIENT_VERSION) > 0)
+		str_copy(m_aVersionStr, pCurrentVersion, sizeof(m_aVersionStr));
+	else
+	{
+		m_aVersionStr[0] = '0';
+		m_aVersionStr[1] = '\0';
+	}
+
+	m_FetchedBestClientInfo = true;
+	json_value_free(pJson);
 }
 
 void CBestClient::OnConsoleInit()

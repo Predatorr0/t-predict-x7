@@ -74,7 +74,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	static CButtonContainer s_CheckUpdateButton;
 	if(GameClient()->m_Menus.DoButton_Menu(&s_CheckUpdateButton, Localize("Check update"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
-		GameClient()->m_TClient.FetchTClientInfo();
+		GameClient()->m_BestClient.FetchBestClientInfo();
 	}
 
 	CUIRect Menu;
@@ -112,7 +112,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 
 #if defined(CONF_AUTOUPDATE)
 	char aUpdateBuf[128] = "";
-	const bool NeedUpdate = GameClient()->m_TClient.NeedUpdate();
+	const bool NeedUpdate = GameClient()->m_BestClient.NeedUpdate();
 	const IUpdater::EUpdaterState State = Updater()->GetCurrentState();
 	const bool ShowDownloadButton = NeedUpdate && State == IUpdater::CLEAN;
 	const bool ShowRetryButton = NeedUpdate && State == IUpdater::FAIL;
@@ -131,7 +131,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 
 		if(ShowDownloadButton)
 		{
-			str_format(aUpdateBuf, sizeof(aUpdateBuf), "%s %s is out!", CLIENT_NAME, GameClient()->m_TClient.m_aVersionStr);
+			str_format(aUpdateBuf, sizeof(aUpdateBuf), "%s %s is out!", CLIENT_NAME, GameClient()->m_BestClient.m_aVersionStr);
 			TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
 		}
 		else if(ShowUpdateProgress)
@@ -168,7 +168,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 			static CButtonContainer s_MenuUpdateRestart;
 			if(GameClient()->m_Menus.DoButton_Menu(&s_MenuUpdateRestart, Localize("Restart"), 0, &UpdateButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 			{
-				Client()->Restart();
+				Updater()->ApplyUpdateAndRestart();
 			}
 		}
 		else

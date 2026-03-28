@@ -2,10 +2,12 @@
 #define GAME_CLIENT_COMPONENTS_BESTCLIENT_BESTCLIENT_H
 
 #include <engine/shared/console.h>
+#include <engine/shared/http.h>
 
 #include <game/client/component.h>
 
 #include <array>
+#include <memory>
 #include <vector>
 
 class CBestClient : public CComponent
@@ -44,6 +46,9 @@ class CBestClient : public CComponent
 	int m_Smallsenstogglelastinput = 0;
 	int m_SmallsensEnabled = 0;
 	char m_Oldmouse1Bind[128] = {};
+
+	void FinishBestClientInfo();
+	void ResetBestClientInfoTask();
 
 public:
 	enum EBestClientComponent
@@ -108,6 +113,12 @@ public:
 	bool IsComponentDisabled(EBestClientComponent Component) const;
 	static bool IsComponentDisabledByMask(int Component, int MaskLo, int MaskHi);
 	void RenderHookCombo(bool ForcePreview = false);
+
+	std::shared_ptr<CHttpRequest> m_pBestClientInfoTask = nullptr;
+	void FetchBestClientInfo();
+	bool NeedUpdate();
+	bool m_FetchedBestClientInfo = false;
+	char m_aVersionStr[64] = "0";
 };
 
 #endif
