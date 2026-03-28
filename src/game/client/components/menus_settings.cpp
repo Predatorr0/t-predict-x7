@@ -1292,9 +1292,6 @@ void CMenus::RenderSettingsGraphics(CUIRect MainView)
 	str_append(aBuf, Localize("Hz", "Hertz"));
 	Ui()->DoScrollbarOption(&g_Config.m_GfxRefreshRate, &g_Config.m_GfxRefreshRate, &Button, Localize("Refresh Rate"), 10, 1000, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_INFINITE | CUi::SCROLLBAR_OPTION_NOCLAMPVALUE | CUi::SCROLLBAR_OPTION_DELAYUPDATE, aBuf);
 
-	MainView.HSplitTop(20.0f, &Button, &MainView);
-	Ui()->DoScrollbarOption(&g_Config.m_UiScale, &g_Config.m_UiScale, &Button, Localize("UI scale"), 50, 200, &CUi::ms_LinearScrollbarScale, 0u, "%");
-
 	MainView.HSplitTop(2.0f, nullptr, &MainView);
 	static CButtonContainer s_UiColorResetId;
 	DoLine_ColorPicker(&s_UiColorResetId, 25.0f, 13.0f, 2.0f, &MainView, Localize("UI Color"), &g_Config.m_UiColor, color_cast<ColorRGBA>(ColorHSLA(0xE4A046AFU, true)), false, nullptr, true);
@@ -3673,8 +3670,8 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const float ColorPickerLineSpacing = 5.0f;
 			const bool ShowRealHitboxEnabled = g_Config.m_BcShowRealHitbox != 0;
 			const float ColorPickerHeight = ShowRealHitboxEnabled ? (ColorPickerLineSize + ColorPickerLineSpacing) : 0.0f;
-			const float ContentHeight = LineSize + MarginSmall + 7.0f * LineSize + ColorPickerHeight;
-			CUIRect Content, Label;
+			const float ContentHeight = LineSize + MarginSmall + 8.0f * LineSize + ColorPickerHeight;
+			CUIRect Content, Label, Row;
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
@@ -3692,6 +3689,8 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcShowhudDummyCoordIndicator, TCLocalize("Show player below indicator"), &g_Config.m_BcShowhudDummyCoordIndicator, &Content, LineSize);
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcShowRealHitbox, Localize("Show real hitbox"), &g_Config.m_BcShowRealHitbox, &Content, LineSize);
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcUseShortKogServerName, Localize("Use short KoG server name"), &g_Config.m_BcUseShortKogServerName, &Content, LineSize);
+			Content.HSplitTop(LineSize, &Row, &Content);
+			Ui()->DoScrollbarOption(&g_Config.m_UiScale, &g_Config.m_UiScale, &Row, Localize("UI scale"), 50, 200, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_DELAYUPDATE, "%");
 			if(g_Config.m_BcShowRealHitbox)
 			{
 				static CButtonContainer s_RealHitboxDotColorButton;
