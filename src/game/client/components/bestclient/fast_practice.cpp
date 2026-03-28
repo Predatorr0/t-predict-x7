@@ -856,6 +856,21 @@ bool CFastPractice::AdvanceBaseWorldToTick(int TargetTick, int LocalClientId, in
 					m_InputSuppressTicks--;
 				m_SuppressFireOnNextPredictTick = false;
 			}
+
+		if(pDummyChar && g_Config.m_ClDummyHammer)
+		{
+			if(!pDummyInputData || pDummyInputData != &DummySuppressedInput)
+			{
+				DummySuppressedInput = pDummyInputData ? *pDummyInputData : CNetObj_PlayerInput{};
+				pDummyInputData = &DummySuppressedInput;
+			}
+			const vec2 Dir = pLocalChar->Core()->m_Pos - pDummyChar->Core()->m_Pos;
+			pDummyInputData->m_TargetX = (int)Dir.x;
+			pDummyInputData->m_TargetY = (int)Dir.y;
+			if(pDummyInputData->m_TargetX == 0 && pDummyInputData->m_TargetY == 0)
+				pDummyInputData->m_TargetY = -1;
+		}
+
 		const bool DummyFirst = pInputData && pDummyInputData && pDummyChar->GetCid() < pLocalChar->GetCid();
 
 		if(DummyFirst)
@@ -1033,6 +1048,21 @@ bool CFastPractice::OverridePredict()
 				m_InputSuppressTicks--;
 			m_SuppressFireOnNextPredictTick = false;
 		}
+
+		if(pDummyChar && g_Config.m_ClDummyHammer)
+		{
+			if(!pDummyInputData || pDummyInputData != &DummyNeutralizedInput)
+			{
+				DummyNeutralizedInput = pDummyInputData ? *pDummyInputData : CNetObj_PlayerInput{};
+				pDummyInputData = &DummyNeutralizedInput;
+			}
+			const vec2 Dir = pLocalChar->Core()->m_Pos - pDummyChar->Core()->m_Pos;
+			pDummyInputData->m_TargetX = (int)Dir.x;
+			pDummyInputData->m_TargetY = (int)Dir.y;
+			if(pDummyInputData->m_TargetX == 0 && pDummyInputData->m_TargetY == 0)
+				pDummyInputData->m_TargetY = -1;
+		}
+
 		const bool DummyFirst = pInputData && pDummyInputData && pDummyChar->GetCid() < pLocalChar->GetCid();
 
 		pLocalChar->m_CanMoveInFreeze = false;
@@ -1188,6 +1218,17 @@ int CFastPractice::ApplyVisualFastInputPrediction(int FinalTickRegular, int Loca
 	if(!EffectiveFastInputOthers())
 		FinalTickOthers = FinalTickRegular;
 
+	const auto ResolveInputSlotByClientId = [&](int ClientId, int FallbackSlot) {
+		for(int Slot = 0; Slot < NUM_DUMMIES; Slot++)
+		{
+			if(GameClient()->m_aLocalIds[Slot] == ClientId)
+				return Slot;
+		}
+		return FallbackSlot;
+	};
+	const int LocalTee = ResolveInputSlotByClientId(LocalClientId, g_Config.m_ClDummy);
+	const int DummyTee = ResolveInputSlotByClientId(DummyClientId, LocalTee ^ 1);
+
 	for(int Tick = FinalTickRegular + 1; Tick <= FinalTickSelf; Tick++)
 	{
 		pLocalChar = VisualWorld.GetCharacterById(LocalClientId);
@@ -1211,9 +1252,25 @@ int CFastPractice::ApplyVisualFastInputPrediction(int FinalTickRegular, int Loca
 
 		CNetObj_PlayerInput *pInputData = (CNetObj_PlayerInput *)Client()->GetInput(Tick, LocalInputConn);
 		CNetObj_PlayerInput *pDummyInputData = pDummyChar ? (CNetObj_PlayerInput *)Client()->GetInput(Tick, DummyInputConn) : nullptr;
+		CNetObj_PlayerInput DummyFastInput = {};
 		const bool DummyFirst = pInputData && pDummyInputData && pDummyChar->GetCid() < pLocalChar->GetCid();
 
-		pInputData = &GameClient()->m_Controls.m_aFastInput[g_Config.m_ClDummy];
+		pInputData = &GameClient()->m_Controls.m_aFastInput[LocalTee];
+		if(pDummyChar && GameClient()->GetDummyFastInput(DummyFastInput, pDummyInputData, pDummyChar, LocalTee, DummyTee))
+			pDummyInputData = &DummyFastInput;
+		if(pDummyChar && g_Config.m_ClDummyHammer)
+		{
+			if(!pDummyInputData || pDummyInputData != &DummyFastInput)
+			{
+				DummyFastInput = pDummyInputData ? *pDummyInputData : CNetObj_PlayerInput{};
+				pDummyInputData = &DummyFastInput;
+			}
+			const vec2 Dir = pLocalChar->Core()->m_Pos - pDummyChar->Core()->m_Pos;
+			pDummyInputData->m_TargetX = (int)Dir.x;
+			pDummyInputData->m_TargetY = (int)Dir.y;
+			if(pDummyInputData->m_TargetX == 0 && pDummyInputData->m_TargetY == 0)
+				pDummyInputData->m_TargetY = -1;
+		}
 		pLocalChar->m_CanMoveInFreeze = false;
 		if(pDummyChar)
 			pDummyChar->m_CanMoveInFreeze = false;
