@@ -4285,7 +4285,8 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const bool CameraDriftEnabled = g_Config.m_BcCameraDrift != 0;
 			UpdateRevealPhase(s_CameraDriftPhase, CameraDriftEnabled);
 			const float ExtraTargetHeight = 3.0f * LineSize;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_CameraDriftPhase;
+			const float BlockedHintHeight = IsBlockedCameraServer ? (MarginSmall + LineSize) : 0.0f;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_CameraDriftPhase + BlockedHintHeight;
 			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
@@ -4293,14 +4294,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Ui()->DoLabel(&Label, Localize("Camera Drift"), HeadlineFontSize, TEXTALIGN_ML);
 			Content.HSplitTop(MarginSmall, nullptr, &Content);
 
-			if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcCameraDrift, Localize("Camera Drift"), &g_Config.m_BcCameraDrift, &Content, LineSize))
-			{
-				if(IsBlockedCameraServer && g_Config.m_BcCameraDrift)
-				{
-					g_Config.m_BcCameraDrift = 0;
-					GameClient()->Echo(Localize("[[red]] This feature is disabled on this server"));
-				}
-			}
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcCameraDrift, Localize("Camera Drift"), &g_Config.m_BcCameraDrift, &Content, LineSize);
 
 			const float ExtraHeight = ExtraTargetHeight * s_CameraDriftPhase;
 			if(ExtraHeight > 0.0f)
@@ -4334,6 +4328,14 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				if(DoButton_CheckBox(&s_CameraDriftBackwardButton, Localize("Backward"), g_Config.m_BcCameraDriftReverse, &DirectionBackward))
 					g_Config.m_BcCameraDriftReverse = 1;
 			}
+			if(IsBlockedCameraServer)
+			{
+				Content.HSplitTop(MarginSmall, nullptr, &Content);
+				Content.HSplitTop(LineSize, &Label, &Content);
+				TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
+				Ui()->DoLabel(&Label, Localize("Looks like you're on a server where this feature is forbidden"), 14.0f, TEXTALIGN_ML);
+				TextRender()->TextColor(TextRender()->DefaultTextColor());
+			}
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		}
 
@@ -4344,7 +4346,8 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const bool DynamicFovEnabled = g_Config.m_BcDynamicFov != 0;
 			UpdateRevealPhase(s_DynamicFovPhase, DynamicFovEnabled);
 			const float ExtraTargetHeight = 2.0f * LineSize;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_DynamicFovPhase;
+			const float BlockedHintHeight = IsBlockedCameraServer ? (MarginSmall + LineSize) : 0.0f;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_DynamicFovPhase + BlockedHintHeight;
 			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
@@ -4352,14 +4355,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Ui()->DoLabel(&Label, Localize("Dynamic FOV"), HeadlineFontSize, TEXTALIGN_ML);
 			Content.HSplitTop(MarginSmall, nullptr, &Content);
 
-			if(DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcDynamicFov, Localize("Dynamic FOV"), &g_Config.m_BcDynamicFov, &Content, LineSize))
-			{
-				if(IsBlockedCameraServer && g_Config.m_BcDynamicFov)
-				{
-					g_Config.m_BcDynamicFov = 0;
-					GameClient()->Echo(Localize("[[red]] This feature is disabled on this server"));
-				}
-			}
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcDynamicFov, Localize("Dynamic FOV"), &g_Config.m_BcDynamicFov, &Content, LineSize);
 
 			const float ExtraHeight = ExtraTargetHeight * s_DynamicFovPhase;
 			if(ExtraHeight > 0.0f)
@@ -4379,6 +4375,14 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 				Expand.HSplitTop(LineSize, &Row, &Expand);
 				Ui()->DoScrollbarOption(&g_Config.m_BcDynamicFovSmoothness, &g_Config.m_BcDynamicFovSmoothness, &Row, Localize("Dynamic FOV smoothness"), 1, 20);
+			}
+			if(IsBlockedCameraServer)
+			{
+				Content.HSplitTop(MarginSmall, nullptr, &Content);
+				Content.HSplitTop(LineSize, &Label, &Content);
+				TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
+				Ui()->DoLabel(&Label, Localize("Looks like you're on a server where this feature is forbidden"), 14.0f, TEXTALIGN_ML);
+				TextRender()->TextColor(TextRender()->DefaultTextColor());
 			}
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		}
