@@ -34,6 +34,7 @@ static constexpr const char *BESTCLIENT_SHOP_SEARCH_API_URL = "https://data.teew
 static constexpr CTimeout BESTCLIENT_SHOP_TIMEOUT{8000, 0, 1024, 8};
 static constexpr int64_t BESTCLIENT_SHOP_PAGE_MAX_RESPONSE_SIZE = 2 * 1024 * 1024;
 static constexpr int64_t BESTCLIENT_SHOP_IMAGE_MAX_RESPONSE_SIZE = 32 * 1024 * 1024;
+static constexpr int64_t BESTCLIENT_SHOP_AUDIO_MAX_RESPONSE_SIZE = 128 * 1024 * 1024;
 
 static constexpr float BESTCLIENT_SHOP_MARGIN = 10.0f;
 static constexpr float BESTCLIENT_SHOP_MARGIN_SMALL = 5.0f;
@@ -97,6 +98,7 @@ struct SBestClientShopItem
 	char m_aFilename[128]{};
 	char m_aUsername[64]{};
 	char m_aImageUrl[256]{};
+	char m_aDownloadUrl[256]{};
 	bool m_PreviewFailed = false;
 	int m_PreviewWidth = 0;
 	int m_PreviewHeight = 0;
@@ -1126,7 +1128,7 @@ static float BestClientShopListPreviewWidth(const SBestClientShopItem &Item, int
 	return Width;
 }
 
-static void BestClientShopBuildInstallUrls(const SBestClientShopItem &Item, std::vector<std::string> &vUrls)
+static void BestClientShopBuildInstallUrls(int Tab, const SBestClientShopItem &Item, std::vector<std::string> &vUrls)
 {
 	vUrls.clear();
 
@@ -1150,9 +1152,20 @@ static void BestClientShopBuildInstallUrls(const SBestClientShopItem &Item, std:
 		}
 	};
 
+	char aFallbackUrl[256];
+	if(Tab == BESTCLIENT_SHOP_AUDIO)
+	{
+		AddUrl(Item.m_aDownloadUrl);
+
+		str_format(aFallbackUrl, sizeof(aFallbackUrl), "%s/api/skins/%s?download=true", BESTCLIENT_SHOP_HOST, Item.m_aId);
+		AddUrl(aFallbackUrl);
+
+		str_format(aFallbackUrl, sizeof(aFallbackUrl), "%s/api/skins/%s?file=true", BESTCLIENT_SHOP_HOST, Item.m_aId);
+		AddUrl(aFallbackUrl);
+	}
+
 	AddUrl(Item.m_aImageUrl);
 
-	char aFallbackUrl[256];
 	str_format(aFallbackUrl, sizeof(aFallbackUrl), "%s/api/skins/%s?image=true", BESTCLIENT_SHOP_HOST, Item.m_aId);
 	AddUrl(aFallbackUrl);
 }
@@ -1383,6 +1396,14 @@ static void BestClientShopFinishFetch(CMenus *pMenus)
 			{
 				str_copy(Item.m_aImageUrl, pImageUrl, sizeof(Item.m_aImageUrl));
 			}
+			if(const char *pDownloadUrl = json_string_get(json_object_get(pSkin, "downloadUrl")); pDownloadUrl != nullptr)
+			{
+				str_copy(Item.m_aDownloadUrl, pDownloadUrl, sizeof(Item.m_aDownloadUrl));
+			}
+			else if(const char *pFileUrl = json_string_get(json_object_get(pSkin, "fileUrl")); pFileUrl != nullptr)
+			{
+				str_copy(Item.m_aDownloadUrl, pFileUrl, sizeof(Item.m_aDownloadUrl));
+			}
 			if(Item.m_aId[0] == '\0')
 			{
 				continue;
@@ -1481,7 +1502,10 @@ static void BestClientShopStartInstallRequest(CMenus *pMenus)
 	gs_BestClientShopState.m_pInstallTask = HttpGet(Url.c_str());
 	gs_BestClientShopState.m_pInstallTask->Timeout(BESTCLIENT_SHOP_TIMEOUT);
 	gs_BestClientShopState.m_pInstallTask->IpResolve(IPRESOLVE::V4);
-	gs_BestClientShopState.m_pInstallTask->MaxResponseSize(BESTCLIENT_SHOP_IMAGE_MAX_RESPONSE_SIZE);
+	const int64_t MaxResponseSize = gs_BestClientShopState.m_InstallTab == BESTCLIENT_SHOP_AUDIO ?
+											BESTCLIENT_SHOP_AUDIO_MAX_RESPONSE_SIZE :
+											BESTCLIENT_SHOP_IMAGE_MAX_RESPONSE_SIZE;
+	gs_BestClientShopState.m_pInstallTask->MaxResponseSize(MaxResponseSize);
 	gs_BestClientShopState.m_pInstallTask->LogProgress(HTTPLOG::NONE);
 	gs_BestClientShopState.m_pInstallTask->FailOnErrorStatus(false);
 
@@ -1498,7 +1522,7 @@ static void BestClientShopStartInstall(CMenus *pMenus, int Tab, const SBestClien
 	gs_BestClientShopState.m_InstallTab = Tab;
 	str_copy(gs_BestClientShopState.m_aInstallItemId, Item.m_aId, sizeof(gs_BestClientShopState.m_aInstallItemId));
 	BestClientShopNormalizeAssetName(Item.m_aName, Item.m_aFilename, gs_BestClientShopState.m_aInstallAssetName, sizeof(gs_BestClientShopState.m_aInstallAssetName));
-	BestClientShopBuildInstallUrls(Item, gs_BestClientShopState.m_vInstallUrls);
+	BestClientShopBuildInstallUrls(Tab, Item, gs_BestClientShopState.m_vInstallUrls);
 	BestClientShopStartInstallRequest(pMenus);
 }
 
