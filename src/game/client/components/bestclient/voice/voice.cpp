@@ -46,7 +46,7 @@ constexpr int PLAYBACK_MAX_RESYNC_FRAMES = BestClientVoice::FRAME_SIZE * 4;
 constexpr int MAX_PACKET_GAP_FOR_PLC = 3;
 constexpr int PEER_TIMEOUT_SECONDS = 10;
 constexpr int VOICE_TALKING_TIMEOUT_MS = 350;
-constexpr int VOICE_MAX_BITRATE_KBPS = 96;
+constexpr int VOICE_MAX_BITRATE_KBPS = 128;
 constexpr int VOICE_HEARTBEAT_SECONDS = 5;
 constexpr int VOICE_SERVER_STALE_SECONDS = 10;
 constexpr int VOICE_IDLE_SHUTDOWN_SECONDS = 5;
@@ -181,14 +181,15 @@ void ConfigureVoiceOpusEncoder(OpusEncoder *pEncoder, int BitrateKbps)
 	const int ClampedBitrate = std::clamp(BitrateKbps, 6, VOICE_MAX_BITRATE_KBPS);
 	opus_encoder_ctl(pEncoder, OPUS_SET_BITRATE(ClampedBitrate * 1000));
 	opus_encoder_ctl(pEncoder, OPUS_SET_VBR(1));
-	opus_encoder_ctl(pEncoder, OPUS_SET_VBR_CONSTRAINT(1));
+	opus_encoder_ctl(pEncoder, OPUS_SET_VBR_CONSTRAINT(0));
 	opus_encoder_ctl(pEncoder, OPUS_SET_COMPLEXITY(10));
 	opus_encoder_ctl(pEncoder, OPUS_SET_SIGNAL(OPUS_SIGNAL_VOICE));
+	opus_encoder_ctl(pEncoder, OPUS_SET_DTX(0));
 
 	// Client-side resilience. Server just relays Opus payloads.
-	// FEC is only used when packet loss percentage is > 0.
-	opus_encoder_ctl(pEncoder, OPUS_SET_INBAND_FEC(1));
-	opus_encoder_ctl(pEncoder, OPUS_SET_PACKET_LOSS_PERC(5));
+	// Start with full-quality mode and enable FEC/loss adaptation only when needed.
+	opus_encoder_ctl(pEncoder, OPUS_SET_INBAND_FEC(0));
+	opus_encoder_ctl(pEncoder, OPUS_SET_PACKET_LOSS_PERC(0));
 }
 
 std::string NormalizeVoiceNameKey(const char *pName)
@@ -417,6 +418,7 @@ void CVoiceChat::OnReset()
 	m_AutoActivationUntilTick = 0;
 	m_SendSequence = 0;
 	m_MicLevel = 0.0f;
+	m_MicLimiterGain = 1.0f;
 	m_VadNoiseFloor = 0.0f;
 	m_VadSpeechScore = 0.0f;
 	m_VadLastActivationLevel = 0.0f;
@@ -625,8 +627,8 @@ void CVoiceChat::OnUpdate()
 	{
 		ConfigureVoiceOpusEncoder(m_pEncoder, ClampedBitrate);
 		m_LastBitrate = ClampedBitrate;
-		m_LastEncoderLossPerc = 5;
-		m_LastEncoderFec = 1;
+		m_LastEncoderLossPerc = 0;
+		m_LastEncoderFec = 0;
 		m_LastEncoderTuneTick = 0;
 	}
 	TuneEncoderForNetwork();
@@ -1794,8 +1796,8 @@ bool CVoiceChat::CreateEncoder()
 	}
 	m_LastBitrate = std::clamp(g_Config.m_BcVoiceChatBitrate, 6, VOICE_MAX_BITRATE_KBPS);
 	ConfigureVoiceOpusEncoder(m_pEncoder, m_LastBitrate);
-	m_LastEncoderLossPerc = 5;
-	m_LastEncoderFec = 1;
+	m_LastEncoderLossPerc = 0;
+	m_LastEncoderFec = 0;
 	m_LastEncoderTuneTick = 0;
 	return true;
 }
@@ -1837,21 +1839,21 @@ void CVoiceChat::TuneEncoderForNetwork()
 	if(ActivePeerCount > 0)
 		LossAvg /= (float)ActivePeerCount;
 
-	int TargetLossPerc = 5;
-	int TargetFec = 1;
+	int TargetLossPerc = 0;
+	int TargetFec = 0;
 	if(ActivePeerCount > 0)
 	{
-		if(LossAvg <= 0.02f && JitterMax < 8.0f)
+		if(LossAvg <= 0.01f && JitterMax < 8.0f)
 		{
 			TargetLossPerc = 0;
 			TargetFec = 0;
 		}
-		else if(LossAvg <= 0.05f)
+		else if(LossAvg <= 0.03f)
 		{
 			TargetLossPerc = 5;
 			TargetFec = 1;
 		}
-		else if(LossAvg <= 0.10f)
+		else if(LossAvg <= 0.07f)
 		{
 			TargetLossPerc = 10;
 			TargetFec = 1;
@@ -2739,22 +2741,30 @@ void CVoiceChat::ProcessCapture()
 		int16_t aFrame[BestClientVoice::FRAME_SIZE];
 		m_CapturePcm.PopFront(aFrameRaw, BestClientVoice::FRAME_SIZE);
 
-		// Apply mic gain with a per-frame limiter to avoid hard clipping.
+		// Apply mic gain with a smooth limiter to avoid clipping/pumping artifacts ("robotic" voice).
 		const int MicGainPercent = std::clamp(g_Config.m_BcVoiceChatMicGain, 0, 300);
-		int Peak = 0;
+		int PeakBeforeLimiter = 0;
 		int aScaled[BestClientVoice::FRAME_SIZE];
 		for(int i = 0; i < BestClientVoice::FRAME_SIZE; ++i)
 		{
 			const int Scaled = (aFrameRaw[i] * MicGainPercent) / 100;
 			aScaled[i] = Scaled;
-			Peak = maximum(Peak, absolute(Scaled));
+			PeakBeforeLimiter = maximum(PeakBeforeLimiter, absolute(Scaled));
 		}
 		const int TargetPeak = 30000;
-		const float LimiterScale = (Peak > TargetPeak && Peak > 0) ? (TargetPeak / (float)Peak) : 1.0f;
+		const float RequiredLimiterScale = (PeakBeforeLimiter > TargetPeak && PeakBeforeLimiter > 0) ? (TargetPeak / (float)PeakBeforeLimiter) : 1.0f;
+		if(RequiredLimiterScale < m_MicLimiterGain)
+			m_MicLimiterGain = mix(m_MicLimiterGain, RequiredLimiterScale, 0.45f);
+		else
+			m_MicLimiterGain = mix(m_MicLimiterGain, RequiredLimiterScale, 0.05f);
+		m_MicLimiterGain = std::clamp(m_MicLimiterGain, 0.10f, 1.0f);
+
+		int Peak = 0;
 		for(int i = 0; i < BestClientVoice::FRAME_SIZE; ++i)
 		{
-			const int Out = round_to_int(aScaled[i] * LimiterScale);
+			const int Out = round_to_int(aScaled[i] * m_MicLimiterGain);
 			aFrame[i] = (int16_t)std::clamp(Out, (int)std::numeric_limits<int16_t>::min(), (int)std::numeric_limits<int16_t>::max());
+			Peak = maximum(Peak, absolute(Out));
 		}
 
 		int64_t AvgLevel = 0;

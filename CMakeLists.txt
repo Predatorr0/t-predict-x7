@@ -172,12 +172,6 @@ option(FUSE_LD "Linker to use" OFF)
 option(SECURITY_COMPILER_FLAGS "Whether to set security-relevant compiler flags like -D_FORTIFY_SOURCE=2 and -fstack-protector-strong" ON)
 option(MACOS_CODESIGN "Whether to sign code when building the DMG on macOS" OFF)
 
-if(TARGET_OS STREQUAL "windows")
-  # Keep FFmpeg-dependent features enabled on Windows without requiring
-  # -DVIDEORECORDER=ON on every configure.
-  set(VIDEORECORDER ON CACHE BOOL "Enable video recording support via FFmpeg" FORCE)
-endif()
-
 if(TARGET_OS STREQUAL "mac" AND DEFINED ENV{MACOS_APP_IDENTITY})
   set(MACOS_APP_IDENTITY "$ENV{MACOS_APP_IDENTITY}")
 endif()
@@ -593,6 +587,13 @@ if(CLIENT AND VIDEORECORDER)
     endif()
   else()
     find_package(FFMPEG)
+  endif()
+
+  if(NOT FFMPEG_FOUND)
+    message(WARNING "FFmpeg not found, disabling VIDEORECORDER for this configure.")
+    set(VIDEORECORDER OFF CACHE BOOL "Enable video recording support via FFmpeg" FORCE)
+    set(FFMPEG_LIBRARIES "")
+    set(FFMPEG_INCLUDE_DIRS "")
   endif()
 endif()
 find_package(Freetype)

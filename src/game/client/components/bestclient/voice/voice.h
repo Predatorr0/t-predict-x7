@@ -211,6 +211,7 @@ private:
 	bool m_PushToTalkPressed = false;
 	int64_t m_AutoActivationUntilTick = 0;
 	float m_MicLevel = 0.0f;
+	float m_MicLimiterGain = 1.0f;
 	float m_VadNoiseFloor = 0.0f;
 	float m_VadSpeechScore = 0.0f;
 	float m_VadLastActivationLevel = 0.0f;
