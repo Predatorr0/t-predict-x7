@@ -31,7 +31,7 @@ extern const char *GIT_SHORTREV_HASH;
 #endif
 
 // custom
-#define CLIENT_NAME "TClient"
+#define CLIENT_NAME "BestClient"
 #define CLIENT_RELEASE_VERSION TCLIENT_VERSION
 
 #endif

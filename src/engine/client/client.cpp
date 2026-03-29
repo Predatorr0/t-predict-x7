@@ -216,16 +216,16 @@ int CClient::SendMsgActive(CMsgPacker *pMsg, int Flags)
 	return SendMsg(g_Config.m_ClDummy, pMsg, Flags);
 }
 
-void CClient::SendTClientInfo(int Conn)
+void CClient::SendBClientInfo(int Conn)
 {
-	CMsgPacker Msg(NETMSG_IAMTATER, true);
-	Msg.AddString(TCLIENT_VERSION " built on " __DATE__ ", " __TIME__);
+	CMsgPacker Msg(NETMSG_IAMBESTCLIENT, true);
+	Msg.AddString(BESTCLIENT_VERSION " built on " __DATE__ ", " __TIME__);
 	SendMsg(Conn, &Msg, MSGFLAG_VITAL);
 }
 
 void CClient::SendInfo(int Conn)
 {
-	SendTClientInfo(Conn);
+	SendBClientInfo(Conn);
 
 	CMsgPacker MsgVer(NETMSG_CLIENTVER, true);
 	MsgVer.AddRaw(&m_ConnectionId, sizeof(m_ConnectionId));
