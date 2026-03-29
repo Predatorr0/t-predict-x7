@@ -37,13 +37,12 @@
 namespace
 {
 constexpr int CAPTURE_READ_SAMPLES = 4096;
-constexpr int MAX_RECEIVE_PACKETS_PER_TICK = 64;
+constexpr int MAX_RECEIVE_PACKETS_PER_TICK = 256;
 constexpr int MAX_CAPTURE_QUEUE_SAMPLES = BestClientVoice::SAMPLE_RATE * 2;
 constexpr int MAX_DECODED_QUEUE_SAMPLES = BestClientVoice::FRAME_SIZE * 8;
 constexpr int MAX_MIC_MONITOR_QUEUE_SAMPLES = BestClientVoice::SAMPLE_RATE * 2;
-constexpr int PLAYBACK_TARGET_FRAMES = BestClientVoice::FRAME_SIZE * 3;
-constexpr int PLAYBACK_MAX_RESYNC_FRAMES = BestClientVoice::FRAME_SIZE * 4;
-constexpr int MAX_PACKET_GAP_FOR_PLC = 3;
+constexpr int PLAYBACK_TARGET_FRAMES = BestClientVoice::FRAME_SIZE * 4;
+constexpr int PLAYBACK_MAX_RESYNC_FRAMES = BestClientVoice::FRAME_SIZE * 8;
 constexpr int PEER_TIMEOUT_SECONDS = 10;
 constexpr int VOICE_TALKING_TIMEOUT_MS = 350;
 constexpr int VOICE_MAX_BITRATE_KBPS = 96;
@@ -167,10 +166,27 @@ const char *GetAudioDeviceNameByIndex(int IsCapture, int Index)
 	return SDL_GetAudioDeviceName(Index, IsCapture);
 }
 
-bool IsForwardSequence(uint16_t LastSequence, uint16_t NewSequence)
+int SequenceDelta(uint16_t NewSequence, uint16_t OldSequence)
 {
-	const uint16_t Delta = (uint16_t)(NewSequence - LastSequence);
-	return Delta != 0 && Delta < 0x8000;
+	return (int)(int16_t)(NewSequence - OldSequence);
+}
+
+bool SequenceLess(uint16_t Left, uint16_t Right)
+{
+	return (int16_t)(Left - Right) < 0;
+}
+
+int ClampJitterTargetFrames(float JitterMs)
+{
+	if(JitterMs <= 8.0f)
+		return 2;
+	if(JitterMs <= 14.0f)
+		return 3;
+	if(JitterMs <= 22.0f)
+		return 4;
+	if(JitterMs <= 32.0f)
+		return 5;
+	return 6;
 }
 
 void ConfigureVoiceOpusEncoder(OpusEncoder *pEncoder, int BitrateKbps)
@@ -2470,6 +2486,26 @@ void CVoiceChat::ProcessNetwork()
 		if(SenderId == m_ClientVoiceId)
 			continue;
 
+		auto ResetPeerStream = [](CRemotePeer &TargetPeer) {
+			TargetPeer.m_DecodedPcm.Clear();
+			for(auto &Pkt : TargetPeer.m_aJitterPackets)
+			{
+				Pkt.m_Valid = false;
+				Pkt.m_Sequence = 0;
+				Pkt.m_Size = 0;
+			}
+			TargetPeer.m_QueuedJitterPackets = 0;
+			TargetPeer.m_HasSequence = false;
+			TargetPeer.m_HasLastRecvSequence = false;
+			TargetPeer.m_HasNextDecodeSequence = false;
+			TargetPeer.m_NextDecodeSequence = 0;
+			TargetPeer.m_LastSequence = 0;
+			TargetPeer.m_ConsecutiveDecodeFails = 0;
+			TargetPeer.m_LossEwma = 0.0f;
+			if(TargetPeer.m_pDecoder)
+				opus_decoder_ctl(TargetPeer.m_pDecoder, OPUS_RESET_STATE);
+		};
+
 		auto ItPeer = m_Peers.find(SenderId);
 		if(ItPeer == m_Peers.end())
 		{
@@ -2488,6 +2524,22 @@ void CVoiceChat::ProcessNetwork()
 		Peer.m_Team = Team;
 		Peer.m_Position = vec2((float)PosX, (float)PosY);
 		const int64_t Now = time_get();
+
+		bool ResetStream = false;
+		if(Peer.m_LastArrivalTick > 0)
+		{
+			if(Now - Peer.m_LastArrivalTick > 2 * time_freq())
+				ResetStream = true;
+			else if(Peer.m_HasLastRecvSequence)
+			{
+				const int DeltaPackets = SequenceDelta(Sequence, Peer.m_LastRecvSequence);
+				if(DeltaPackets > CRemotePeer::MAX_JITTER_PACKETS * 8 || DeltaPackets < -CRemotePeer::MAX_JITTER_PACKETS * 2)
+					ResetStream = true;
+			}
+		}
+		if(ResetStream)
+			ResetPeerStream(Peer);
+
 		if(Peer.m_LastArrivalTick > 0)
 		{
 			const float DeltaMs = (float)((Now - Peer.m_LastArrivalTick) * 1000.0 / (double)time_freq());
@@ -2496,6 +2548,73 @@ void CVoiceChat::ProcessNetwork()
 		}
 		Peer.m_LastArrivalTick = Now;
 		Peer.m_LastReceiveTick = Now;
+
+		int TargetJitterFrames = ClampJitterTargetFrames(Peer.m_JitterMs);
+		if(Peer.m_HasLastRecvSequence)
+		{
+			const int DeltaPackets = SequenceDelta(Sequence, Peer.m_LastRecvSequence);
+			if(DeltaPackets > 0 && DeltaPackets < 1000)
+			{
+				const int LostPackets = maximum(0, DeltaPackets - 1);
+				const float LossRatio = std::clamp(LostPackets / (float)DeltaPackets, 0.0f, 1.0f);
+				Peer.m_LossEwma = Peer.m_LossEwma <= 0.0f ? LossRatio : (0.9f * Peer.m_LossEwma + 0.1f * LossRatio);
+			}
+			const uint16_t Expected = (uint16_t)(Peer.m_LastRecvSequence + 1);
+			if(Sequence != Expected)
+				TargetJitterFrames = minimum(TargetJitterFrames + 1, 6);
+		}
+		Peer.m_TargetJitterFrames = TargetJitterFrames;
+		if(!Peer.m_HasLastRecvSequence || SequenceLess(Peer.m_LastRecvSequence, Sequence))
+			Peer.m_LastRecvSequence = Sequence;
+		Peer.m_HasLastRecvSequence = true;
+		if(Peer.m_HasNextDecodeSequence && SequenceLess(Sequence, Peer.m_NextDecodeSequence))
+			continue;
+
+		const int Slot = Sequence % CRemotePeer::MAX_JITTER_PACKETS;
+		CRemotePeer::SJitterPacket &Pkt = Peer.m_aJitterPackets[Slot];
+		if(Pkt.m_Valid && Pkt.m_Sequence != Sequence)
+			Peer.m_QueuedJitterPackets = maximum(0, Peer.m_QueuedJitterPackets - 1);
+		if(!Pkt.m_Valid || Pkt.m_Sequence != Sequence)
+			Peer.m_QueuedJitterPackets = minimum(Peer.m_QueuedJitterPackets + 1, CRemotePeer::MAX_JITTER_PACKETS);
+		Pkt.m_Valid = true;
+		Pkt.m_Sequence = Sequence;
+		Pkt.m_Size = OpusSize;
+		mem_copy(Pkt.m_aData.data(), pRawData + Offset, OpusSize);
+	}
+
+	for(auto &PeerPair : m_Peers)
+	{
+		CRemotePeer &Peer = PeerPair.second;
+		if(Peer.m_QueuedJitterPackets <= 0)
+			continue;
+
+		if(!Peer.m_HasNextDecodeSequence)
+		{
+			if(Peer.m_QueuedJitterPackets < maximum(2, Peer.m_TargetJitterFrames))
+				continue;
+
+			bool FoundStart = false;
+			uint16_t StartSequence = 0;
+			for(const auto &QueuedPkt : Peer.m_aJitterPackets)
+			{
+				if(!QueuedPkt.m_Valid)
+					continue;
+				if(!FoundStart || SequenceLess(QueuedPkt.m_Sequence, StartSequence))
+				{
+					StartSequence = QueuedPkt.m_Sequence;
+					FoundStart = true;
+				}
+			}
+			if(!FoundStart)
+				continue;
+
+			Peer.m_NextDecodeSequence = StartSequence;
+			Peer.m_HasNextDecodeSequence = true;
+			Peer.m_HasSequence = false;
+			Peer.m_ConsecutiveDecodeFails = 0;
+			if(Peer.m_pDecoder)
+				opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
+		}
 
 		if(!Peer.m_pDecoder)
 		{
@@ -2508,86 +2627,74 @@ void CVoiceChat::ProcessNetwork()
 			}
 		}
 
-		int16_t aDecoded[BestClientVoice::FRAME_SIZE];
-		if(Peer.m_HasSequence)
+		int FramesDecodedThisUpdate = 0;
+		while(FramesDecodedThisUpdate < 2)
 		{
-			if(!IsForwardSequence(Peer.m_LastSequence, Sequence))
-				continue;
+			if(Peer.m_DecodedPcm.Size() >= PLAYBACK_MAX_RESYNC_FRAMES)
+				break;
 
-			const uint16_t Expected = (uint16_t)(Peer.m_LastSequence + 1);
-			const uint16_t MissingPackets = (uint16_t)(Sequence - Expected);
-			const int DeltaPackets = (int)MissingPackets + 1;
-			const float LossRatio = std::clamp(MissingPackets / (float)maximum(DeltaPackets, 1), 0.0f, 1.0f);
-			Peer.m_LossEwma = Peer.m_LossEwma <= 0.0f ? LossRatio : (0.9f * Peer.m_LossEwma + 0.1f * LossRatio);
-			if(MissingPackets > 0)
+			const uint16_t DecodeSequence = Peer.m_NextDecodeSequence;
+			const int PktSlot = DecodeSequence % CRemotePeer::MAX_JITTER_PACKETS;
+			CRemotePeer::SJitterPacket *pPkt = nullptr;
+			if(Peer.m_aJitterPackets[PktSlot].m_Valid && Peer.m_aJitterPackets[PktSlot].m_Sequence == DecodeSequence)
+				pPkt = &Peer.m_aJitterPackets[PktSlot];
+
+			const uint16_t NextSequence = (uint16_t)(DecodeSequence + 1);
+			const int NextSlot = NextSequence % CRemotePeer::MAX_JITTER_PACKETS;
+			CRemotePeer::SJitterPacket *pNextPkt = nullptr;
+			if(Peer.m_aJitterPackets[NextSlot].m_Valid && Peer.m_aJitterPackets[NextSlot].m_Sequence == NextSequence)
+				pNextPkt = &Peer.m_aJitterPackets[NextSlot];
+
+			int16_t aDecoded[BestClientVoice::FRAME_SIZE];
+			int DecodedSamples = 0;
+			bool ConsumedPacket = false;
+
+			if(pPkt)
 			{
-				if(MissingPackets > MAX_PACKET_GAP_FOR_PLC)
+				DecodedSamples = opus_decode(Peer.m_pDecoder, pPkt->m_aData.data(), pPkt->m_Size, aDecoded, BestClientVoice::FRAME_SIZE, 0);
+				pPkt->m_Valid = false;
+				Peer.m_QueuedJitterPackets = maximum(0, Peer.m_QueuedJitterPackets - 1);
+				ConsumedPacket = true;
+			}
+			else if(pNextPkt && Peer.m_HasSequence && Peer.m_LossEwma > 0.02f)
+			{
+				DecodedSamples = opus_decode(Peer.m_pDecoder, pNextPkt->m_aData.data(), pNextPkt->m_Size, aDecoded, BestClientVoice::FRAME_SIZE, 1);
+				if(DecodedSamples <= 0)
+					DecodedSamples = opus_decode(Peer.m_pDecoder, nullptr, 0, aDecoded, BestClientVoice::FRAME_SIZE, 0);
+			}
+			else if(Peer.m_HasSequence)
+			{
+				DecodedSamples = opus_decode(Peer.m_pDecoder, nullptr, 0, aDecoded, BestClientVoice::FRAME_SIZE, 0);
+			}
+
+			if(DecodedSamples <= 0)
+			{
+				++Peer.m_ConsecutiveDecodeFails;
+				if(Peer.m_ConsecutiveDecodeFails >= 3 && Peer.m_pDecoder)
 				{
-					Peer.m_DecodedPcm.Clear();
-					if(Peer.m_pDecoder)
-						opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
+					opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
+					Peer.m_ConsecutiveDecodeFails = 0;
 					Peer.m_HasSequence = false;
 				}
-				else
-				{
-					// If only one packet is missing, attempt Opus in-band FEC from the current packet.
-					if(MissingPackets == 1)
-					{
-						const int FecSamples = opus_decode(Peer.m_pDecoder, pRawData + Offset, OpusSize, aDecoded, BestClientVoice::FRAME_SIZE, 1);
-						if(FecSamples > 0)
-						{
-							const size_t Dropped = Peer.m_DecodedPcm.PushBack(aDecoded, (size_t)FecSamples);
-							if(Dropped > 0 && Peer.m_DecodedPcm.Size() > PLAYBACK_MAX_RESYNC_FRAMES)
-								Peer.m_DecodedPcm.DiscardFront(Peer.m_DecodedPcm.Size() - PLAYBACK_MAX_RESYNC_FRAMES);
-						}
-						else
-						{
-							const int PlcSamples = opus_decode(Peer.m_pDecoder, nullptr, 0, aDecoded, BestClientVoice::FRAME_SIZE, 0);
-							if(PlcSamples > 0)
-							{
-								const size_t Dropped = Peer.m_DecodedPcm.PushBack(aDecoded, (size_t)PlcSamples);
-								if(Dropped > 0 && Peer.m_DecodedPcm.Size() > PLAYBACK_MAX_RESYNC_FRAMES)
-									Peer.m_DecodedPcm.DiscardFront(Peer.m_DecodedPcm.Size() - PLAYBACK_MAX_RESYNC_FRAMES);
-							}
-						}
-					}
-					else
-					{
-						for(uint16_t Missing = 0; Missing < MissingPackets; ++Missing)
-						{
-							const int PlcSamples = opus_decode(Peer.m_pDecoder, nullptr, 0, aDecoded, BestClientVoice::FRAME_SIZE, 0);
-							if(PlcSamples <= 0)
-								break;
-							const size_t Dropped = Peer.m_DecodedPcm.PushBack(aDecoded, (size_t)PlcSamples);
-							if(Dropped > 0 && Peer.m_DecodedPcm.Size() > PLAYBACK_MAX_RESYNC_FRAMES)
-								Peer.m_DecodedPcm.DiscardFront(Peer.m_DecodedPcm.Size() - PLAYBACK_MAX_RESYNC_FRAMES);
-						}
-					}
-				}
+				if(!ConsumedPacket)
+					break;
 			}
-		}
-
-		const int DecodedSamples = opus_decode(Peer.m_pDecoder, pRawData + Offset, OpusSize, aDecoded, BestClientVoice::FRAME_SIZE, 0);
-		if(DecodedSamples <= 0)
-		{
-			++Peer.m_ConsecutiveDecodeFails;
-			if(Peer.m_ConsecutiveDecodeFails >= 3 && Peer.m_pDecoder)
+			else
 			{
-				opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
 				Peer.m_ConsecutiveDecodeFails = 0;
+				Peer.m_LastVoiceTick = time_get();
+				m_TalkingStateDirty = true;
+
+				const size_t Dropped = Peer.m_DecodedPcm.PushBack(aDecoded, (size_t)DecodedSamples);
+				if(Dropped > 0 && Peer.m_DecodedPcm.Size() > PLAYBACK_MAX_RESYNC_FRAMES)
+					Peer.m_DecodedPcm.DiscardFront(Peer.m_DecodedPcm.Size() - PLAYBACK_MAX_RESYNC_FRAMES);
 			}
-			continue;
+
+			Peer.m_LastSequence = DecodeSequence;
+			Peer.m_HasSequence = DecodedSamples > 0 || Peer.m_HasSequence;
+			Peer.m_NextDecodeSequence = (uint16_t)(DecodeSequence + 1);
+			++FramesDecodedThisUpdate;
 		}
-
-		Peer.m_ConsecutiveDecodeFails = 0;
-		Peer.m_LastSequence = Sequence;
-		Peer.m_HasSequence = true;
-		Peer.m_LastVoiceTick = Now;
-		m_TalkingStateDirty = true;
-
-		const size_t Dropped = Peer.m_DecodedPcm.PushBack(aDecoded, (size_t)DecodedSamples);
-		if(Dropped > 0 && Peer.m_DecodedPcm.Size() > PLAYBACK_MAX_RESYNC_FRAMES)
-			Peer.m_DecodedPcm.DiscardFront(Peer.m_DecodedPcm.Size() - PLAYBACK_MAX_RESYNC_FRAMES);
 	}
 }
 
@@ -2908,8 +3015,19 @@ void CVoiceChat::ProcessPlayback()
 		m_MicMonitorPcm.Clear();
 		for(auto &PeerPair : m_Peers)
 		{
-			PeerPair.second.m_DecodedPcm.Clear();
-			PeerPair.second.m_LastVoiceTick = 0;
+			CRemotePeer &Peer = PeerPair.second;
+			Peer.m_DecodedPcm.Clear();
+			Peer.m_LastVoiceTick = 0;
+			Peer.m_QueuedJitterPackets = 0;
+			Peer.m_HasSequence = false;
+			Peer.m_HasLastRecvSequence = false;
+			Peer.m_HasNextDecodeSequence = false;
+			Peer.m_NextDecodeSequence = 0;
+			Peer.m_LastSequence = 0;
+			for(auto &Pkt : Peer.m_aJitterPackets)
+				Pkt.m_Valid = false;
+			if(Peer.m_pDecoder)
+				opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
 		}
 		m_TalkingStateDirty = true;
 		return;
