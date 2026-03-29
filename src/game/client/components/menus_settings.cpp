@@ -3677,6 +3677,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_GAMEPLAY_HOOK_COMBO))
 		{
 			static float s_HookComboPhase = 0.0f;
+			static CButtonContainer s_HookComboResetButton;
 			const bool HookComboExpanded = g_Config.m_BcHookCombo != 0;
 			UpdateRevealPhase(s_HookComboPhase, HookComboExpanded);
 			const float ExpandedTargetHeight = MarginSmall + LineSize * 5.0f;
@@ -3686,11 +3687,23 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
-			Ui()->DoLabel(&Label, Localize("Hook combo"), HeadlineFontSize, TEXTALIGN_ML);
+			CUIRect TitleLabel, ResetButton, ResetHitbox;
+			Label.VSplitRight(LineSize + 8.0f, &TitleLabel, &ResetButton);
+			ResetHitbox = ResetButton;
+			const bool HookComboResetClicked = Ui()->DoButton_FontIcon(&s_HookComboResetButton, FontIcon::ARROW_ROTATE_LEFT, 0, &ResetHitbox, BUTTONFLAG_LEFT);
+			GameClient()->m_Tooltips.DoToolTip(&s_HookComboResetButton, &ResetHitbox, Localize("Reset to defaults"));
+			if(HookComboResetClicked)
+			{
+				g_Config.m_BcHookComboMode = DefaultConfig::BcHookComboMode;
+				g_Config.m_BcHookComboResetTime = DefaultConfig::BcHookComboResetTime;
+				g_Config.m_BcHookComboSoundVolume = DefaultConfig::BcHookComboSoundVolume;
+				g_Config.m_BcHookComboSize = DefaultConfig::BcHookComboSize;
+			}
+			Ui()->DoLabel(&TitleLabel, Localize("Hook combo"), HeadlineFontSize, TEXTALIGN_ML);
 			Content.HSplitTop(MarginSmall, nullptr, &Content);
 
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcHookCombo, Localize("Enable hook combo effect"), &g_Config.m_BcHookCombo, &Content, LineSize);
-			if(ExpandedHeight > 0.0f)
+			if(!HookComboResetClicked && ExpandedHeight > 0.0f)
 			{
 				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
 				Ui()->ClipEnable(&Visible);
@@ -5700,6 +5713,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_CHAT_BUBBLES))
 		{
 			static float s_BcChatBubblesPhase = 0.0f;
+			static CButtonContainer s_ChatBubblesResetButton;
 			const bool ChatBubblesEnabled = g_Config.m_BcChatBubbles != 0;
 			UpdateRevealPhase(s_BcChatBubblesPhase, ChatBubblesEnabled);
 			const float ExtraTargetHeight = MarginSmall + 6.0f * LineSize;
@@ -5708,12 +5722,26 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
-			Ui()->DoLabel(&Label, Localize("Chat Bubbles"), HeadlineFontSize, TEXTALIGN_ML);
+			CUIRect TitleLabel, ResetButton, ResetHitbox;
+			Label.VSplitRight(LineSize + 8.0f, &TitleLabel, &ResetButton);
+			ResetHitbox = ResetButton;
+			const bool ChatBubblesResetClicked = Ui()->DoButton_FontIcon(&s_ChatBubblesResetButton, FontIcon::ARROW_ROTATE_LEFT, 0, &ResetHitbox, BUTTONFLAG_LEFT);
+			GameClient()->m_Tooltips.DoToolTip(&s_ChatBubblesResetButton, &ResetHitbox, Localize("Reset to defaults"));
+			if(ChatBubblesResetClicked)
+			{
+				g_Config.m_BcChatBubblesDemo = DefaultConfig::BcChatBubblesDemo;
+				g_Config.m_BcChatBubblesSelf = DefaultConfig::BcChatBubblesSelf;
+				g_Config.m_BcChatBubbleSize = DefaultConfig::BcChatBubbleSize;
+				g_Config.m_BcChatBubbleShowTime = DefaultConfig::BcChatBubbleShowTime;
+				g_Config.m_BcChatBubbleFadeIn = DefaultConfig::BcChatBubbleFadeIn;
+				g_Config.m_BcChatBubbleFadeOut = DefaultConfig::BcChatBubbleFadeOut;
+			}
+			Ui()->DoLabel(&TitleLabel, Localize("Chat Bubbles"), HeadlineFontSize, TEXTALIGN_ML);
 			Content.HSplitTop(MarginSmall, nullptr, &Content);
 
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatBubbles, Localize("Chat Bubbles"), &g_Config.m_BcChatBubbles, &Content, LineSize);
 			const float ExtraHeight = ExtraTargetHeight * s_BcChatBubblesPhase;
-			if(ExtraHeight > 0.0f)
+			if(!ChatBubblesResetClicked && ExtraHeight > 0.0f)
 			{
 				Content.HSplitTop(ExtraHeight, &Visible, &Content);
 				Ui()->ClipEnable(&Visible);
