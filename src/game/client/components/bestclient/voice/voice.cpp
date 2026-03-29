@@ -56,6 +56,7 @@ constexpr float PANEL_ROW_HEIGHT = 48.0f;
 constexpr int SERVER_LIST_PING_TIMEOUT_SEC = 2;
 constexpr int SERVER_LIST_PING_INTERVAL_SEC = 30;
 constexpr const char *VOICE_MASTER_LIST_URL = "https://150.241.70.188:3000/voice/servers.json";
+constexpr const char *DEFAULT_VOICE_SERVER_ADDRESS = "150.241.70.188:8777";
 
 enum
 {
@@ -142,6 +143,17 @@ void ToggleVoiceHeadphonesMute()
 		g_Config.m_BcVoiceChatMicMuted = 1;
 	else
 		g_Config.m_BcVoiceChatMicMuted = 0;
+}
+
+bool IsLegacyVoiceServerAddress(const char *pAddress)
+{
+	return !pAddress || pAddress[0] == '\0' || str_comp(pAddress, "127.0.0.1:8777") == 0 || str_comp(pAddress, "localhost:8777") == 0;
+}
+
+void EnsureDefaultVoiceServerAddress()
+{
+	if(IsLegacyVoiceServerAddress(g_Config.m_BcVoiceChatServerAddress))
+		str_copy(g_Config.m_BcVoiceChatServerAddress, DEFAULT_VOICE_SERVER_ADDRESS, sizeof(g_Config.m_BcVoiceChatServerAddress));
 }
 
 const char *GetAudioDeviceNameByIndex(int IsCapture, int Index)
@@ -410,6 +422,7 @@ void CVoiceChat::OnUpdate()
 {
 	const int64_t PerfStart = time_get();
 	const bool Online = Client()->State() == IClient::STATE_ONLINE;
+	EnsureDefaultVoiceServerAddress();
 
 	if(g_Config.m_BcVoiceChatHeadphonesMuted && !g_Config.m_BcVoiceChatMicMuted)
 		g_Config.m_BcVoiceChatMicMuted = 1;
@@ -711,6 +724,16 @@ bool CVoiceChat::TryHandleChatCommand(const char *pLine)
 		return true;
 	};
 
+	if(str_startswith_nocase(p, "!voicegroup"))
+	{
+		const char NextChar = p[11];
+		if(NextChar == '\0' || std::isspace((unsigned char)NextChar))
+		{
+			GameClient()->m_Chat.Echo("Voicegroup chat commands are disabled");
+			return true;
+		}
+	}
+
 	// !voice ...
 	if(!str_startswith_nocase(p, "!voice"))
 		return false;
@@ -721,136 +744,7 @@ bool CVoiceChat::TryHandleChatCommand(const char *pLine)
 	char aSub[32];
 	if(!ReadToken(p, aSub, sizeof(aSub)))
 	{
-		GameClient()->m_Chat.Echo("Usage: !voice on/off/status/mode/server/mute/unmute/volume");
-		return true;
-	}
-
-	auto RestartIfOnline = [&]() {
-		if(Client()->State() == IClient::STATE_ONLINE && g_Config.m_BcVoiceChatEnable)
-		{
-			if(m_Socket)
-				StopVoice();
-			m_RuntimeState = RUNTIME_RECONNECTING;
-			StartVoice();
-		}
-	};
-
-	if(str_comp_nocase(aSub, "on") == 0)
-	{
-		g_Config.m_BcVoiceChatEnable = 1;
-		if(Client()->State() == IClient::STATE_ONLINE && !m_Socket)
-			StartVoice();
-		GameClient()->m_Chat.Echo("Voice: enabled");
-		return true;
-	}
-	if(str_comp_nocase(aSub, "off") == 0)
-	{
-		g_Config.m_BcVoiceChatEnable = 0;
-		if(m_Socket)
-			StopVoice();
-		GameClient()->m_Chat.Echo("Voice: disabled");
-		return true;
-	}
-	if(str_comp_nocase(aSub, "status") == 0)
-	{
-		char aBuf[256];
-		const char *pMode = g_Config.m_BcVoiceChatActivationMode == 1 ? "ppt" : "automatic";
-		str_format(aBuf, sizeof(aBuf), "Voice: %s | %s | server=%s | mode=%s",
-			g_Config.m_BcVoiceChatEnable ? "on" : "off",
-			m_Registered ? "connected" : "disconnected",
-			g_Config.m_BcVoiceChatServerAddress,
-			pMode);
-		GameClient()->m_Chat.Echo(aBuf);
-
-		if(m_vServerEntries.empty())
-		{
-			GameClient()->m_Chat.Echo("Voice servers: not loaded (open panel or use !voice server reload)");
-			return true;
-		}
-
-		GameClient()->m_Chat.Echo("Voice servers:");
-		for(size_t i = 0; i < m_vServerEntries.size(); ++i)
-		{
-			const auto &Entry = m_vServerEntries[i];
-			char aPing[16];
-			if(Entry.m_PingMs >= 0)
-				str_format(aPing, sizeof(aPing), "%dms", Entry.m_PingMs);
-			else
-				str_copy(aPing, "--", sizeof(aPing));
-			str_format(aBuf, sizeof(aBuf), "  %d) %s (%s) %s", (int)i + 1, Entry.m_Name.c_str(), Entry.m_Address.c_str(), aPing);
-			GameClient()->m_Chat.Echo(aBuf);
-		}
-		return true;
-	}
-	if(str_comp_nocase(aSub, "mode") == 0)
-	{
-		char aArg[32];
-		if(!ReadToken(p, aArg, sizeof(aArg)))
-		{
-			GameClient()->m_Chat.Echo(g_Config.m_BcVoiceChatActivationMode == 1 ? "Voice mode: ppt" : "Voice mode: automatic");
-			return true;
-		}
-
-		if(str_comp_nocase(aArg, "ppt") == 0 || str_comp_nocase(aArg, "ptt") == 0)
-		{
-			g_Config.m_BcVoiceChatActivationMode = 1;
-			GameClient()->m_Chat.Echo("Voice mode: ppt");
-			return true;
-		}
-		if(str_comp_nocase(aArg, "automatic") == 0 || str_comp_nocase(aArg, "auto") == 0)
-		{
-			g_Config.m_BcVoiceChatActivationMode = 0;
-			GameClient()->m_Chat.Echo("Voice mode: automatic");
-			return true;
-		}
-
-		GameClient()->m_Chat.Echo("Usage: !voice mode automatic|ppt");
-		return true;
-	}
-	if(str_comp_nocase(aSub, "server") == 0)
-	{
-		char aArg[128];
-		if(!ReadToken(p, aArg, sizeof(aArg)))
-		{
-			GameClient()->m_Chat.Echo("Usage: !voice server <index|address|reload>");
-			if(!m_vServerEntries.empty())
-				GameClient()->m_Chat.Echo("Tip: !voice status shows server list with indices");
-			return true;
-		}
-
-		if(str_comp_nocase(aArg, "reload") == 0)
-		{
-			ResetServerListTask();
-			CloseServerListPingSocket();
-			m_vServerEntries.clear();
-			m_ServerRowButtons.clear();
-			m_SelectedServerIndex = -1;
-			FetchServerList();
-			GameClient()->m_Chat.Echo("Voice servers: reloading...");
-			return true;
-		}
-
-		const int Index = str_toint(aArg);
-		if(Index > 0 && Index <= (int)m_vServerEntries.size())
-		{
-			const auto &Entry = m_vServerEntries[(size_t)Index - 1];
-			if(str_comp(g_Config.m_BcVoiceChatServerAddress, Entry.m_Address.c_str()) != 0)
-			{
-				str_copy(g_Config.m_BcVoiceChatServerAddress, Entry.m_Address.c_str(), sizeof(g_Config.m_BcVoiceChatServerAddress));
-				str_copy(m_aLastServerAddr, g_Config.m_BcVoiceChatServerAddress, sizeof(m_aLastServerAddr));
-				RestartIfOnline();
-			}
-			char aMsg[256];
-			str_format(aMsg, sizeof(aMsg), "Voice server: %s (%s)", Entry.m_Name.c_str(), Entry.m_Address.c_str());
-			GameClient()->m_Chat.Echo(aMsg);
-			return true;
-		}
-
-		// Allow setting a raw address directly.
-		str_copy(g_Config.m_BcVoiceChatServerAddress, aArg, sizeof(g_Config.m_BcVoiceChatServerAddress));
-		str_copy(m_aLastServerAddr, g_Config.m_BcVoiceChatServerAddress, sizeof(m_aLastServerAddr));
-		RestartIfOnline();
-		GameClient()->m_Chat.Echo("Voice server: updated");
+		GameClient()->m_Chat.Echo("Usage: !voice mute/unmute \"nickname\" | !voice volume \"nickname\" 0-100");
 		return true;
 	}
 	if(str_comp_nocase(aSub, "mute") == 0)
@@ -870,9 +764,11 @@ bool CVoiceChat::TryHandleChatCommand(const char *pLine)
 		}
 
 		if(m_MutedNameKeys.find(Key) != m_MutedNameKeys.end())
-			m_MutedNameKeys.erase(Key);
-		else
-			m_MutedNameKeys.insert(Key);
+		{
+			GameClient()->m_Chat.Echo("Voice mute: already muted");
+			return true;
+		}
+		m_MutedNameKeys.insert(Key);
 
 		char aOut[512];
 		WriteVoiceNameList(m_MutedNameKeys, aOut, sizeof(aOut));
@@ -880,7 +776,7 @@ bool CVoiceChat::TryHandleChatCommand(const char *pLine)
 		str_copy(m_aLastMutedNames, g_Config.m_BcVoiceChatMutedNames, sizeof(m_aLastMutedNames));
 		m_PeerListDirty = true;
 
-		GameClient()->m_Chat.Echo(m_MutedNameKeys.find(Key) != m_MutedNameKeys.end() ? "Voice mute: on" : "Voice mute: off");
+		GameClient()->m_Chat.Echo("Voice mute: ok");
 		return true;
 	}
 	if(str_comp_nocase(aSub, "unmute") == 0)
@@ -920,7 +816,7 @@ bool CVoiceChat::TryHandleChatCommand(const char *pLine)
 		char aValue[32];
 		if(!ReadToken(p, aName, sizeof(aName)) || !ReadToken(p, aValue, sizeof(aValue)))
 		{
-			GameClient()->m_Chat.Echo("Usage: !voice volume \"nickname\" <0-200>");
+			GameClient()->m_Chat.Echo("Usage: !voice volume \"nickname\" <0-100>");
 			return true;
 		}
 
@@ -931,7 +827,12 @@ bool CVoiceChat::TryHandleChatCommand(const char *pLine)
 			return true;
 		}
 
-		const int Percent = std::clamp(str_toint(aValue), 0, 200);
+		int Percent = 0;
+		if(!str_toint(aValue, &Percent) || Percent < 0 || Percent > 100)
+		{
+			GameClient()->m_Chat.Echo("Voice volume: value must be 0-100");
+			return true;
+		}
 		if(Percent == 100)
 			m_NameVolumePercent.erase(Key);
 		else
@@ -949,7 +850,7 @@ bool CVoiceChat::TryHandleChatCommand(const char *pLine)
 		return true;
 	}
 
-	GameClient()->m_Chat.Echo("Usage: !voice on/off/status/mode/server/mute/unmute/volume");
+	GameClient()->m_Chat.Echo("Usage: !voice mute/unmute \"nickname\" | !voice volume \"nickname\" 0-100");
 	return true;
 }
 
@@ -2664,11 +2565,7 @@ bool CVoiceChat::ShouldTransmit() const
 
 bool CVoiceChat::ShouldStartVoicePipeline(bool Online) const
 {
-	if(!Online || g_Config.m_BcVoiceChatEnable == 0)
-		return false;
-	if(g_Config.m_BcVoiceChatActivationMode == 0)
-		return true;
-	return m_PanelActive || m_PushToTalkPressed;
+	return Online && g_Config.m_BcVoiceChatEnable != 0;
 }
 
 bool CVoiceChat::HasPendingPlaybackAudio() const
@@ -2701,11 +2598,7 @@ bool CVoiceChat::HasRecentVoiceActivity(int64_t Now) const
 
 bool CVoiceChat::ShouldKeepVoicePipelineActive() const
 {
-	if(m_PanelActive)
-		return true;
-	if(g_Config.m_BcVoiceChatActivationMode == 0)
-		return true;
-	return HasRecentVoiceActivity(time_get());
+	return g_Config.m_BcVoiceChatEnable != 0;
 }
 
 int CVoiceChat::LocalTeam() const

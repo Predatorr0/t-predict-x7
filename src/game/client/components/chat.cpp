@@ -3461,7 +3461,6 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 			if(PlaceholderToken == 0)
 			{
 				apSuggestions[NumSuggestions++] = "!voice";
-				apSuggestions[NumSuggestions++] = "!voicegroup";
 			}
 			else
 			{
@@ -3469,49 +3468,9 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 				{
 					if(PlaceholderToken == 1)
 					{
-						apSuggestions[NumSuggestions++] = "on";
-						apSuggestions[NumSuggestions++] = "off";
-						apSuggestions[NumSuggestions++] = "status";
-						apSuggestions[NumSuggestions++] = "mode";
-						apSuggestions[NumSuggestions++] = "server";
 						apSuggestions[NumSuggestions++] = "mute";
 						apSuggestions[NumSuggestions++] = "unmute";
 						apSuggestions[NumSuggestions++] = "volume";
-					}
-					else if(PlaceholderToken == 2 && NumTokens >= 2)
-					{
-						char aSub[32];
-						str_truncate(aSub, sizeof(aSub), pInput + aTokenStarts[1], aTokenEnds[1] - aTokenStarts[1]);
-						if(str_comp_nocase(aSub, "mode") == 0)
-						{
-							apSuggestions[NumSuggestions++] = "automatic";
-							apSuggestions[NumSuggestions++] = "ppt";
-						}
-						else if(str_comp_nocase(aSub, "server") == 0)
-						{
-							apSuggestions[NumSuggestions++] = "reload";
-						}
-						else
-						{
-							return false;
-						}
-					}
-					else
-					{
-						return false;
-					}
-				}
-				else if(str_comp_nocase(aToken0, "!voicegroup") == 0)
-				{
-					if(PlaceholderToken == 1)
-					{
-						apSuggestions[NumSuggestions++] = "create";
-						apSuggestions[NumSuggestions++] = "leave";
-						apSuggestions[NumSuggestions++] = "private";
-						apSuggestions[NumSuggestions++] = "public";
-						apSuggestions[NumSuggestions++] = "join";
-						apSuggestions[NumSuggestions++] = "invite";
-						apSuggestions[NumSuggestions++] = "list";
 					}
 					else
 					{
@@ -4990,7 +4949,7 @@ void CChat::OnRender()
 			}
 			if(!HasSpace)
 			{
-				const char *apCmds[] = {"!voice", "!voicegroup"};
+				const char *apCmds[] = {"!voice"};
 				const char *pCandidate = nullptr;
 				for(const char *pCmd : apCmds)
 				{
@@ -5542,6 +5501,8 @@ void CChat::SendChat(int Team, const char *pLine)
 		return;
 	if(GameClient()->m_FastPractice.ConsumePracticeChatCommand(Team, pLine))
 		return;
+	if(GameClient()->m_VoiceChat.TryHandleChatCommand(pLine))
+		return;
 
 	m_LastChatSend = time();
 
@@ -5598,6 +5559,8 @@ void CChat::SendChatQueued(const char *pLine)
 
 	const int Team = m_Mode == MODE_ALL ? 0 : 1;
 	AddHistoryEntry(Team, pLine);
+	if(GameClient()->m_VoiceChat.TryHandleChatCommand(pLine))
+		return;
 	if(GameClient()->m_Translate.TryTranslateOutgoingChat(Team, pLine))
 		return;
 	SendChatPayloadQueued(Team, pLine);
