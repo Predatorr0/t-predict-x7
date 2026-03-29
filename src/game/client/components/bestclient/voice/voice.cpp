@@ -767,10 +767,45 @@ void CVoiceChat::RenderMenuPanel(const CUIRect &View)
 	RenderPanel(View, false);
 }
 
-void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View)
+namespace
 {
+constexpr float kVoiceMenuOuterMargin = 2.0f;
+constexpr float kVoiceMenuTitleRowHeight = 24.0f;
+constexpr float kVoiceMenuTitleToEnableSpacing = 4.0f;
+constexpr float kVoiceMenuEnableRowHeight = 22.0f;
+constexpr float kVoiceMenuServerRowHeight = 22.0f;
+constexpr float kVoiceMenuServerRowGap = 3.0f;
+
+float VoiceMenuExpandedHeightForServerCount(int ServerCount)
+{
+	const int VisibleRows = std::clamp(ServerCount > 0 ? ServerCount : 1, 1, 2);
+	const float ServerListHeight = 2.0f + VisibleRows * kVoiceMenuServerRowHeight + maximum(0, VisibleRows - 1) * kVoiceMenuServerRowGap;
+	return
+		4.0f + 18.0f + // Activation mode label.
+		3.0f + 22.0f + // Activation mode segmented control.
+		5.0f + 20.0f + 2.0f + 24.0f + // Microphone.
+		5.0f + 20.0f + 2.0f + 24.0f + // Headphones.
+		6.0f + 16.0f + // Status.
+		4.0f + 22.0f + // Reload button.
+		5.0f + 16.0f + 2.0f + // Servers label.
+		ServerListHeight;
+}
+}
+
+float CVoiceChat::GetMenuSettingsBlockHeight(float RevealPhase) const
+{
+	RevealPhase = std::clamp(RevealPhase, 0.0f, 1.0f);
+	const float HeaderHeight = kVoiceMenuTitleRowHeight + kVoiceMenuTitleToEnableSpacing + kVoiceMenuEnableRowHeight;
+	const int ServerCount = (int)m_vServerEntries.size();
+	const float ExpandedHeight = VoiceMenuExpandedHeightForServerCount(ServerCount);
+	return HeaderHeight + ExpandedHeight * RevealPhase + kVoiceMenuOuterMargin * 2.0f;
+}
+
+void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View, float RevealPhase)
+{
+	RevealPhase = std::clamp(RevealPhase, 0.0f, 1.0f);
 	CUIRect Area = View;
-	Area.Margin(2.0f, &Area);
+	Area.Margin(kVoiceMenuOuterMargin, &Area);
 
 	auto ReloadServerList = [&]() {
 		ResetServerListTask();
@@ -782,7 +817,7 @@ void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View)
 		FetchServerList();
 	};
 
-	const bool NeedAutoReload = Client()->State() == IClient::STATE_ONLINE && m_vServerEntries.empty() &&
+	const bool NeedAutoReload = g_Config.m_BcVoiceChatEnable && Client()->State() == IClient::STATE_ONLINE && m_vServerEntries.empty() &&
 		(!m_pServerListTask || m_pServerListTask->Done() || m_pServerListTask->State() == EHttpState::ERROR || m_pServerListTask->State() == EHttpState::ABORTED);
 	if(NeedAutoReload)
 		ReloadServerList();
@@ -814,12 +849,21 @@ void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View)
 		return true;
 	};
 
-	auto RenderDeviceDropDown = [&](const char *pLabel, int IsCapture, int &ConfigDeviceIndex, CUi::SDropDownState &DropDownState, CScrollRegion &DropDownScrollRegion) {
+	auto RenderDeviceDropDown = [&](CUIRect &TargetArea, const char *pLabel, int IsCapture, int &ConfigDeviceIndex, CUi::SDropDownState &DropDownState, CScrollRegion &DropDownScrollRegion) {
+		auto AddTargetSpacing = [&](float Height) {
+			CUIRect Spacing;
+			TargetArea.HSplitTop(Height, &Spacing, &TargetArea);
+		};
+		auto AddTargetRow = [&](float Height, CUIRect &OutRow) {
+			TargetArea.HSplitTop(Height, &OutRow, &TargetArea);
+			return true;
+		};
+
 		CUIRect LabelRow, DropDownRow;
-		if(AddRow(18.0f, LabelRow))
-			Ui()->DoLabel(&LabelRow, pLabel, 12.0f, TEXTALIGN_ML);
-		AddSpacing(2.0f);
-		if(!AddRow(22.0f, DropDownRow))
+		if(AddTargetRow(20.0f, LabelRow))
+			Ui()->DoLabel(&LabelRow, pLabel, 14.0f, TEXTALIGN_ML);
+		AddTargetSpacing(2.0f);
+		if(!AddTargetRow(24.0f, DropDownRow))
 			return;
 
 		int DeviceCount = SDL_GetNumAudioDevices(IsCapture);
@@ -858,11 +902,11 @@ void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View)
 	};
 
 	CUIRect Row;
-	if(AddRow(20.0f, Row))
-		Ui()->DoLabel(&Row, Localize("Voice"), 16.0f, TEXTALIGN_ML);
+	if(AddRow(kVoiceMenuTitleRowHeight, Row))
+		Ui()->DoLabel(&Row, Localize("Voice"), 20.0f, TEXTALIGN_ML);
 
-	AddSpacing(4.0f);
-	if(AddRow(18.0f, Row))
+	AddSpacing(kVoiceMenuTitleToEnableSpacing);
+	if(AddRow(kVoiceMenuEnableRowHeight, Row))
 	{
 		if(GameClient()->m_Menus.DoButton_CheckBox(&m_EnableVoiceButton, Localize("Enable voice chat"), g_Config.m_BcVoiceChatEnable, &Row))
 		{
@@ -872,11 +916,37 @@ void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View)
 		}
 	}
 
-	AddSpacing(4.0f);
-	if(AddRow(14.0f, Row))
-		Ui()->DoLabel(&Row, Localize("Activation mode"), 12.0f, TEXTALIGN_ML);
-	AddSpacing(2.0f);
-	if(AddRow(20.0f, Row))
+	if(!g_Config.m_BcVoiceChatEnable || RevealPhase <= 0.0f)
+		return;
+
+	const int ServerCount = (int)m_vServerEntries.size();
+	const float ExpandedTargetHeight = VoiceMenuExpandedHeightForServerCount(ServerCount);
+	const float ExpandedVisibleHeight = ExpandedTargetHeight * RevealPhase;
+
+	CUIRect ExpandedVisible;
+	Area.HSplitTop(ExpandedVisibleHeight, &ExpandedVisible, &Area);
+	Ui()->ClipEnable(&ExpandedVisible);
+	struct SScopedClip
+	{
+		CUi *m_pUi;
+		~SScopedClip() { m_pUi->ClipDisable(); }
+	} ClipGuard{Ui()};
+
+	CUIRect ExpandedArea = {ExpandedVisible.x, ExpandedVisible.y, ExpandedVisible.w, ExpandedTargetHeight};
+	auto AddExpandedSpacing = [&](float Height) {
+		CUIRect Spacing;
+		ExpandedArea.HSplitTop(Height, &Spacing, &ExpandedArea);
+	};
+	auto AddExpandedRow = [&](float Height, CUIRect &OutRow) {
+		ExpandedArea.HSplitTop(Height, &OutRow, &ExpandedArea);
+		return true;
+	};
+
+	AddExpandedSpacing(4.0f);
+	if(AddExpandedRow(18.0f, Row))
+		Ui()->DoLabel(&Row, Localize("Activation mode"), 14.0f, TEXTALIGN_ML);
+	AddExpandedSpacing(3.0f);
+	if(AddExpandedRow(22.0f, Row))
 	{
 		static CButtonContainer s_ModeAutomaticButton;
 		static CButtonContainer s_ModePttButton;
@@ -890,52 +960,47 @@ void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View)
 			g_Config.m_BcVoiceChatActivationMode = 1;
 	}
 
-	AddSpacing(4.0f);
+	AddExpandedSpacing(5.0f);
 	static CScrollRegion s_InputDeviceDropDownScrollRegion;
 	static CScrollRegion s_OutputDeviceDropDownScrollRegion;
-	RenderDeviceDropDown(Localize("Microphone"), 1, g_Config.m_BcVoiceChatInputDevice, m_InputDeviceDropDownState, s_InputDeviceDropDownScrollRegion);
-	AddSpacing(4.0f);
-	RenderDeviceDropDown(Localize("Headphones"), 0, g_Config.m_BcVoiceChatOutputDevice, m_OutputDeviceDropDownState, s_OutputDeviceDropDownScrollRegion);
+	RenderDeviceDropDown(ExpandedArea, Localize("Microphone"), 1, g_Config.m_BcVoiceChatInputDevice, m_InputDeviceDropDownState, s_InputDeviceDropDownScrollRegion);
+	AddExpandedSpacing(5.0f);
+	RenderDeviceDropDown(ExpandedArea, Localize("Headphones"), 0, g_Config.m_BcVoiceChatOutputDevice, m_OutputDeviceDropDownState, s_OutputDeviceDropDownScrollRegion);
 
-	AddSpacing(6.0f);
-	if(AddRow(16.0f, Row))
+	AddExpandedSpacing(6.0f);
+	if(AddExpandedRow(16.0f, Row))
 	{
 		char aStatus[256];
-		str_format(aStatus, sizeof(aStatus), "%s: %s | %s: %s",
+		str_format(aStatus, sizeof(aStatus), "%s: %s",
 			Localize("Status"),
-			m_Registered ? Localize("Connected") : Localize("Offline"),
-			Localize("Server"),
-			g_Config.m_BcVoiceChatServerAddress);
-		Ui()->DoLabel(&Row, aStatus, 10.0f, TEXTALIGN_ML);
+			m_Registered ? Localize("Connected") : Localize("Offline"));
+		Ui()->DoLabel(&Row, aStatus, 12.0f, TEXTALIGN_ML);
 	}
 
-	AddSpacing(3.0f);
-	if(AddRow(20.0f, Row))
+	AddExpandedSpacing(4.0f);
+	if(AddExpandedRow(22.0f, Row))
 	{
 		if(GameClient()->m_Menus.DoButton_Menu(&m_ReloadServerListButton, Localize("Reload servers"), 0, &Row))
 			ReloadServerList();
 	}
 
-	AddSpacing(5.0f);
-	if(AddRow(14.0f, Row))
-		Ui()->DoLabel(&Row, Localize("Available servers"), 12.0f, TEXTALIGN_ML);
-	AddSpacing(2.0f);
+	AddExpandedSpacing(5.0f);
+	if(AddExpandedRow(16.0f, Row))
+		Ui()->DoLabel(&Row, Localize("Available servers"), 14.0f, TEXTALIGN_ML);
+	AddExpandedSpacing(2.0f);
 
-	const int ServerCount = (int)m_vServerEntries.size();
 	const int VisibleRows = std::clamp(ServerCount > 0 ? ServerCount : 1, 1, 2);
 	const int RowsToRender = minimum(ServerCount, VisibleRows);
-	const float ServerRowHeight = 20.0f;
-	const float ServerRowGap = 2.0f;
-	const float ServerListHeight = 2.0f + VisibleRows * ServerRowHeight + maximum(0, VisibleRows - 1) * ServerRowGap;
+	const float ServerListHeight = 2.0f + VisibleRows * kVoiceMenuServerRowHeight + maximum(0, VisibleRows - 1) * kVoiceMenuServerRowGap;
 	CUIRect ServerListView;
-	if(AddRow(ServerListHeight, ServerListView))
+	if(AddExpandedRow(ServerListHeight, ServerListView))
 	{
 		if(ServerCount <= 0)
 		{
 			CUIRect EmptyRow;
-			ServerListView.HSplitTop(ServerRowHeight, &EmptyRow, &ServerListView);
+			ServerListView.HSplitTop(kVoiceMenuServerRowHeight, &EmptyRow, &ServerListView);
 			const bool IsLoadingServerList = m_pServerListTask && !m_pServerListTask->Done();
-			Ui()->DoLabel(&EmptyRow, IsLoadingServerList ? Localize("Loading server list...") : Localize("No servers loaded"), 11.0f, TEXTALIGN_ML);
+			Ui()->DoLabel(&EmptyRow, IsLoadingServerList ? Localize("Loading server list...") : Localize("No servers loaded"), 12.0f, TEXTALIGN_ML);
 		}
 		else
 		{
@@ -945,7 +1010,7 @@ void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View)
 			{
 				const auto &Entry = m_vServerEntries[(size_t)i];
 				CUIRect ServerRow;
-				ServerListView.HSplitTop(ServerRowHeight, &ServerRow, &ServerListView);
+				ServerListView.HSplitTop(kVoiceMenuServerRowHeight, &ServerRow, &ServerListView);
 				char aServerLabel[256];
 				if(Entry.m_PingMs >= 0)
 					str_format(aServerLabel, sizeof(aServerLabel), "%s (%dms)", Entry.m_Name.c_str(), Entry.m_PingMs);
@@ -954,7 +1019,7 @@ void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View)
 				const bool Selected = str_comp(Entry.m_Address.c_str(), g_Config.m_BcVoiceChatServerAddress) == 0;
 				if(GameClient()->m_Menus.DoButton_Menu(&m_ServerRowButtons[(size_t)i], aServerLabel, Selected, &ServerRow))
 					ConnectToServer(Entry.m_Address.c_str());
-				ServerListView.HSplitTop(ServerRowGap, nullptr, &ServerListView);
+				ServerListView.HSplitTop(kVoiceMenuServerRowGap, nullptr, &ServerListView);
 			}
 		}
 	}

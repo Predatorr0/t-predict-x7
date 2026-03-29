@@ -51,7 +51,9 @@ public:
 	// Renders the voice panel inside menus/settings (independent from the in-game toggle state).
 	void RenderMenuPanel(const CUIRect &View);
 	// Renders only the voice settings block (no popup frame).
-	void RenderMenuSettingsBlock(const CUIRect &View);
+	void RenderMenuSettingsBlock(const CUIRect &View, float RevealPhase = 1.0f);
+	// Returns dynamic height for the voice settings block in menus.
+	float GetMenuSettingsBlockHeight(float RevealPhase = 1.0f) const;
 	// Renders binds for voice controls used in settings pages.
 	void RenderMenuControlBinds(const CUIRect &View);
 	// Renders a bind row for toggling the voice panel (used by the settings menu).

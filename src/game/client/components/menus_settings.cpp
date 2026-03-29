@@ -5464,6 +5464,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		const float LineSize = 20.0f;
 		const float HeadlineFontSize = 20.0f;
 		const float MarginSmall = 5.0f;
+		const float MarginExtraSmall = 2.5f;
 		const float MarginBetweenViews = 30.0f;
 		const float MarginBetweenSections = 30.0f;
 		const ColorRGBA BlockColor = ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f);
@@ -5634,18 +5635,31 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		Column.HSplitTop(10.0f, nullptr, &Column);
 
 		{
-			const float VoiceSettingsHeight = 300.0f;
+			static float s_VoiceSettingsPhase = 0.0f;
+			const bool VoiceSettingsExpanded = g_Config.m_BcVoiceChatEnable != 0;
+			UpdateRevealPhase(s_VoiceSettingsPhase, VoiceSettingsExpanded);
+
+			const float VoiceSettingsHeight = GameClient()->m_VoiceChat.GetMenuSettingsBlockHeight(s_VoiceSettingsPhase);
 			CUIRect VoiceSettingsView;
 			BeginBlock(Column, VoiceSettingsHeight, VoiceSettingsView);
-			GameClient()->m_VoiceChat.RenderMenuSettingsBlock(VoiceSettingsView);
+			GameClient()->m_VoiceChat.RenderMenuSettingsBlock(VoiceSettingsView, s_VoiceSettingsPhase);
 		}
 		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 
 		{
-			const float ContentHeight = 24.0f + 4.0f + 24.0f + 4.0f + 24.0f;
+			static CButtonContainer s_VoicePanelBindReader;
+			static CButtonContainer s_VoicePanelBindClear;
+			static CButtonContainer s_MicMuteBindReader;
+			static CButtonContainer s_MicMuteBindClear;
+			static CButtonContainer s_HeadphonesMuteBindReader;
+			static CButtonContainer s_HeadphonesMuteBindClear;
+
+			const float ContentHeight = 3.0f * (LineSize + MarginExtraSmall);
 			CUIRect BindsView;
 			BeginBlock(Column, ContentHeight, BindsView);
-			GameClient()->m_VoiceChat.RenderMenuControlBinds(BindsView);
+			DoLine_KeyReader(BindsView, s_VoicePanelBindReader, s_VoicePanelBindClear, Localize("Voice panel"), "toggle_voice_panel");
+			DoLine_KeyReader(BindsView, s_MicMuteBindReader, s_MicMuteBindClear, Localize("Mute microphone"), "toggle_voice_mic_mute");
+			DoLine_KeyReader(BindsView, s_HeadphonesMuteBindReader, s_HeadphonesMuteBindClear, Localize("Mute headphones"), "toggle_voice_headphones_mute");
 		}
 		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 
