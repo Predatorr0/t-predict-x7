@@ -216,9 +216,22 @@ void CMenus::RenderGame(CUIRect MainView)
 
 	if(GameClient()->m_ReceivedDDNetPlayer && GameClient()->m_Snap.m_pLocalInfo && (ShowDDRaceButtons || !GameClient()->IsTeamPlay()))
 	{
-		const bool ShowAutoCameraButton = GameClient()->m_Snap.m_pLocalInfo && (GameClient()->m_Snap.m_pLocalInfo->m_Team == TEAM_SPECTATORS || Paused || Spec);
-		if(GameClient()->m_Snap.m_pLocalInfo->m_Team != TEAM_SPECTATORS || Paused || Spec)
+		const bool ShowJoinGameButton = Paused || Spec;
+		if(ShowJoinGameButton)
 		{
+			ButtonBar.VSplitLeft(120.0f, &Button, &ButtonBar);
+			ButtonBar.VSplitLeft(5.0f, nullptr, &ButtonBar);
+
+			static CButtonContainer s_PauseButton;
+			if(DoButton_Menu(&s_PauseButton, Localize("Join game"), 0, &Button))
+			{
+				Console()->ExecuteLine("say /pause", IConsole::CLIENT_ID_UNSPECIFIED);
+				SetActive(false);
+			}
+		}
+		else if(GameClient()->m_Snap.m_pLocalInfo->m_Team != TEAM_SPECTATORS)
+		{
+			const bool ShowAutoCameraButton = GameClient()->m_Snap.m_pLocalInfo && (GameClient()->m_Snap.m_pLocalInfo->m_Team == TEAM_SPECTATORS || Paused || Spec);
 			constexpr float NormalPracticeButtonWidth = 120.0f;
 			constexpr float CompactPracticeButtonWidth = 52.0f;
 			constexpr float PracticeButtonMinWidth = 32.0f;
