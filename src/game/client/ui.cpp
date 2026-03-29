@@ -579,13 +579,14 @@ int CUi::DoButtonLogic(const void *pId, int Checked, const CUIRect *pRect, const
 
 	if(Inside && NoRelevantButtonsPressed)
 	{
+		const bool CanPlayHoverSound = m_pfnButtonSoundEvent != nullptr &&
+			HotItem() != pId &&
+			m_pHoveredSoundItem != pId &&
+			(m_pBecomingHoveredSoundItem == nullptr || m_pBecomingHoveredSoundItem == m_pHoveredSoundItem);
 		m_pBecomingHoveredSoundItem = pId;
-		if(HotItem() != pId && m_pfnButtonSoundEvent != nullptr)
+		if(CanPlayHoverSound)
 		{
-			if(m_pHoveredSoundItem != pId)
-			{
-				m_pfnButtonSoundEvent(EButtonSoundEvent::HOVER_ENTER);
-			}
+			m_pfnButtonSoundEvent(EButtonSoundEvent::HOVER_ENTER);
 		}
 		SetHotItem(pId);
 	}
