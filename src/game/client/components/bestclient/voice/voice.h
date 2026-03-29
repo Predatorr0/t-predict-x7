@@ -149,34 +149,18 @@ private:
 
 	struct CRemotePeer
 	{
-		static constexpr int MAX_JITTER_PACKETS = 32;
-		struct SJitterPacket
-		{
-			bool m_Valid = false;
-			uint16_t m_Sequence = 0;
-			uint16_t m_Size = 0;
-			std::array<uint8_t, BestClientVoice::MAX_OPUS_PACKET_SIZE> m_aData = {};
-		};
-
 		OpusDecoder *m_pDecoder = nullptr;
 		CFixedSampleRingBuffer<BestClientVoice::FRAME_SIZE * 8> m_DecodedPcm;
-		std::array<SJitterPacket, MAX_JITTER_PACKETS> m_aJitterPackets = {};
-		int m_QueuedJitterPackets = 0;
 		int64_t m_LastReceiveTick = 0;
 		int64_t m_LastArrivalTick = 0;
 		uint16_t m_LastSequence = 0;
 		bool m_HasSequence = false;
-		uint16_t m_LastRecvSequence = 0;
-		bool m_HasLastRecvSequence = false;
-		uint16_t m_NextDecodeSequence = 0;
-		bool m_HasNextDecodeSequence = false;
 		vec2 m_Position = vec2(0.0f, 0.0f);
 		int m_Team = 0;
 		int64_t m_LastVoiceTick = 0;
 		int m_AnnouncedGameClientId = BestClientVoice::INVALID_GAME_CLIENT_ID;
 		float m_JitterMs = 0.0f;
 		float m_LossEwma = 0.0f;
-		int m_TargetJitterFrames = 3;
 		int m_ConsecutiveDecodeFails = 0;
 	};
 	struct CVoiceServerEntry
