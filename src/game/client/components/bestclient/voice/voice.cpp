@@ -2653,6 +2653,7 @@ void CVoiceChat::ProcessCapture()
 		return;
 	if(IsInGameOnlyBlocked())
 	{
+		m_LastProcessCaptureTick = time_get();
 		m_WasTransmitActive = false;
 		m_AutoActivationUntilTick = 0;
 		m_MicLevel = mix(m_MicLevel, 0.0f, 0.25f);
@@ -2664,6 +2665,7 @@ void CVoiceChat::ProcessCapture()
 	}
 	if(g_Config.m_BcVoiceChatActivationMode == 1 && !m_PushToTalkPressed && !g_Config.m_BcVoiceChatMicCheck)
 	{
+		m_LastProcessCaptureTick = time_get();
 		m_WasTransmitActive = false;
 		m_AutoActivationUntilTick = 0;
 		m_MicLevel = mix(m_MicLevel, 0.0f, 0.25f);
@@ -2676,6 +2678,7 @@ void CVoiceChat::ProcessCapture()
 	const int BytesRead = SDL_DequeueAudio(m_CaptureDevice, aCaptureRaw, sizeof(aCaptureRaw));
 	if(BytesRead > 0)
 	{
+		m_LastProcessCaptureTick = time_get();
 		const int SamplesRead = BytesRead / (int)sizeof(int16_t);
 		if(m_CaptureSpec.channels <= 1)
 		{
@@ -2698,6 +2701,30 @@ void CVoiceChat::ProcessCapture()
 	}
 	else if(m_CapturePcm.Size() == 0)
 	{
+		const int64_t Now = time_get();
+		const bool ExpectingCaptureData = m_Registered && !g_Config.m_BcVoiceChatMicMuted &&
+			(g_Config.m_BcVoiceChatMicCheck || g_Config.m_BcVoiceChatActivationMode == 0 || m_PushToTalkPressed);
+		if(ExpectingCaptureData)
+		{
+			if(m_LastProcessCaptureTick == 0)
+			{
+				m_LastProcessCaptureTick = Now;
+			}
+			else if(Now - m_LastProcessCaptureTick > 3 * time_freq())
+			{
+				dbg_msg("voice", "capture stalled, restarting voice pipeline");
+				StopVoice();
+				m_RuntimeState = RUNTIME_RECONNECTING;
+				StartVoice();
+				m_LastProcessCaptureTick = Now;
+				return;
+			}
+		}
+		else
+		{
+			m_LastProcessCaptureTick = Now;
+		}
+
 		m_MicLevel = mix(m_MicLevel, 0.0f, 0.08f);
 	}
 
@@ -2779,31 +2806,6 @@ void CVoiceChat::ProcessCapture()
 		{
 			m_WasTransmitActive = false;
 			continue;
-		}
-
-		if(g_Config.m_BcVoiceChatActivationMode == 0)
-		{
-			// Lightweight auto-mode denoiser: suppress low-level steady background noise.
-			const float NoiseFloorLinear = std::clamp(m_VadNoiseFloor, 0.0f, 0.2f);
-			const int NoiseFloorPcm = round_to_int(NoiseFloorLinear * 32767.0f);
-			const int GateStart = maximum(220, round_to_int(NoiseFloorPcm * 1.6f));
-			const int GateEnd = maximum(GateStart + 300, round_to_int(NoiseFloorPcm * 3.2f));
-			for(int i = 0; i < BestClientVoice::FRAME_SIZE; ++i)
-			{
-				const int Sample = (int)aFrame[i];
-				const int AbsSample = absolute(Sample);
-				float Gain = 1.0f;
-				if(AbsSample <= GateStart)
-					Gain = 0.18f;
-				else if(AbsSample < GateEnd)
-				{
-					const float T = (AbsSample - GateStart) / (float)(GateEnd - GateStart);
-					Gain = 0.18f + (1.0f - 0.18f) * T;
-				}
-
-				const int Out = round_to_int(Sample * Gain);
-				aFrame[i] = (int16_t)std::clamp(Out, (int)std::numeric_limits<int16_t>::min(), (int)std::numeric_limits<int16_t>::max());
-			}
 		}
 
 		if(!m_WasTransmitActive)
