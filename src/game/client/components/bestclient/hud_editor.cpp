@@ -20,6 +20,16 @@ namespace
 {
 constexpr float SNAP_THRESHOLD = 6.0f;
 
+bool IsLivePreviewModule(HudLayout::EModule Module)
+{
+	return Module == HudLayout::MODULE_MUSIC_PLAYER ||
+		Module == HudLayout::MODULE_CHAT ||
+		Module == HudLayout::MODULE_VOTES ||
+		Module == HudLayout::MODULE_VOICE_TALKERS ||
+		Module == HudLayout::MODULE_VOICE_STATUS ||
+		Module == HudLayout::MODULE_HOOK_COMBO;
+}
+
 bool PointInRect(vec2 Point, const CUIRect &Rect)
 {
 	return Point.x >= Rect.x && Point.x <= Rect.x + Rect.w &&
@@ -257,6 +267,17 @@ HudLayout::EModule CHudEditor::HitTestModule(vec2 MousePos) const
 	SModuleVisual aVisuals[MAX_MODULE_VISUALS];
 	int Count = 0;
 	CollectModuleVisuals(aVisuals, Count);
+
+	// Editable modules should always win hit-tests over locked preview modules.
+	for(int i = Count - 1; i >= 0; --i)
+	{
+		if(!aVisuals[i].m_Editable)
+			continue;
+		const CUIRect &Rect = aVisuals[i].m_Rect;
+		if(PointInRect(MousePos, Rect))
+			return aVisuals[i].m_Module;
+	}
+
 	for(int i = Count - 1; i >= 0; --i)
 	{
 		const CUIRect &Rect = aVisuals[i].m_Rect;
@@ -405,7 +426,7 @@ void CHudEditor::RenderModuleLabel(const SModuleVisual &Visual) const
 	if(Visual.m_Editable)
 		str_format(aLabel, sizeof(aLabel), "%s", HudLayout::Name(Visual.m_Module));
 	else
-		str_format(aLabel, sizeof(aLabel), "%s (%s)", HudLayout::Name(Visual.m_Module), Localize("preview"));
+		str_format(aLabel, sizeof(aLabel), "%s (%s)", HudLayout::Name(Visual.m_Module), Localize("locked preview"));
 
 	const float Width = HudWidth();
 	const float Height = HudHeight();
@@ -459,10 +480,28 @@ void CHudEditor::RenderModulePreview(const SModuleVisual &Visual) const
 	if(Rect.w <= 0.0f || Rect.h <= 0.0f)
 		return;
 
+	const bool LivePreview = IsLivePreviewModule(Visual.m_Module);
 	ColorRGBA Fill = Visual.m_Editable ? ColorRGBA(0.22f, 0.37f, 0.56f, 0.26f) : ColorRGBA(0.25f, 0.25f, 0.25f, 0.22f);
+	if(LivePreview)
+		Fill = Visual.m_Editable ? ColorRGBA(0.22f, 0.37f, 0.56f, 0.10f) : ColorRGBA(0.25f, 0.25f, 0.25f, 0.08f);
 	if(Visual.m_IsFallbackPreview)
 		Fill = ColorRGBA(0.30f, 0.26f, 0.20f, 0.20f);
 	Graphics()->DrawRect(Rect.x, Rect.y, Rect.w, Rect.h, Fill, IGraphics::CORNER_ALL, Visual.m_Rounding);
+	if(LivePreview)
+		return;
+
+	auto DrawPreviewRows = [&](const CUIRect &Area, int RowCount, float RowHeight, float RowGap, float Alpha) {
+		CUIRect Inner = Area;
+		Inner.Margin(3.0f, &Inner);
+		for(int i = 0; i < RowCount; ++i)
+		{
+			const float y = Inner.y + i * (RowHeight + RowGap);
+			if(y + RowHeight > Inner.y + Inner.h)
+				break;
+			const float RowWidth = maximum(10.0f, Inner.w - i * 6.0f);
+			Graphics()->DrawRect(Inner.x + 1.0f, y, RowWidth, RowHeight, ColorRGBA(1.0f, 1.0f, 1.0f, Alpha), IGraphics::CORNER_ALL, 1.5f);
+		}
+	};
 
 	if(Visual.m_Module == HudLayout::MODULE_CHAT)
 	{
@@ -494,19 +533,93 @@ void CHudEditor::RenderModulePreview(const SModuleVisual &Visual) const
 	}
 	if(Visual.m_Module == HudLayout::MODULE_MOVEMENT_INFO)
 	{
+		DrawPreviewRows(Rect, 6, 2.2f, 4.8f, 0.20f);
+		return;
+	}
+	if(Visual.m_Module == HudLayout::MODULE_FPS)
+	{
+		CUIRect TextRect = Rect;
+		TextRect.Margin(2.5f, &TextRect);
+		Ui()->DoLabel(&TextRect, "144 FPS", 6.0f, TEXTALIGN_MC);
+		return;
+	}
+	if(Visual.m_Module == HudLayout::MODULE_PING)
+	{
+		CUIRect TextRect = Rect;
+		TextRect.Margin(2.5f, &TextRect);
+		Ui()->DoLabel(&TextRect, "24 ms", 6.0f, TEXTALIGN_MC);
+		return;
+	}
+	if(Visual.m_Module == HudLayout::MODULE_LOCAL_TIME)
+	{
+		CUIRect TextRect = Rect;
+		TextRect.Margin(2.5f, &TextRect);
+		Ui()->DoLabel(&TextRect, "18:42", 6.0f, TEXTALIGN_MC);
+		return;
+	}
+	if(Visual.m_Module == HudLayout::MODULE_SPECTATOR_COUNT)
+	{
 		CUIRect Inner = Rect;
 		Inner.Margin(3.0f, &Inner);
-		for(int i = 0; i < 5; ++i)
+		Graphics()->DrawRect(Inner.x, Inner.y + 1.5f, 6.0f, 6.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.24f), IGraphics::CORNER_ALL, 3.0f);
+		CUIRect TextRect = Inner;
+		TextRect.x += 8.5f;
+		Ui()->DoLabel(&TextRect, "5 spectators", 5.8f, TEXTALIGN_ML);
+		return;
+	}
+	if(Visual.m_Module == HudLayout::MODULE_MINI_VOTE)
+	{
+		CUIRect Inner = Rect;
+		Inner.Margin(3.0f, &Inner);
+		Graphics()->DrawRect(Inner.x, Inner.y, Inner.w, 6.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.16f), IGraphics::CORNER_ALL, 2.0f);
+		Graphics()->DrawRect(Inner.x, Inner.y + 10.0f, Inner.w * 0.52f, 4.0f, ColorRGBA(0.4f, 0.9f, 0.5f, 0.4f), IGraphics::CORNER_ALL, 2.0f);
+		Graphics()->DrawRect(Inner.x + Inner.w * 0.52f, Inner.y + 10.0f, Inner.w * 0.48f, 4.0f, ColorRGBA(0.9f, 0.45f, 0.45f, 0.4f), IGraphics::CORNER_ALL, 2.0f);
+		DrawPreviewRows(Inner, 3, 2.0f, 3.5f, 0.18f);
+		return;
+	}
+	if(Visual.m_Module == HudLayout::MODULE_NOTIFY_LAST)
+	{
+		CUIRect TextRect = Rect;
+		TextRect.Margin(3.0f, &TextRect);
+		Ui()->DoLabel(&TextRect, "You are last alive!", 5.8f, TEXTALIGN_MC);
+		return;
+	}
+	if(Visual.m_Module == HudLayout::MODULE_FROZEN_HUD)
+	{
+		CUIRect Inner = Rect;
+		Inner.Margin(3.0f, &Inner);
+		const float DotSize = minimum(Inner.h - 2.0f, 9.0f);
+		for(int i = 0; i < 6; ++i)
 		{
-			const float y = Inner.y + i * 7.0f;
-			Graphics()->DrawRect(Inner.x + 1.0f, y, Inner.w - 2.0f, 2.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.18f), IGraphics::CORNER_ALL, 1.0f);
+			const float x = Inner.x + i * (DotSize + 2.2f);
+			if(x + DotSize > Inner.x + Inner.w)
+				break;
+			Graphics()->DrawRect(x, Inner.y + (Inner.h - DotSize) * 0.5f, DotSize, DotSize, ColorRGBA(1.0f, 1.0f, 1.0f, i % 2 == 0 ? 0.28f : 0.14f), IGraphics::CORNER_ALL, DotSize * 0.5f);
+		}
+		return;
+	}
+	if(Visual.m_Module == HudLayout::MODULE_LOCK_CAM)
+	{
+		CUIRect TextRect = Rect;
+		TextRect.Margin(2.0f, &TextRect);
+		Ui()->DoLabel(&TextRect, "LOCK", 5.6f, TEXTALIGN_MC);
+		return;
+	}
+	if(Visual.m_Module == HudLayout::MODULE_KILLFEED)
+	{
+		CUIRect Inner = Rect;
+		Inner.Margin(3.0f, &Inner);
+		for(int i = 0; i < 3; ++i)
+		{
+			const float RowY = Inner.y + i * 7.0f;
+			Graphics()->DrawRect(Inner.x, RowY, 16.0f, 2.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.22f), IGraphics::CORNER_ALL, 1.0f);
+			Graphics()->DrawRect(Inner.x + 19.0f, RowY, 4.0f, 2.0f, ColorRGBA(0.95f, 0.55f, 0.55f, 0.36f), IGraphics::CORNER_ALL, 1.0f);
+			Graphics()->DrawRect(Inner.x + 26.0f, RowY, minimum(Inner.w - 26.0f, 17.0f), 2.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.22f), IGraphics::CORNER_ALL, 1.0f);
 		}
 		return;
 	}
 
-	CUIRect TextRect = Rect;
-	TextRect.Margin(3.0f, &TextRect);
-	Ui()->DoLabel(&TextRect, HudLayout::Name(Visual.m_Module), 6.2f, TEXTALIGN_MC);
+	DrawPreviewRows(Rect, 4, 2.2f, 4.0f, 0.20f);
 }
 
 void CHudEditor::RenderOverlay(vec2 MousePos)
@@ -517,19 +630,45 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 	Graphics()->TextureClear();
 	Graphics()->DrawRect(0.0f, 0.0f, Width, Height, ColorRGBA(0.0f, 0.0f, 0.0f, 0.38f), IGraphics::CORNER_ALL, 0.0f);
 
+	// Draw true HUD previews first, then add interactive editor overlays on top.
+	const bool MusicEnabled = g_Config.m_BcMusicPlayer != 0 &&
+				  !GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER);
+	if(MusicEnabled)
+		GameClient()->m_MusicPlayer.RenderHudEditor(true);
+
+	GameClient()->m_Chat.RenderHud(true);
+	GameClient()->m_Voting.RenderHud(true);
+	GameClient()->m_VoiceChat.RenderHudTalkingIndicator(Width, Height, true);
+	GameClient()->m_VoiceChat.RenderHudMuteStatusIndicator(Width, Height, true);
+	GameClient()->m_BestClient.RenderHookCombo(true);
+
 	SModuleVisual aVisuals[MAX_MODULE_VISUALS];
 	int Count = 0;
 	CollectModuleVisuals(aVisuals, Count);
-	for(int i = 0; i < Count; ++i)
-		RenderModulePreview(aVisuals[i]);
-
-	for(int i = 0; i < Count; ++i)
+	for(int Pass = 0; Pass < 2; ++Pass)
 	{
-		const bool Hovered = aVisuals[i].m_Module == m_HoveredModule;
-		const bool Selected = aVisuals[i].m_Module == m_SelectedModule || aVisuals[i].m_Module == m_PressedModule;
-		RenderModuleOutline(aVisuals[i], Hovered, Selected);
-		if(Hovered)
-			RenderModuleLabel(aVisuals[i]);
+		const bool RenderEditable = Pass == 1;
+		for(int i = 0; i < Count; ++i)
+		{
+			if(aVisuals[i].m_Editable != RenderEditable)
+				continue;
+			RenderModulePreview(aVisuals[i]);
+		}
+	}
+
+	for(int Pass = 0; Pass < 2; ++Pass)
+	{
+		const bool RenderEditable = Pass == 1;
+		for(int i = 0; i < Count; ++i)
+		{
+			if(aVisuals[i].m_Editable != RenderEditable)
+				continue;
+			const bool Hovered = aVisuals[i].m_Module == m_HoveredModule;
+			const bool Selected = aVisuals[i].m_Module == m_SelectedModule || aVisuals[i].m_Module == m_PressedModule;
+			RenderModuleOutline(aVisuals[i], Hovered, Selected);
+			if(Hovered)
+				RenderModuleLabel(aVisuals[i]);
+		}
 	}
 
 	CUIRect ResetRect = {8.0f, 8.0f, 66.0f, 16.0f};

@@ -5522,8 +5522,27 @@ void CChat::RenderHud(bool ForcePreview)
 		CUIRect Rect = GetHudRect(Width, Height, true);
 		Graphics()->TextureClear();
 		Rect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, MessageRounding());
-		Rect.Margin(FontSize() * 0.6f, &Rect);
-		Ui()->DoLabel(&Rect, Localize("Chat"), FontSize(), TEXTALIGN_ML);
+
+		CUIRect Content = Rect;
+		Content.Margin(FontSize() * 0.5f, &Content);
+		CUIRect Slider, TextArea, InputRow;
+		Content.VSplitRight(maximum(2.0f, FontSize() * 0.28f), &TextArea, &Slider);
+		Graphics()->DrawRect(Slider.x, Slider.y, Slider.w, Slider.h, ColorRGBA(1.0f, 1.0f, 1.0f, 0.14f), IGraphics::CORNER_ALL, 2.0f);
+		Graphics()->DrawRect(Slider.x, Slider.y + Slider.h * 0.30f, Slider.w, Slider.h * 0.28f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.34f), IGraphics::CORNER_ALL, 2.0f);
+
+		TextArea.HSplitBottom(maximum(9.0f, FontSize() * 1.4f), &TextArea, &InputRow);
+		Graphics()->DrawRect(InputRow.x, InputRow.y, InputRow.w, InputRow.h, ColorRGBA(1.0f, 1.0f, 1.0f, 0.11f), IGraphics::CORNER_ALL, 2.0f);
+
+		const float LineStep = maximum(4.4f, FontSize() * 0.70f);
+		const float RowHeight = maximum(1.8f, FontSize() * 0.22f);
+		for(int i = 0; i < 5; ++i)
+		{
+			const float LineY = TextArea.y + 1.0f + i * LineStep;
+			if(LineY + RowHeight > TextArea.y + TextArea.h)
+				break;
+			const float LineW = maximum(16.0f, TextArea.w - 6.0f - i * 4.0f);
+			Graphics()->DrawRect(TextArea.x + 1.0f, LineY, LineW, RowHeight, ColorRGBA(1.0f, 1.0f, 1.0f, 0.18f), IGraphics::CORNER_ALL, 1.0f);
+		}
 		return;
 	}
 	OnRender();

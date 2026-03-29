@@ -122,7 +122,7 @@ MACRO_CONFIG_INT(BcMusicPlayerVisualizerSensitivity, bc_music_player_visualizer_
 MACRO_CONFIG_INT(BcMusicPlayerVisualizerSmoothing, bc_music_player_visualizer_smoothing, 62, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player visualizer smoothing (0-100)")
 MACRO_CONFIG_INT(BcMusicPlayerColorMode, bc_music_player_color_mode, 2, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Music player color mode (0=static color, 1=cover accent color, 2=dominant cover color)")
 MACRO_CONFIG_COL(BcMusicPlayerStaticColor, bc_music_player_static_color, 128, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Static color for the music player when static color mode is selected")
-MACRO_CONFIG_INT(BcHudMusicPlayerX, bc_hud_music_player_x, 184, -1000, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD editor X position for music player")
+MACRO_CONFIG_INT(BcHudMusicPlayerX, bc_hud_music_player_x, 198, -1000, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD editor X position for music player")
 MACRO_CONFIG_INT(BcHudMusicPlayerY, bc_hud_music_player_y, 2, -1000, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD editor Y position for music player")
 MACRO_CONFIG_INT(BcHudMusicPlayerScale, bc_hud_music_player_scale, 100, 25, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD editor scale for music player")
 MACRO_CONFIG_INT(BcHudVoiceHudX, bc_hud_voice_hud_x, 4, -1000, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "HUD editor X position for voice HUD")

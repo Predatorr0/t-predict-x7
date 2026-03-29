@@ -24,7 +24,7 @@ static const SModuleLayout gs_aModuleLayouts[MODULE_COUNT] = {
 	{110.0f, 2.0f, 100, 0, true, 0x66000000U},
 	{500.0f, 141.0f, 100, 0, true, 0x66000000U},
 	{460.0f, 229.0f, 100, 0, true, 0x40000000U},
-	{184.0f, 2.0f, 100, 0, false, 0x1E59A36BU},
+	{198.0f, 2.0f, 100, 0, false, 0x1E59A36BU},
 	{4.0f, 122.0f, 100, 0, false, 0x66000000U},
 	{160.0f, 0.0f, 100, 0, false, 0x66000000U},
 	{5.0f, 273.0f, 100, 0, false, 0x66000000U},
@@ -59,7 +59,14 @@ SModuleLayout ConfigLayout(EModule Module)
 	switch(Module)
 	{
 	case MODULE_MUSIC_PLAYER:
-		return {(float)g_Config.m_BcHudMusicPlayerX, (float)g_Config.m_BcHudMusicPlayerY, g_Config.m_BcHudMusicPlayerScale, 0, gs_aModuleLayouts[Module].m_BackgroundEnabled, gs_aModuleLayouts[Module].m_BackgroundColor};
+	{
+		// Keep old default configs visually centered after the music HUD width scaling adjustments.
+		const bool LegacyDefault = g_Config.m_BcHudMusicPlayerX == 184 &&
+			g_Config.m_BcHudMusicPlayerY == 2 &&
+			g_Config.m_BcHudMusicPlayerScale == 100;
+		const float X = LegacyDefault ? gs_aModuleLayouts[Module].m_X : (float)g_Config.m_BcHudMusicPlayerX;
+		return {X, (float)g_Config.m_BcHudMusicPlayerY, g_Config.m_BcHudMusicPlayerScale, 0, gs_aModuleLayouts[Module].m_BackgroundEnabled, gs_aModuleLayouts[Module].m_BackgroundColor};
+	}
 	case MODULE_VOICE_TALKERS:
 		return {(float)g_Config.m_BcHudVoiceHudX, (float)g_Config.m_BcHudVoiceHudY, g_Config.m_BcHudVoiceHudScale, 0, gs_aModuleLayouts[Module].m_BackgroundEnabled, gs_aModuleLayouts[Module].m_BackgroundColor};
 	case MODULE_VOICE_STATUS:
