@@ -552,10 +552,12 @@ void CGameClient::OnConsoleInit()
 						      &m_Scripting, // TClient
 						      &m_KeyBinder,
 						      &m_GameConsole,
-					      &m_MenuBackground});
+						      &m_MenuBackground,
+						      &m_VoiceChat});
 
 	// build the input stack
 	m_vpInput.insert(m_vpInput.end(), {&m_KeyBinder, // this will take over all input when we want to bind a key
+						  &m_VoiceChat,
 						  &m_Binds.m_SpecialBinds,
 						  &m_GameConsole,
 						  &m_Chat, // chat has higher prio, due to that you can quit it by pressing esc

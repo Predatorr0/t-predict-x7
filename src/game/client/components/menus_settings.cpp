@@ -94,6 +94,8 @@ static const SBestClientComponentEntry gs_aBestClientComponentEntries[] = {
 	{CBestClient::COMPONENT_OTHERS_MISC, "Misc", COMPONENTS_GROUP_OTHERS},
 	{CBestClient::COMPONENT_OTHERS_CHAT_MEDIA, "Chat Media", COMPONENTS_GROUP_OTHERS},
 	{CBestClient::COMPONENT_VISUALS_CHAT_BUBBLES, "Chat Bubbles", COMPONENTS_GROUP_OTHERS},
+	{CBestClient::COMPONENT_OTHERS_VOICE_SETTINGS, "Voice Chat", COMPONENTS_GROUP_OTHERS},
+	{CBestClient::COMPONENT_OTHERS_VOICE_BINDS, "Voice Binds", COMPONENTS_GROUP_OTHERS},
 	{CBestClient::COMPONENT_OTHERS_CLIENT_INDICATOR, "Client Indicator", COMPONENTS_GROUP_OTHERS},
 	{CBestClient::COMPONENT_TCLIENT_SETTINGS_TAB, "Settings tab", COMPONENTS_GROUP_TCLIENT},
 	{CBestClient::COMPONENT_TCLIENT_BIND_WHEEL_TAB, "Bind wheel tab", COMPONENTS_GROUP_TCLIENT},
@@ -5723,6 +5725,37 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		const float LeftColumnEndY = Column.y;
 		Column = RightView;
 		Column.HSplitTop(10.0f, nullptr, &Column);
+
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_OTHERS_VOICE_SETTINGS))
+		{
+			static float s_VoiceSettingsPhase = 0.0f;
+			const bool VoiceSettingsExpanded = g_Config.m_BcVoiceChatEnable != 0;
+			UpdateRevealPhase(s_VoiceSettingsPhase, VoiceSettingsExpanded);
+
+			const float VoiceSettingsHeight = GameClient()->m_VoiceChat.GetMenuSettingsBlockHeight(s_VoiceSettingsPhase);
+			CUIRect VoiceSettingsView;
+			BeginBlock(Column, VoiceSettingsHeight, VoiceSettingsView);
+			GameClient()->m_VoiceChat.RenderMenuSettingsBlock(VoiceSettingsView, s_VoiceSettingsPhase);
+			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+		}
+
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_OTHERS_VOICE_BINDS))
+		{
+			static CButtonContainer s_VoicePanelBindReader;
+			static CButtonContainer s_VoicePanelBindClear;
+			static CButtonContainer s_MicMuteBindReader;
+			static CButtonContainer s_MicMuteBindClear;
+			static CButtonContainer s_HeadphonesMuteBindReader;
+			static CButtonContainer s_HeadphonesMuteBindClear;
+
+			const float ContentHeight = 3.0f * (LineSize + MarginExtraSmall);
+			CUIRect BindsView;
+			BeginBlock(Column, ContentHeight, BindsView);
+			DoLine_KeyReader(BindsView, s_VoicePanelBindReader, s_VoicePanelBindClear, Localize("Voice panel"), "toggle_voice_panel");
+			DoLine_KeyReader(BindsView, s_MicMuteBindReader, s_MicMuteBindClear, Localize("Mute microphone"), "toggle_voice_mic_mute");
+			DoLine_KeyReader(BindsView, s_HeadphonesMuteBindReader, s_HeadphonesMuteBindClear, Localize("Mute headphones"), "toggle_voice_headphones_mute");
+			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+		}
 
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_OTHERS_CLIENT_INDICATOR))
 		{

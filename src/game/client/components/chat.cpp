@@ -3401,6 +3401,130 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 				});
 		}
 
+		auto DoVoiceAutocomplete = [&]() -> bool {
+			const char *pInput = m_Input.GetString();
+			if(!pInput || pInput[0] != '!')
+				return false;
+
+			const int InputLen = str_length(pInput);
+			int aTokenStarts[8];
+			int aTokenEnds[8];
+			int NumTokens = 0;
+			bool InToken = false;
+			int TokenStart = 0;
+			for(int i = 0; i <= InputLen && NumTokens < 8; ++i)
+			{
+				const char c = pInput[i];
+				const bool IsSpace = c == '\0' || std::isspace((unsigned char)c);
+				if(!InToken && !IsSpace)
+				{
+					InToken = true;
+					TokenStart = i;
+				}
+				else if(InToken && IsSpace)
+				{
+					InToken = false;
+					aTokenStarts[NumTokens] = TokenStart;
+					aTokenEnds[NumTokens] = i;
+					NumTokens++;
+				}
+			}
+			if(NumTokens <= 0)
+				return false;
+
+			int PlaceholderToken = -1;
+			for(int t = 0; t < NumTokens; ++t)
+			{
+				if(aTokenStarts[t] == m_PlaceholderOffset)
+				{
+					PlaceholderToken = t;
+					break;
+				}
+				if(m_PlaceholderOffset >= aTokenStarts[t] && m_PlaceholderOffset < aTokenEnds[t])
+					PlaceholderToken = t;
+			}
+			if(PlaceholderToken < 0 && m_PlaceholderLength == 0)
+			{
+				// Cursor is on whitespace (e.g. "!voice "): treat as completing the next token.
+				if(m_PlaceholderOffset >= 0 && (m_PlaceholderOffset == InputLen || std::isspace((unsigned char)pInput[m_PlaceholderOffset])))
+					PlaceholderToken = NumTokens;
+			}
+			if(PlaceholderToken < 0)
+				return false;
+
+			char aToken0[64];
+			str_truncate(aToken0, sizeof(aToken0), pInput + aTokenStarts[0], aTokenEnds[0] - aTokenStarts[0]);
+
+			const char *apSuggestions[24];
+			int NumSuggestions = 0;
+
+			if(PlaceholderToken == 0)
+			{
+				apSuggestions[NumSuggestions++] = "!voice";
+			}
+			else
+			{
+				if(str_comp_nocase(aToken0, "!voice") == 0)
+				{
+					if(PlaceholderToken == 1)
+					{
+						apSuggestions[NumSuggestions++] = "mute";
+						apSuggestions[NumSuggestions++] = "unmute";
+						apSuggestions[NumSuggestions++] = "volume";
+					}
+					else
+					{
+						return false;
+					}
+				}
+				else
+				{
+					return false;
+				}
+			}
+
+			if(NumSuggestions <= 0)
+				return false;
+
+			const char *pCompletion = nullptr;
+			if(ShiftPressed && m_CompletionUsed)
+				m_CompletionChosen--;
+			else if(!ShiftPressed)
+				m_CompletionChosen++;
+			m_CompletionChosen = (m_CompletionChosen % NumSuggestions + NumSuggestions) % NumSuggestions;
+			m_CompletionUsed = true;
+
+			for(int i = 0; i < NumSuggestions; ++i)
+			{
+				const int Index = (m_CompletionChosen + (ShiftPressed ? -i : i) + NumSuggestions) % NumSuggestions;
+				const char *pCandidate = apSuggestions[Index];
+				if(str_startswith_nocase(pCandidate, m_aCompletionBuffer))
+				{
+					pCompletion = pCandidate;
+					m_CompletionChosen = Index;
+					break;
+				}
+			}
+			if(!pCompletion)
+				return false;
+
+			char aBuf[MAX_LINE_LENGTH];
+			str_truncate(aBuf, sizeof(aBuf), m_Input.GetString(), m_PlaceholderOffset);
+			str_append(aBuf, pCompletion);
+
+			const char *pAfter = m_Input.GetString() + m_PlaceholderOffset + m_PlaceholderLength;
+			const char *pSeparator = *pAfter == '\0' ? " " : (*pAfter != ' ' ? " " : "");
+			if(*pSeparator)
+				str_append(aBuf, pSeparator);
+
+			str_append(aBuf, pAfter);
+
+			m_PlaceholderLength = str_length(pCompletion) + str_length(pSeparator);
+			m_Input.Set(aBuf);
+			m_Input.SetCursorOffset(m_PlaceholderOffset + m_PlaceholderLength);
+			return true;
+		};
+
 		if(GameClient()->m_BindChat.ChatDoAutocomplete(ShiftPressed))
 		{
 		}
@@ -3467,6 +3591,9 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 				m_Input.Set(aBuf);
 				m_Input.SetCursorOffset(m_PlaceholderOffset + m_PlaceholderLength);
 			}
+		}
+		else if(DoVoiceAutocomplete())
+		{
 		}
 		else
 		{
@@ -4808,6 +4935,40 @@ void CChat::OnRender()
 				}
 			}
 		}
+		else if(m_Input.GetString()[0] == '!' && m_Input.GetString()[1] != '\0')
+		{
+			const char *pIn = m_Input.GetString();
+			bool HasSpace = false;
+			for(const char *pScan = pIn; *pScan; ++pScan)
+			{
+				if(std::isspace((unsigned char)*pScan))
+				{
+					HasSpace = true;
+					break;
+				}
+			}
+			if(!HasSpace)
+			{
+				const char *apCmds[] = {"!voice"};
+				const char *pCandidate = nullptr;
+				for(const char *pCmd : apCmds)
+				{
+					if(str_startswith_nocase(pCmd, pIn))
+					{
+						pCandidate = pCmd;
+						break;
+					}
+				}
+				if(pCandidate && str_length(pCandidate) > str_length(pIn))
+				{
+					InputCursor.m_X = InputCursor.m_X + TextRender()->TextWidth(InputCursor.m_FontSize, pIn, -1, InputCursor.m_LineWidth);
+					InputCursor.m_Y = m_Input.GetCaretPosition().y;
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.5f);
+					TextRender()->TextEx(&InputCursor, pCandidate + str_length(pIn));
+					TextRender()->TextColor(TextRender()->DefaultTextColor());
+				}
+			}
+		}
 	}
 	}
 
@@ -5340,6 +5501,9 @@ void CChat::SendChat(int Team, const char *pLine)
 		return;
 	if(GameClient()->m_FastPractice.ConsumePracticeChatCommand(Team, pLine))
 		return;
+	if(GameClient()->m_VoiceChat.TryHandleChatCommand(pLine))
+		return;
+
 	m_LastChatSend = time();
 
 	if(GameClient()->Client()->IsSixup())
@@ -5395,6 +5559,8 @@ void CChat::SendChatQueued(const char *pLine)
 
 	const int Team = m_Mode == MODE_ALL ? 0 : 1;
 	AddHistoryEntry(Team, pLine);
+	if(GameClient()->m_VoiceChat.TryHandleChatCommand(pLine))
+		return;
 	if(GameClient()->m_Translate.TryTranslateOutgoingChat(Team, pLine))
 		return;
 	SendChatPayloadQueued(Team, pLine);
