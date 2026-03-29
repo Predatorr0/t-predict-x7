@@ -161,11 +161,17 @@ static void BestClientShopAbortTask(std::shared_ptr<CHttpRequest> &pTask)
 
 static void BestClientShopRestoreButtonSounds(CMenus *pMenus)
 {
-	(void)pMenus;
+	if(!pMenus->MenuUi()->IsPopupHovered())
+	{
+		pMenus->MenuUi()->SetButtonSoundEventCallback([pMenus](CUi::EButtonSoundEvent Event) {
+			pMenus->MenuButtonSoundEvent(Event);
+		});
+	}
 }
 
 static int BestClientShopDoSilentButtonLogic(CMenus *pMenus, const void *pId, int Checked, const CUIRect *pRect, unsigned Flags)
 {
+	pMenus->MenuUi()->ClearButtonSoundEventCallback();
 	const int Result = pMenus->MenuUi()->DoButtonLogic(pId, Checked, pRect, Flags);
 	BestClientShopRestoreButtonSounds(pMenus);
 	return Result;
@@ -173,6 +179,7 @@ static int BestClientShopDoSilentButtonLogic(CMenus *pMenus, const void *pId, in
 
 static int BestClientShopDoSilentMenuButton(CMenus *pMenus, CButtonContainer *pButtonContainer, const char *pText, int Checked, const CUIRect *pRect, unsigned Flags, const char *pImageName, int Corners, float Rounding, float FontFactor, ColorRGBA Color)
 {
+	pMenus->MenuUi()->ClearButtonSoundEventCallback();
 	const int Result = pMenus->DoButton_Menu(pButtonContainer, pText, Checked, pRect, Flags, pImageName, Corners, Rounding, FontFactor, Color);
 	BestClientShopRestoreButtonSounds(pMenus);
 	return Result;

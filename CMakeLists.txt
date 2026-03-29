@@ -1255,6 +1255,10 @@ set(EXPECTED_DATA
   BestClient/fonts/Nunito-Black.ttf
   BestClient/fonts/Rubik-Regular.ttf
   BestClient/gui_logo.png
+  BestClient/sfx/check-off.wv
+  BestClient/sfx/click.wv
+  BestClient/sfx/exit-client.wv
+  BestClient/sfx/open-client.wv
   BestClient/languages/arabic.txt
   BestClient/languages/azerbaijani.txt
   BestClient/languages/belarusian.txt

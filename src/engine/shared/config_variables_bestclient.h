@@ -121,6 +121,9 @@ MACRO_CONFIG_COL(BcMusicPlayerStaticColor, bc_music_player_static_color, 128, CF
 MACRO_CONFIG_INT(BcDisabledComponentsMaskLo, bc_disabled_components_mask_lo, 0, 0, 2147483647, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Low bitmask for disabled components")
 MACRO_CONFIG_INT(BcDisabledComponentsMaskHi, bc_disabled_components_mask_hi, 0, 0, 2147483647, CFGFLAG_CLIENT | CFGFLAG_SAVE, "High bitmask for disabled components")
 
+MACRO_CONFIG_INT(BcMenuSfx, bc_menu_sfx, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable BestClient menu sound effects")
+MACRO_CONFIG_INT(BcMenuSfxVolume, bc_menu_sfx_volume, 70, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "BestClient menu sound effects volume")
+
 // Media background
 MACRO_CONFIG_INT(BcMenuMediaBackground, bc_menu_media_background, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable custom media background in offline menus")
 MACRO_CONFIG_INT(BcGameMediaBackground, bc_game_media_background, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable custom media background in game background rendering")

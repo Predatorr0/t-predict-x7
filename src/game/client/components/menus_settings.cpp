@@ -1536,6 +1536,16 @@ void CMenus::RenderSettingsSound(CUIRect MainView)
 	if(DoButton_CheckBox(&g_Config.m_SndHighlight, Localize("Enable highlighted chat sound"), g_Config.m_SndHighlight, &Button))
 		g_Config.m_SndHighlight ^= 1;
 
+	MainView.HSplitTop(20.0f, &Button, &MainView);
+	if(DoButton_CheckBox(&g_Config.m_BcMenuSfx, Localize("Enable menu UI sounds"), g_Config.m_BcMenuSfx, &Button))
+		g_Config.m_BcMenuSfx ^= 1;
+
+	{
+		MainView.HSplitTop(5.0f, nullptr, &MainView);
+		MainView.HSplitTop(20.0f, &Button, &MainView);
+		Ui()->DoScrollbarOption(&g_Config.m_BcMenuSfxVolume, &g_Config.m_BcMenuSfxVolume, &Button, Localize("Menu UI sound volume"), 0, 100, &CUi::ms_LogarithmicScrollbarScale, 0u, "%");
+	}
+
 	// volume slider
 	{
 		MainView.HSplitTop(5.0f, nullptr, &MainView);

@@ -69,6 +69,7 @@ public:
 	CUi *MenuUi() const { return Ui(); }
 	IClient *MenuClient() const { return Client(); }
 	IHttp *MenuHttp() const { return Http(); }
+	void MenuButtonSoundEvent(CUi::EButtonSoundEvent Event) { OnButtonSoundEvent(Event); }
 	void RefreshCustomAssetsTab(int CurTab) { ClearCustomItems(CurTab); }
 
 private:
@@ -797,6 +798,19 @@ protected:
 
 	void SetNeedSendInfo();
 	void UpdateColors();
+	void LoadMenuSfx();
+	void UnloadMenuSfx();
+	void PlayMenuSfxSample(int SampleId);
+	void OnButtonSoundEvent(CUi::EButtonSoundEvent Event);
+
+	int m_MenuSfxHoverSample = -1;
+	int m_MenuSfxClickSample = -1;
+	int m_MenuSfxOpenSample = -1;
+	int m_MenuSfxExitSample = -1;
+	int64_t m_MenuSfxLastHoverTick = 0;
+	int64_t m_MenuSfxLastClickTick = 0;
+	bool m_MenuSfxLoaded = false;
+	bool m_MenuSfxExitPlayed = false;
 
 	IGraphics::CTextureHandle m_TextureBlob;
 	IGraphics::CTextureHandle m_MainMenuLogoTexture;

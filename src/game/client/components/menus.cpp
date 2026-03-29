@@ -999,6 +999,10 @@ void CMenus::OnInit()
 	m_DirectionQuadContainerIndex = Graphics()->CreateQuadContainer(false);
 	Graphics()->QuadContainerAddSprite(m_DirectionQuadContainerIndex, 0.f, 0.f, 22.f);
 	Graphics()->QuadContainerUpload(m_DirectionQuadContainerIndex);
+
+	LoadMenuSfx();
+	PlayMenuSfxSample(m_MenuSfxOpenSample);
+	m_MenuSfxExitPlayed = false;
 }
 
 void CMenus::ConchainBackgroundEntities(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
@@ -1027,6 +1031,93 @@ void CMenus::UpdateMusicState()
 		GameClient()->m_Sounds.Enqueue(CSounds::CHN_MUSIC, SOUND_MENU);
 	else if(!ShouldPlay && GameClient()->m_Sounds.IsPlaying(SOUND_MENU))
 		GameClient()->m_Sounds.Stop(SOUND_MENU);
+}
+
+void CMenus::LoadMenuSfx()
+{
+	if(m_MenuSfxLoaded)
+		return;
+
+	auto LoadFirstExisting = [this](const std::initializer_list<const char *> &vPaths) {
+		for(const char *pPath : vPaths)
+		{
+			const int SampleId = Sound()->LoadWV(pPath);
+			if(SampleId >= 0)
+				return SampleId;
+		}
+		return -1;
+	};
+
+	m_MenuSfxHoverSample = LoadFirstExisting({"BestClient/sfx/white-off.wv", "BestClient/sfx/check-off.wv"});
+	m_MenuSfxClickSample = LoadFirstExisting({"BestClient/sfx/click.wv"});
+	m_MenuSfxOpenSample = LoadFirstExisting({"BestClient/sfx/open-client.wv"});
+	m_MenuSfxExitSample = LoadFirstExisting({"BestClient/sfx/exit-client.wv"});
+	m_MenuSfxLastHoverTick = 0;
+	m_MenuSfxLastClickTick = 0;
+	m_MenuSfxLoaded = true;
+}
+
+void CMenus::UnloadMenuSfx()
+{
+	if(!m_MenuSfxLoaded)
+		return;
+
+	const int aSamples[] = {m_MenuSfxHoverSample, m_MenuSfxClickSample, m_MenuSfxOpenSample, m_MenuSfxExitSample};
+	for(const int SampleId : aSamples)
+	{
+		if(SampleId >= 0)
+			Sound()->UnloadSample(SampleId);
+	}
+
+	m_MenuSfxHoverSample = -1;
+	m_MenuSfxClickSample = -1;
+	m_MenuSfxOpenSample = -1;
+	m_MenuSfxExitSample = -1;
+	m_MenuSfxLastHoverTick = 0;
+	m_MenuSfxLastClickTick = 0;
+	m_MenuSfxLoaded = false;
+}
+
+void CMenus::PlayMenuSfxSample(int SampleId)
+{
+	if(SampleId < 0 || !g_Config.m_SndEnable || !g_Config.m_BcMenuSfx)
+		return;
+
+	const float Volume = std::clamp(g_Config.m_BcMenuSfxVolume / 100.0f, 0.0f, 1.0f);
+	if(Volume <= 0.0f)
+		return;
+
+	Sound()->Play(CSounds::CHN_GUI, SampleId, 0, Volume);
+}
+
+void CMenus::OnButtonSoundEvent(CUi::EButtonSoundEvent Event)
+{
+	if(!m_MenuSfxLoaded)
+		LoadMenuSfx();
+
+	const int64_t Now = time_get();
+	const int64_t HoverCooldown = time_freq() / 20; // 50 ms
+	const int64_t ClickCooldown = time_freq() / 25; // 40 ms
+
+	switch(Event)
+	{
+	case CUi::EButtonSoundEvent::HOVER_ENTER:
+		if(Now - m_MenuSfxLastHoverTick >= HoverCooldown)
+		{
+			PlayMenuSfxSample(m_MenuSfxHoverSample);
+			m_MenuSfxLastHoverTick = Now;
+		}
+		break;
+	case CUi::EButtonSoundEvent::LEFT_CLICK:
+	case CUi::EButtonSoundEvent::RIGHT_CLICK:
+	case CUi::EButtonSoundEvent::MIDDLE_CLICK:
+		if(Now - m_MenuSfxLastClickTick >= ClickCooldown)
+		{
+			PlayMenuSfxSample(m_MenuSfxClickSample);
+			m_MenuSfxLastClickTick = Now;
+		}
+		break;
+	}
 }
 
 void CMenus::PopupMessage(const char *pTitle, const char *pMessage, const char *pButtonLabel, int NextPopup, FPopupButtonCallback pfnButtonCallback)
@@ -2602,6 +2693,13 @@ void CMenus::OnReset()
 
 void CMenus::OnShutdown()
 {
+	if(!m_MenuSfxExitPlayed)
+	{
+		PlayMenuSfxSample(m_MenuSfxExitSample);
+		m_MenuSfxExitPlayed = true;
+	}
+	Ui()->ClearButtonSoundEventCallback();
+	UnloadMenuSfx();
 	m_MenuMediaBackground.Shutdown();
 	m_CommunityIcons.Shutdown();
 }
@@ -2640,6 +2738,14 @@ void CMenus::OnStateChange(int NewState, int OldState)
 {
 	// reset active item
 	Ui()->SetActiveItem(nullptr);
+
+	if((NewState == IClient::STATE_QUITTING || NewState == IClient::STATE_RESTARTING) && !m_MenuSfxExitPlayed)
+	{
+		if(!m_MenuSfxLoaded)
+			LoadMenuSfx();
+		PlayMenuSfxSample(m_MenuSfxExitSample);
+		m_MenuSfxExitPlayed = true;
+	}
 
 	if(OldState == IClient::STATE_ONLINE || OldState == IClient::STATE_OFFLINE)
 		TextRender()->DeleteTextContainer(m_MotdTextContainerIndex);
@@ -2709,6 +2815,17 @@ void CMenus::OnRender()
 
 	Ui()->StartCheck();
 	UpdateColors();
+
+	if(IsActive())
+	{
+		Ui()->SetButtonSoundEventCallback([this](CUi::EButtonSoundEvent Event) {
+			MenuButtonSoundEvent(Event);
+		});
+	}
+	else
+	{
+		Ui()->ClearButtonSoundEventCallback();
+	}
 
 	const bool IngameMenu = IsActive() && (Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK);
 	const bool IngameMenuAnimated = IngameMenu && BCUiAnimations::Enabled() && g_Config.m_BcIngameMenuAnimation != 0 && g_Config.m_BcIngameMenuAnimationMs > 0;

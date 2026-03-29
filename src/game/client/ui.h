@@ -10,6 +10,7 @@
 #include <engine/textrender.h>
 
 #include <chrono>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -303,6 +304,16 @@ struct SPopupMenuProperties
 class CUi
 {
 public:
+	enum class EButtonSoundEvent
+	{
+		HOVER_ENTER = 0,
+		LEFT_CLICK,
+		RIGHT_CLICK,
+		MIDDLE_CLICK,
+	};
+
+	using FButtonSoundEventCallback = std::function<void(EButtonSoundEvent)>;
+
 	/**
 	 * These enum values are returned by popup menu functions to specify the behavior.
 	 */
@@ -368,6 +379,8 @@ private:
 	const void *m_pActiveItem = nullptr;
 	const void *m_pLastActiveItem = nullptr; // only used internally to track active CLineInput
 	const void *m_pBecomingHotItem = nullptr;
+	const void *m_pHoveredSoundItem = nullptr;
+	const void *m_pBecomingHoveredSoundItem = nullptr;
 	CScrollRegion *m_pHotScrollRegion = nullptr;
 	CScrollRegion *m_pBecomingHotScrollRegion = nullptr;
 	bool m_ActiveItemValid = false;
@@ -441,6 +454,7 @@ private:
 	IGraphics *m_pGraphics;
 	IInput *m_pInput;
 	ITextRender *m_pTextRender;
+	FButtonSoundEventCallback m_pfnButtonSoundEvent;
 
 	std::vector<CUIElement *> m_vpOwnUIElements; // ui elements maintained by CUi class
 	std::vector<CUIElement *> m_vpUIElements;
@@ -566,6 +580,8 @@ public:
 	bool ConsumeHotkey(EHotkey Hotkey);
 	void ClearHotkeys() { m_HotkeysPressed = 0; }
 	bool OnInput(const IInput::CEvent &Event);
+	void SetButtonSoundEventCallback(FButtonSoundEventCallback pfnCallback) { m_pfnButtonSoundEvent = pfnCallback; }
+	void ClearButtonSoundEventCallback() { m_pfnButtonSoundEvent = nullptr; }
 
 	constexpr float ButtonColorMulActive() const { return 0.5f; }
 	constexpr float ButtonColorMulHot() const { return 1.5f; }

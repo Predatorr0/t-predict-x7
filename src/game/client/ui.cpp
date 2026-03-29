@@ -244,6 +244,8 @@ void CUi::Update(vec2 MouseWorldPos)
 	if(m_pActiveItem)
 		m_pHotItem = m_pActiveItem;
 	m_pBecomingHotItem = nullptr;
+	m_pHoveredSoundItem = m_pBecomingHoveredSoundItem;
+	m_pBecomingHoveredSoundItem = nullptr;
 	m_pHotScrollRegion = m_pBecomingHotScrollRegion;
 	m_pBecomingHotScrollRegion = nullptr;
 
@@ -519,7 +521,18 @@ int CUi::DoButtonLogic(const void *pId, int Checked, const CUIRect *pRect, const
 		if(!MouseButton(m_ActiveButtonLogicButton))
 		{
 			if(Inside && Checked >= 0)
+			{
 				ReturnValue = 1 + m_ActiveButtonLogicButton;
+				if(m_pfnButtonSoundEvent != nullptr)
+				{
+					if(m_ActiveButtonLogicButton == 0)
+						m_pfnButtonSoundEvent(EButtonSoundEvent::LEFT_CLICK);
+					else if(m_ActiveButtonLogicButton == 1)
+						m_pfnButtonSoundEvent(EButtonSoundEvent::RIGHT_CLICK);
+					else if(m_ActiveButtonLogicButton == 2)
+						m_pfnButtonSoundEvent(EButtonSoundEvent::MIDDLE_CLICK);
+				}
+			}
 			SetActiveItem(nullptr);
 			m_ActiveButtonLogicButton = -1;
 		}
@@ -540,7 +553,17 @@ int CUi::DoButtonLogic(const void *pId, int Checked, const CUIRect *pRect, const
 	}
 
 	if(Inside && NoRelevantButtonsPressed)
+	{
+		m_pBecomingHoveredSoundItem = pId;
+		if(HotItem() != pId && m_pfnButtonSoundEvent != nullptr)
+		{
+			if(m_pHoveredSoundItem != pId)
+			{
+				m_pfnButtonSoundEvent(EButtonSoundEvent::HOVER_ENTER);
+			}
+		}
 		SetHotItem(pId);
+	}
 
 	return ReturnValue;
 }
