@@ -948,23 +948,25 @@ void CVoiceChat::RenderHudMuteStatusIndicator(float HudWidth, float HudHeight, b
 	if(!ForcePreview && !ShowMicMuted && !ShowHeadphonesMuted)
 		return;
 
-	const auto Layout = HudLayout::Get(HudLayout::MODULE_VOICE_STATUS, HudWidth, HudHeight);
-	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
-	const float IconSize = 10.0f * Scale;
-	const float Gap = 4.0f * Scale;
-	const float Padding = 2.0f * Scale;
+	const float TimeAnchorX = (HudWidth / 7.0f) * 3.0f;
+	char aTimeStr[16];
+	str_timestamp_format(aTimeStr, sizeof(aTimeStr), g_Config.m_TcShowLocalTimeSeconds ? "%H:%M.%S" : "%H:%M");
+	const float TimeWidth = std::round(TextRender()->TextBoundingBox(5.0f, aTimeStr).m_W);
+	const float TimeRectX = TimeAnchorX - (TimeWidth + 15.0f);
+
+	const float BoxHeight = 12.5f;
+	const float IconSize = 6.8f;
+	const float Gap = 4.0f;
+	const float Padding = 3.0f;
 	const float BoxWidth = IconSize * 2.0f + Gap + Padding * 2.0f;
-	const float BoxHeight = IconSize + Padding * 2.0f;
-	float DrawX = Layout.m_X;
-	float DrawY = Layout.m_Y;
+	const float SpacingToClock = 4.0f;
+	float DrawX = TimeRectX - SpacingToClock - BoxWidth;
+	float DrawY = 0.0f;
 	DrawX = std::clamp(DrawX, 0.0f, maximum(0.0f, HudWidth - BoxWidth));
 	DrawY = std::clamp(DrawY, 0.0f, maximum(0.0f, HudHeight - BoxHeight));
 
-	const ColorRGBA BackgroundColor = color_cast<ColorRGBA>(ColorHSLA(Layout.m_BackgroundColor, true));
-	{
-		const int Corners = VoiceHudBackgroundCorners(GameClient(), HudLayout::MODULE_VOICE_STATUS, IGraphics::CORNER_ALL, DrawX, DrawY, BoxWidth, BoxHeight, HudWidth, HudHeight);
-		Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, ApplyVoiceHudAlpha(GameClient(), BackgroundColor), Corners, 4.0f * Scale);
-	}
+	const ColorRGBA BackgroundColor = ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f));
+	Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, BackgroundColor, IGraphics::CORNER_B, 3.75f);
 
 	struct SVoiceStatusIcon
 	{
@@ -976,8 +978,8 @@ void CVoiceChat::RenderHudMuteStatusIndicator(float HudWidth, float HudHeight, b
 			{FontIcon::HEADPHONES, ShowHeadphonesMuted},
 	};
 
-	const float TextSize = 7.5f * Scale;
-	const float CrossSize = 5.5f * Scale;
+	const float TextSize = 6.4f;
+	const float CrossSize = 4.6f;
 	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
 	for(int i = 0; i < 2; ++i)
 	{
