@@ -182,6 +182,31 @@ void CUi::OnCursorMove(float X, float Y)
 
 void CUi::Update(vec2 MouseWorldPos)
 {
+	const int UiScale = std::clamp(g_Config.m_UiScale, 50, 200);
+	const int ScreenWidth = Graphics()->ScreenWidth();
+	const int ScreenHeight = Graphics()->ScreenHeight();
+	const float ScreenAspect = Graphics()->ScreenAspect();
+	const bool UiScaleChanged = UiScale != m_LastUiScale;
+	const bool ScreenMetricsChanged = ScreenWidth != m_LastScreenWidth || ScreenHeight != m_LastScreenHeight || absolute(ScreenAspect - m_LastScreenAspect) > 0.0001f;
+	if(UiScaleChanged)
+	{
+		// Changing UI scale changes text pixel size. Reuse the full window-resize
+		// reset path so all text containers get recreated consistently.
+		Client()->OnWindowResize();
+	}
+	else if(ScreenMetricsChanged)
+	{
+		OnElementsReset();
+	}
+
+	if(UiScaleChanged || ScreenMetricsChanged)
+	{
+		m_LastUiScale = UiScale;
+		m_LastScreenWidth = ScreenWidth;
+		m_LastScreenHeight = ScreenHeight;
+		m_LastScreenAspect = ScreenAspect;
+	}
+
 	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
 	const CUIRect *pScreen = Screen();
 
@@ -1074,6 +1099,24 @@ bool CUi::DoEditBox_Search(CLineInput *pLineInput, const CUIRect *pRect, float F
 
 int CUi::DoButton_Menu(CUIElement &UIElement, const CButtonContainer *pId, const std::function<const char *()> &GetTextLambda, const CUIRect *pRect, const SMenuButtonProperties &Props)
 {
+	if(!UIElement.AreRectsInit())
+	{
+		bool IsRegistered = false;
+		for(const CUIElement *pElement : m_vpUIElements)
+		{
+			if(pElement == &UIElement)
+			{
+				IsRegistered = true;
+				break;
+			}
+		}
+		if(!IsRegistered)
+		{
+			UIElement.m_pUI = this;
+			AddUIElement(&UIElement);
+		}
+	}
+
 	CUIRect Text = *pRect, DropDownIcon;
 	Text.HMargin(pRect->h >= 20.0f ? 2.0f : 1.0f, &Text);
 	Text.HMargin((Text.h * Props.m_FontFactor) / 2.0f, &Text);

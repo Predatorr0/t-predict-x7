@@ -427,6 +427,10 @@ private:
 	unsigned m_HotkeysPressed = 0;
 
 	CUIRect m_Screen;
+	int m_LastUiScale = -1;
+	int m_LastScreenWidth = 0;
+	int m_LastScreenHeight = 0;
+	float m_LastScreenAspect = 0.0f;
 
 	std::vector<CUIRect> m_vClips;
 	void UpdateClipping();

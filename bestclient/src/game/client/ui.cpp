@@ -194,6 +194,31 @@ void CUi::OnCursorMove(float X, float Y)
 
 void CUi::Update(vec2 MouseWorldPos)
 {
+	const int UiScale = std::clamp(g_Config.m_UiScale, 50, 300);
+	const int ScreenWidth = Graphics()->ScreenWidth();
+	const int ScreenHeight = Graphics()->ScreenHeight();
+	const float ScreenAspect = Graphics()->ScreenAspect();
+	const bool UiScaleChanged = UiScale != m_LastUiScale;
+	const bool ScreenMetricsChanged = ScreenWidth != m_LastScreenWidth || ScreenHeight != m_LastScreenHeight || absolute(ScreenAspect - m_LastScreenAspect) > 0.0001f;
+	if(UiScaleChanged)
+	{
+		// Changing UI scale changes the effective pixel size of text. Reuse the same
+		// full reset path as a real window resize to clear all text containers.
+		Client()->OnWindowResize();
+	}
+	else if(ScreenMetricsChanged)
+	{
+		OnElementsReset();
+	}
+
+	if(UiScaleChanged || ScreenMetricsChanged)
+	{
+		m_LastUiScale = UiScale;
+		m_LastScreenWidth = ScreenWidth;
+		m_LastScreenHeight = ScreenHeight;
+		m_LastScreenAspect = ScreenAspect;
+	}
+
 	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
 	const CUIRect *pScreen = Screen();
 
@@ -458,7 +483,8 @@ float CUi::ButtonColorMul(const void *pId)
 
 const CUIRect *CUi::Screen()
 {
-	m_Screen.h = 600.0f;
+	const float UiScale = std::clamp(g_Config.m_UiScale / 100.0f, 0.5f, 3.0f);
+	m_Screen.h = 600.0f / UiScale;
 	m_Screen.w = Graphics()->ScreenAspect() * m_Screen.h;
 	return &m_Screen;
 }
@@ -1106,6 +1132,24 @@ bool CUi::DoEditBox_Search(CLineInput *pLineInput, const CUIRect *pRect, float F
 
 int CUi::DoButton_Menu(CUIElement &UIElement, const CButtonContainer *pId, const std::function<const char *()> &GetTextLambda, const CUIRect *pRect, const SMenuButtonProperties &Props)
 {
+	if(!UIElement.AreRectsInit())
+	{
+		bool IsRegistered = false;
+		for(const CUIElement *pElement : m_vpUIElements)
+		{
+			if(pElement == &UIElement)
+			{
+				IsRegistered = true;
+				break;
+			}
+		}
+		if(!IsRegistered)
+		{
+			UIElement.m_pUI = this;
+			AddUIElement(&UIElement);
+		}
+	}
+
 	CUIRect Text = *pRect, DropDownIcon;
 	Text.HMargin(pRect->h >= 20.0f ? 2.0f : 1.0f, &Text);
 	Text.HMargin((Text.h * Props.m_FontFactor) / 2.0f, &Text);
