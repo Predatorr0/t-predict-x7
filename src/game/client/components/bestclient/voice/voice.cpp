@@ -1311,26 +1311,19 @@ void CVoiceChat::RenderHudMuteStatusIndicator(float HudWidth, float HudHeight, b
 	const bool ShowHeadphonesMuted = g_Config.m_BcVoiceChatHeadphonesMuted != 0;
 	if(!ForcePreview && !ShowMicMuted && !ShowHeadphonesMuted)
 		return;
-
-	const float TimeAnchorX = (HudWidth / 7.0f) * 3.0f;
-	char aTimeStr[16];
-	str_timestamp_format(aTimeStr, sizeof(aTimeStr), g_Config.m_TcShowLocalTimeSeconds ? "%H:%M.%S" : "%H:%M");
-	const float TimeWidth = std::round(TextRender()->TextBoundingBox(5.0f, aTimeStr).m_W);
-	const float TimeRectX = TimeAnchorX - (TimeWidth + 15.0f);
-
-	const float BoxHeight = 11.0f;
-	const float IconSize = 5.8f;
-	const float Gap = 3.4f;
-	const float Padding = 2.6f;
-	const float BoxWidth = IconSize * 2.0f + Gap + Padding * 2.0f;
-	const float SpacingToClock = 4.0f;
-	float DrawX = TimeRectX - SpacingToClock - BoxWidth;
-	float DrawY = 0.0f;
-	DrawX = std::clamp(DrawX, 0.0f, maximum(0.0f, HudWidth - BoxWidth));
-	DrawY = std::clamp(DrawY, 0.0f, maximum(0.0f, HudHeight - BoxHeight));
+	const CUIRect Rect = GetHudMuteStatusIndicatorRect(HudWidth, HudHeight, ForcePreview);
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_VOICE_STATUS, HudWidth, HudHeight);
+	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+	const float BoxHeight = Rect.h;
+	const float BoxWidth = Rect.w;
+	const float IconSize = 5.8f * Scale;
+	const float Gap = 3.4f * Scale;
+	const float Padding = 2.6f * Scale;
+	const float DrawX = Rect.x;
+	const float DrawY = Rect.y;
 
 	const ColorRGBA BackgroundColor = ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f));
-	Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, BackgroundColor, IGraphics::CORNER_B, 3.0f);
+	Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, BackgroundColor, IGraphics::CORNER_B, 3.0f * Scale);
 
 	struct SVoiceStatusIcon
 	{
@@ -1342,8 +1335,8 @@ void CVoiceChat::RenderHudMuteStatusIndicator(float HudWidth, float HudHeight, b
 			{FontIcon::HEADPHONES, ShowHeadphonesMuted},
 	};
 
-	const float TextSize = 5.8f;
-	const float CrossSize = 4.1f;
+	const float TextSize = 5.8f * Scale;
+	const float CrossSize = 4.1f * Scale;
 	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
 	for(int i = 0; i < 2; ++i)
 	{
@@ -1364,6 +1357,23 @@ void CVoiceChat::RenderHudMuteStatusIndicator(float HudWidth, float HudHeight, b
 	}
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
 	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+}
+
+CUIRect CVoiceChat::GetHudMuteStatusIndicatorRect(float HudWidth, float HudHeight, bool ForcePreview) const
+{
+	const bool ShowMicMuted = g_Config.m_BcVoiceChatMicMuted != 0;
+	const bool ShowHeadphonesMuted = g_Config.m_BcVoiceChatHeadphonesMuted != 0;
+	if(!ForcePreview && !ShowMicMuted && !ShowHeadphonesMuted)
+		return CUIRect{0.0f, 0.0f, 0.0f, 0.0f};
+
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_VOICE_STATUS, HudWidth, HudHeight);
+	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+	const float BoxHeight = 11.0f * Scale;
+	const float IconSize = 5.8f * Scale;
+	const float Gap = 3.4f * Scale;
+	const float Padding = 2.6f * Scale;
+	const float BoxWidth = IconSize * 2.0f + Gap + Padding * 2.0f;
+	return {std::clamp(Layout.m_X, 0.0f, maximum(0.0f, HudWidth - BoxWidth)), std::clamp(Layout.m_Y, 0.0f, maximum(0.0f, HudHeight - BoxHeight)), BoxWidth, BoxHeight};
 }
 
 void CVoiceChat::RenderHudTalkingIndicator(float HudWidth, float HudHeight, bool ForcePreview)
@@ -1580,6 +1590,22 @@ void CVoiceChat::RenderHudTalkingIndicator(float HudWidth, float HudHeight, bool
 	}
 
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
+}
+
+CUIRect CVoiceChat::GetHudTalkingIndicatorRect(float HudWidth, float HudHeight, bool ForcePreview) const
+{
+	const std::vector<STalkingEntry> &vEntries = m_vTalkingEntries;
+	const int EntryCount = ForcePreview ? 2 : minimum((int)vEntries.size(), 5);
+	if(!ForcePreview && EntryCount <= 0)
+		return CUIRect{0.0f, 0.0f, 0.0f, 0.0f};
+
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_VOICE_TALKERS, HudWidth, HudHeight);
+	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.2f, 2.0f);
+	const float RowHeight = 12.0f * Scale;
+	const float RowGap = 0.8f * Scale;
+	const float BoxWidth = 58.0f * Scale;
+	const float BoxHeight = EntryCount * RowHeight + maximum(0, EntryCount - 1) * RowGap;
+	return {std::clamp(Layout.m_X, 0.0f, maximum(0.0f, HudWidth - BoxWidth)), std::clamp(Layout.m_Y, 0.0f, maximum(0.0f, HudHeight - BoxHeight)), BoxWidth, BoxHeight};
 }
 
 void CVoiceChat::SetUiMousePos(vec2 Pos)

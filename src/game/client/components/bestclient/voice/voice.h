@@ -48,6 +48,8 @@ public:
 	void SetClientVolumePercent(int ClientId, int VolumePercent);
 	void RenderHudTalkingIndicator(float HudWidth, float HudHeight, bool ForcePreview = false);
 	void RenderHudMuteStatusIndicator(float HudWidth, float HudHeight, bool ForcePreview = false);
+	CUIRect GetHudTalkingIndicatorRect(float HudWidth, float HudHeight, bool ForcePreview = false) const;
+	CUIRect GetHudMuteStatusIndicatorRect(float HudWidth, float HudHeight, bool ForcePreview = false) const;
 	// Renders the voice panel inside menus/settings (independent from the in-game toggle state).
 	void RenderMenuPanel(const CUIRect &View);
 	// Renders only the voice settings block (no popup frame).

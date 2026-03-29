@@ -42,6 +42,8 @@ public:
 	float GetHudPushOffsetForRect(const CUIRect &Rect, float CanvasWidth, float Padding = 0.0f) const;
 	float GetHudPushDownOffsetForRect(const CUIRect &Rect, float CanvasHeight, float Padding = 0.0f) const;
 	bool GetNowPlayingInfo(SNowPlayingInfo &Out) const;
+	CUIRect GetHudEditorRect(bool ForcePreview = false) const;
+	void RenderHudEditor(bool ForcePreview);
 
 private:
 	class CImpl;

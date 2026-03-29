@@ -4884,6 +4884,20 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		MainView.HSplitTop(LineSize + 4.0f, &Button, &MainView);
 		if(DoButton_Menu(&s_OpenComponentsEditorButton, Localize("Components editor"), 0, &Button))
 			ComponentsEditorOpen();
+
+		MainView.HSplitTop(30.0f, nullptr, &MainView);
+		MainView.HSplitTop(LineSize, &Label, &MainView);
+		Ui()->DoLabel(&Label, Localize("Edit HUD positions directly above the live game."), 14.0f, TEXTALIGN_ML);
+		MainView.HSplitTop(5.0f, nullptr, &MainView);
+
+		static CButtonContainer s_OpenHudEditorButton;
+		MainView.HSplitTop(LineSize + 4.0f, &Button, &MainView);
+		const bool CanOpenHudEditor = Client()->State() == IClient::STATE_ONLINE || Client()->State() == IClient::STATE_DEMOPLAYBACK;
+		if(DoButton_Menu(&s_OpenHudEditorButton, Localize("HUD editor"), CanOpenHudEditor ? 0 : -1, &Button) && CanOpenHudEditor)
+		{
+			SetActive(false);
+			GameClient()->m_HudEditor.Activate();
+		}
 	}
 	else if(s_CurTab == BESTCLIENT_TAB_GAMEPLAY)
 	{

@@ -22,6 +22,8 @@ enum EModule
 	MODULE_MUSIC_PLAYER,
 	MODULE_VOICE_TALKERS,
 	MODULE_VOICE_STATUS,
+	MODULE_CHAT,
+	MODULE_VOTES,
 	MODULE_LOCK_CAM,
 	MODULE_KILLFEED,
 	MODULE_COUNT,
@@ -37,10 +39,26 @@ struct SModuleLayout
 	unsigned m_BackgroundColor;
 };
 
+struct SModuleRect
+{
+	float m_X;
+	float m_Y;
+	float m_W;
+	float m_H;
+	float m_Rounding;
+};
+
 constexpr float CANVAS_WIDTH = 500.0f;
 constexpr float CANVAS_HEIGHT = 300.0f;
 
+bool IsEditableModule(EModule Module);
+const char *Name(EModule Module);
 SModuleLayout Get(EModule Module, float HudWidth, float HudHeight);
+void SetPosition(EModule Module, float X, float Y);
+void SetScale(EModule Module, int Scale);
+void Reset(EModule Module);
+void ResetEditableModules();
+SModuleRect ClampRectToScreen(const SModuleRect &Rect, float HudWidth, float HudHeight);
 float CanvasXToHud(float CanvasX, float HudWidth);
 int BackgroundCorners(int DefaultCorners, float RectX, float RectY, float RectW, float RectH, float CanvasWidth, float CanvasHeight);
 

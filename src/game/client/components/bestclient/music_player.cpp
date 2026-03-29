@@ -3693,6 +3693,33 @@ bool CMusicPlayer::GetNowPlayingInfo(SNowPlayingInfo &Out) const
 	return true;
 }
 
+CUIRect CMusicPlayer::GetHudEditorRect(bool ForcePreview) const
+{
+	if(!m_pImpl)
+		return CUIRect{};
+	if(!ForcePreview)
+	{
+		const SHudReservation Reservation = HudReservation();
+		if(Reservation.m_Visible)
+			return Reservation.m_Rect;
+	}
+
+	const float Height = HudLayout::CANVAS_HEIGHT;
+	const float Width = Height * Graphics()->ScreenAspect();
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_MUSIC_PLAYER, Width, Height);
+	const float LayoutScale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+	const float CompactTitleFont = 6.6f * LayoutScale;
+	const SGameTimerDisplay GameTimer = BuildGameTimerDisplay(GameClient()->m_Snap.m_pGameInfoObj, Client()->GameTick(g_Config.m_ClDummy), Client()->GameTickSpeed(), true);
+	const float CompactTextSlotWidth = ComputeCompactTextSlotWidth(TextRender(), GameTimer, CompactTitleFont, LayoutScale, Width / maximum(HudLayout::CANVAS_WIDTH, 0.001f));
+	const SMusicPlayerMetrics Metrics = ComputeMusicPlayerMetrics(Layout, Width, Height, 1.0f, CompactTextSlotWidth);
+	return Metrics.m_ViewRect;
+}
+
+void CMusicPlayer::RenderHudEditor(bool ForcePreview)
+{
+	RenderMusicPlayer(ForcePreview);
+}
+
 void CMusicPlayer::OnUpdate()
 {
 	if(GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER))

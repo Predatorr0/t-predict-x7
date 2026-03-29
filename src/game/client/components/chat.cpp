@@ -4233,7 +4233,11 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 
 void CChat::OnPrepareLines(float y, int StartLine, int HoveredTranslateLineIndex)
 {
-	float x = 5.0f;
+	const float Height = HudLayout::CANVAS_HEIGHT;
+	const float Width = Height * Graphics()->ScreenAspect();
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_CHAT, Width, Height);
+	const float LayoutScale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+	float x = Layout.m_X;
 	float FontSize = this->FontSize();
 
 	const bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
@@ -4263,9 +4267,10 @@ void CChat::OnPrepareLines(float y, int StartLine, int HoveredTranslateLineIndex
 	}
 
 	int64_t Now = time();
-	float LineWidth = (IsScoreBoardOpen ? maximum(85.0f, (FontSize * 85.0f / 6.0f)) : g_Config.m_ClChatWidth) - (RealMsgPaddingX * 1.5f) - RealMsgPaddingTee;
+	float LineWidth = (IsScoreBoardOpen ? maximum(85.0f * LayoutScale, (FontSize * 85.0f / 6.0f)) : ChatWidth()) - (RealMsgPaddingX * 1.5f) - RealMsgPaddingTee;
 
-	float HeightLimit = IsScoreBoardOpen ? 180.0f : (m_PrevShowChat ? 50.0f : 200.0f);
+	const float VisibleHeight = IsScoreBoardOpen ? 93.0f * LayoutScale : (m_PrevShowChat ? 223.0f * LayoutScale : 73.0f * LayoutScale);
+	float HeightLimit = y - VisibleHeight;
 	float Begin = x;
 	float TextBegin = Begin + RealMsgPaddingX / 2.0f;
 	int OffsetType = IsScoreBoardOpen ? 1 : 0;
@@ -4684,7 +4689,9 @@ void CChat::OnRender()
 	Graphics()->MapScreen(0.0f, 0.0f, Width, Height);
 
 	const bool BcChatMessageAnimEnabled = BCUiAnimations::Enabled() && g_Config.m_BcChatAnimation != 0;
-	float x = 5.0f;
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_CHAT, Width, Height);
+	const float LayoutScale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+	float x = Layout.m_X;
 	const vec2 WindowSize(maximum(1.0f, (float)Graphics()->WindowWidth()), maximum(1.0f, (float)Graphics()->WindowHeight()));
 	const vec2 UiMousePos = Ui()->UpdatedMousePos() * vec2(Ui()->Screen()->w, Ui()->Screen()->h) / WindowSize;
 	const vec2 UiToChatScale(Width / Ui()->Screen()->w, Height / Ui()->Screen()->h);
@@ -4718,7 +4725,7 @@ void CChat::OnRender()
 	}
 	m_TranslateButtonRectValid = false;
 	// BestClient
-	float y = 300.0f - (20.0f * FontSize() / 6.0f + (g_Config.m_TcStatusBar ? g_Config.m_TcStatusBarHeight : 0.0f));
+	float y = Layout.m_Y;
 	// float y = 300.0f - 20.0f * FontSize() / 6.0f;
 	float ScaledFontSize = FontSize() * (8.0f / 6.0f);
 	const bool BcChatOpenAnimEnabled = BcChatMessageAnimEnabled && g_Config.m_BcChatOpenAnimation != 0 && g_Config.m_BcChatOpenAnimationMs > 0;
@@ -4770,10 +4777,10 @@ void CChat::OnRender()
 			CTextCursor InputCursor;
 			InputCursor.SetPosition(vec2(x + ChatOpenOffsetX, y));
 			InputCursor.m_FontSize = ScaledFontSize;
-			InputCursor.m_LineWidth = Width - 190.0f;
+			InputCursor.m_LineWidth = ChatWidth() - 190.0f * LayoutScale;
 
 		// BestClient
-		InputCursor.m_LineWidth = std::max(Width - 190.0f, 190.0f);
+		InputCursor.m_LineWidth = std::max(InputCursor.m_LineWidth, 190.0f * LayoutScale);
 
 		if(m_Mode == MODE_ALL)
 			TextRender()->TextEx(&InputCursor, Localize("All"));
@@ -4989,7 +4996,8 @@ void CChat::OnRender()
 	const bool KeepLinesAlive = m_MediaViewerOpen && ValidateMediaViewerLine();
 
 	int64_t Now = time();
-	float HeightLimit = IsScoreBoardOpen ? 180.0f : (ShowLargeArea ? 50.0f : 200.0f);
+	const float VisibleHeight = IsScoreBoardOpen ? 93.0f * LayoutScale : (ShowLargeArea ? 223.0f * LayoutScale : 73.0f * LayoutScale);
+	float HeightLimit = y - VisibleHeight;
 	int OffsetType = IsScoreBoardOpen ? 1 : 0;
 
 	float RealMsgPaddingX = MessagePaddingX();
@@ -5490,6 +5498,35 @@ void CChat::EnsureCoherentWidth() const
 
 	// We want to keep a ration between font size and font width so that we don't have a weird rendering
 	g_Config.m_ClChatWidth = CHAT_FONTSIZE_WIDTH_RATIO * g_Config.m_ClChatFontSize;
+}
+
+CUIRect CChat::GetHudRect(float HudWidth, float HudHeight, bool ForcePreview) const
+{
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_CHAT, HudWidth, HudHeight);
+	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+	const bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f);
+	const bool ShowLargeArea = ForcePreview || m_Show || (m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) || g_Config.m_ClShowChat == 2;
+	const float VisibleHeight = IsScoreBoardOpen ? 93.0f * Scale : (ShowLargeArea ? 223.0f * Scale : 73.0f * Scale);
+	CUIRect Rect = {Layout.m_X, Layout.m_Y - VisibleHeight, ChatWidth(), VisibleHeight};
+	Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, HudWidth - Rect.w));
+	Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, HudHeight - Rect.h));
+	return Rect;
+}
+
+void CChat::RenderHud(bool ForcePreview)
+{
+	if(ForcePreview && !m_aLines[m_CurrentLine].m_Initialized && m_Mode == MODE_NONE && !m_Show)
+	{
+		const float Height = HudLayout::CANVAS_HEIGHT;
+		const float Width = Height * Graphics()->ScreenAspect();
+		CUIRect Rect = GetHudRect(Width, Height, true);
+		Graphics()->TextureClear();
+		Rect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), IGraphics::CORNER_ALL, MessageRounding());
+		Rect.Margin(FontSize() * 0.6f, &Rect);
+		Ui()->DoLabel(&Rect, Localize("Chat"), FontSize(), TEXTALIGN_ML);
+		return;
+	}
+	OnRender();
 }
 
 // ----- send functions -----

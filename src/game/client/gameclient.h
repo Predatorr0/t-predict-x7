@@ -36,6 +36,7 @@
 #include "components/bestclient/fast_actions.h"
 #include "components/bestclient/fast_practice.h"
 #include "components/bestclient/chat_bubbles.h"
+#include "components/bestclient/hud_editor.h"
 #include "components/bestclient/magic_particles.h"
 #include "components/bestclient/music_player.h"
 #include "components/bestclient/orbit_aura.h"
@@ -230,6 +231,7 @@ public:
 	CChatBubbles m_ChatBubbles;
 	CClientIndicator m_ClientIndicator;
 	CMusicPlayer m_MusicPlayer;
+	CHudEditor m_HudEditor;
 	CAdminPanel m_AdminPanel;
 	CFastActions m_FastActions;
 	CFastPractice m_FastPractice;

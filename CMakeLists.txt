@@ -2665,6 +2665,8 @@ if(CLIENT)
     components/bestclient/editors/menus_assets_editor.cpp
     components/bestclient/magic_particles.cpp
     components/bestclient/magic_particles.h
+    components/bestclient/hud_editor.cpp
+    components/bestclient/hud_editor.h
     components/bestclient/music_player.cpp
     components/bestclient/music_player.h
     components/bestclient/orbit_aura.cpp
