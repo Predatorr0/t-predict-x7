@@ -19,18 +19,23 @@ public:
 	bool IsActive() const { return m_Active; }
 
 private:
+	static constexpr int MAX_MODULE_VISUALS = 24;
+
 	struct SModuleVisual
 	{
 		HudLayout::EModule m_Module = HudLayout::MODULE_MUSIC_PLAYER;
 		CUIRect m_Rect{};
 		float m_Rounding = 6.0f;
 		bool m_UsesBottomAnchor = false;
+		bool m_Editable = false;
+		bool m_IsFallbackPreview = false;
 	};
 
 	static CUi::EPopupMenuFunctionResult PopupModuleSettings(void *pContext, CUIRect View, bool Active);
 
 	bool m_Active = false;
 	bool m_MouseDownLast = false;
+	bool m_RightMouseDownLast = false;
 	bool m_Dragging = false;
 	bool m_PressedOnReset = false;
 	HudLayout::EModule m_PressedModule = HudLayout::MODULE_COUNT;
@@ -42,6 +47,12 @@ private:
 	CButtonContainer m_ResetAllButton;
 
 	SModuleVisual GetModuleVisual(HudLayout::EModule Module) const;
+	CUIRect GetFallbackModuleRect(HudLayout::EModule Module) const;
+	float HudWidth() const;
+	float HudHeight() const;
+	bool IsEditableModule(HudLayout::EModule Module) const;
+	void RenderModulePreview(const SModuleVisual &Visual) const;
+	void RenderChatExtraPreview(const SModuleVisual &Visual) const;
 	void CollectModuleVisuals(SModuleVisual *pOut, int &Count) const;
 	HudLayout::EModule HitTestModule(vec2 MousePos) const;
 	void UpdateDragging(vec2 MousePos);
