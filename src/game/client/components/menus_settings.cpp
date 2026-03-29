@@ -73,12 +73,12 @@ struct SBestClientComponentEntry
 
 static const SBestClientComponentEntry gs_aBestClientComponentEntries[] = {
 	{CBestClient::COMPONENT_VISUALS_CAMERA_DRIFT, "Camera Drift", COMPONENTS_GROUP_VISUALS},
+	{CBestClient::COMPONENT_VISUALS_JELLY_TEE, "Jelly Tee", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_MAGIC_PARTICLES, "Magic Particles", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_ORBIT_AURA, "Orbit Aura", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_3D_PARTICLES, "3D Particles", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_DYNAMIC_FOV, "Dynamic FOV", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_AFTERIMAGE, "Afterimage", COMPONENTS_GROUP_VISUALS},
-	{CBestClient::COMPONENT_VISUALS_JELLY_TEE, "Jelly Tee", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_CRYSTAL_LASER, "Crystal Laser", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER, "Music Player", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_MEDIA_BACKGROUND, "Media Background", COMPONENTS_GROUP_VISUALS},
@@ -3752,15 +3752,15 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		}
 
-		// Magic particles (left column block)
-		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_MAGIC_PARTICLES))
+		// Jelly tee (left column block)
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_JELLY_TEE))
 		{
-			static float s_MagicParticlesPhase = 0.0f;
-			static CButtonContainer s_MagicParticlesResetButton;
-			const bool MagicParticlesEnabled = g_Config.m_BcMagicParticles != 0;
-			UpdateRevealPhase(s_MagicParticlesPhase, MagicParticlesEnabled);
-			const float ExpandedTargetHeight = 5.0f * LineSize;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedTargetHeight * s_MagicParticlesPhase;
+			static float s_JellyTeePhase = 0.0f;
+			static CButtonContainer s_JellyTeeResetButton;
+			const bool JellyTeeEnabled = g_Config.m_BcJellyTee != 0;
+			UpdateRevealPhase(s_JellyTeePhase, JellyTeeEnabled);
+			const float ExtraTargetHeight = 3.0f * LineSize;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_JellyTeePhase;
 			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
@@ -3768,25 +3768,23 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			CUIRect TitleLabel, ResetButton, ResetHitbox;
 			Label.VSplitRight(LineSize + 8.0f, &TitleLabel, &ResetButton);
 			ResetHitbox = ResetButton;
-			const bool MagicParticlesResetClicked = Ui()->DoButton_FontIcon(&s_MagicParticlesResetButton, FontIcon::ARROW_ROTATE_LEFT, 0, &ResetHitbox, BUTTONFLAG_LEFT);
-			GameClient()->m_Tooltips.DoToolTip(&s_MagicParticlesResetButton, &ResetHitbox, Localize("Reset to defaults"));
-			if(MagicParticlesResetClicked)
+			const bool JellyTeeResetClicked = Ui()->DoButton_FontIcon(&s_JellyTeeResetButton, FontIcon::ARROW_ROTATE_LEFT, 0, &ResetHitbox, BUTTONFLAG_LEFT);
+			GameClient()->m_Tooltips.DoToolTip(&s_JellyTeeResetButton, &ResetHitbox, Localize("Reset to defaults"));
+			if(JellyTeeResetClicked)
 			{
-				g_Config.m_BcMagicParticlesCount = DefaultConfig::BcMagicParticlesCount;
-				g_Config.m_BcMagicParticlesRadius = DefaultConfig::BcMagicParticlesRadius;
-				g_Config.m_BcMagicParticlesSize = DefaultConfig::BcMagicParticlesSize;
-				g_Config.m_BcMagicParticlesAlphaDelay = DefaultConfig::BcMagicParticlesAlphaDelay;
-				g_Config.m_BcMagicParticlesType = DefaultConfig::BcMagicParticlesType;
+				g_Config.m_BcJellyTeeOthers = DefaultConfig::BcJellyTeeOthers;
+				g_Config.m_BcJellyTeeStrength = DefaultConfig::BcJellyTeeStrength;
+				g_Config.m_BcJellyTeeDuration = DefaultConfig::BcJellyTeeDuration;
 			}
-			Ui()->DoLabel(&TitleLabel, Localize("Magic Particles"), HeadlineFontSize, TEXTALIGN_ML);
+			Ui()->DoLabel(&TitleLabel, Localize("Jelly Tee"), HeadlineFontSize, TEXTALIGN_ML);
 			Content.HSplitTop(MarginSmall, nullptr, &Content);
 
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcMagicParticles, Localize("Magic Particles"), &g_Config.m_BcMagicParticles, &Content, LineSize);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcJellyTee, Localize("Enable Jelly Tee"), &g_Config.m_BcJellyTee, &Content, LineSize);
 
-			const float ExpandedHeight = ExpandedTargetHeight * s_MagicParticlesPhase;
-			if(!MagicParticlesResetClicked && ExpandedHeight > 0.0f)
+			const float ExtraHeight = ExtraTargetHeight * s_JellyTeePhase;
+			if(!JellyTeeResetClicked && ExtraHeight > 0.0f)
 			{
-				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
+				Content.HSplitTop(ExtraHeight, &Visible, &Content);
 				Ui()->ClipEnable(&Visible);
 				struct SScopedClip
 				{
@@ -3794,35 +3792,15 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 					~SScopedClip() { m_pUi->ClipDisable(); }
 				} ClipGuard{Ui()};
 
-				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExtraTargetHeight};
+
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcJellyTeeOthers, Localize("Jelly Others"), &g_Config.m_BcJellyTeeOthers, &Expand, LineSize);
 
 				Expand.HSplitTop(LineSize, &Row, &Expand);
-				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesCount, &g_Config.m_BcMagicParticlesCount, &Row, Localize("Particles count"), 1, 100);
+				Ui()->DoScrollbarOption(&g_Config.m_BcJellyTeeStrength, &g_Config.m_BcJellyTeeStrength, &Row, Localize("Jelly strength"), 0, 1000);
 
 				Expand.HSplitTop(LineSize, &Row, &Expand);
-				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesRadius, &g_Config.m_BcMagicParticlesRadius, &Row, Localize("Radius"), 1, 1000);
-
-				Expand.HSplitTop(LineSize, &Row, &Expand);
-				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesSize, &g_Config.m_BcMagicParticlesSize, &Row, Localize("Size"), 1, 50);
-
-				Expand.HSplitTop(LineSize, &Row, &Expand);
-				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesAlphaDelay, &g_Config.m_BcMagicParticlesAlphaDelay, &Row, Localize("Alpha delay"), 1, 100);
-
-				Expand.HSplitTop(LineSize, &Row, &Expand);
-				CUIRect TypeLabel, TypeSelect;
-				Row.VSplitLeft(150.0f, &TypeLabel, &TypeSelect);
-				Ui()->DoLabel(&TypeLabel, Localize("Particle type"), 14.0f, TEXTALIGN_ML);
-
-				static CUi::SDropDownState s_MagicParticlesTypeState;
-				static CScrollRegion s_MagicParticlesTypeScrollRegion;
-				s_MagicParticlesTypeState.m_SelectionPopupContext.m_pScrollRegion = &s_MagicParticlesTypeScrollRegion;
-				const char *apMagicParticleTypes[4] = {
-					Localize("Slice"),
-					Localize("Ball"),
-					Localize("Smoke"),
-					Localize("Shell"),
-				};
-				g_Config.m_BcMagicParticlesType = Ui()->DoDropDown(&TypeSelect, g_Config.m_BcMagicParticlesType - 1, apMagicParticleTypes, (int)std::size(apMagicParticleTypes), s_MagicParticlesTypeState) + 1;
+				Ui()->DoScrollbarOption(&g_Config.m_BcJellyTeeDuration, &g_Config.m_BcJellyTeeDuration, &Row, Localize("Jelly duration"), 1, 500);
 			}
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		}
@@ -4585,15 +4563,15 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		}
 
-		// Jelly tee (right column block)
-		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_JELLY_TEE))
+		// Magic particles (right column block)
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_MAGIC_PARTICLES))
 		{
-			static float s_JellyTeePhase = 0.0f;
-			static CButtonContainer s_JellyTeeResetButton;
-			const bool JellyTeeEnabled = g_Config.m_BcJellyTee != 0;
-			UpdateRevealPhase(s_JellyTeePhase, JellyTeeEnabled);
-			const float ExtraTargetHeight = 3.0f * LineSize;
-			const float ContentHeight = LineSize + MarginSmall + LineSize + ExtraTargetHeight * s_JellyTeePhase;
+			static float s_MagicParticlesPhase = 0.0f;
+			static CButtonContainer s_MagicParticlesResetButton;
+			const bool MagicParticlesEnabled = g_Config.m_BcMagicParticles != 0;
+			UpdateRevealPhase(s_MagicParticlesPhase, MagicParticlesEnabled);
+			const float ExpandedTargetHeight = 5.0f * LineSize;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedTargetHeight * s_MagicParticlesPhase;
 			CUIRect Content, Label, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
@@ -4601,23 +4579,25 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			CUIRect TitleLabel, ResetButton, ResetHitbox;
 			Label.VSplitRight(LineSize + 8.0f, &TitleLabel, &ResetButton);
 			ResetHitbox = ResetButton;
-			const bool JellyTeeResetClicked = Ui()->DoButton_FontIcon(&s_JellyTeeResetButton, FontIcon::ARROW_ROTATE_LEFT, 0, &ResetHitbox, BUTTONFLAG_LEFT);
-			GameClient()->m_Tooltips.DoToolTip(&s_JellyTeeResetButton, &ResetHitbox, Localize("Reset to defaults"));
-			if(JellyTeeResetClicked)
+			const bool MagicParticlesResetClicked = Ui()->DoButton_FontIcon(&s_MagicParticlesResetButton, FontIcon::ARROW_ROTATE_LEFT, 0, &ResetHitbox, BUTTONFLAG_LEFT);
+			GameClient()->m_Tooltips.DoToolTip(&s_MagicParticlesResetButton, &ResetHitbox, Localize("Reset to defaults"));
+			if(MagicParticlesResetClicked)
 			{
-				g_Config.m_BcJellyTeeOthers = DefaultConfig::BcJellyTeeOthers;
-				g_Config.m_BcJellyTeeStrength = DefaultConfig::BcJellyTeeStrength;
-				g_Config.m_BcJellyTeeDuration = DefaultConfig::BcJellyTeeDuration;
+				g_Config.m_BcMagicParticlesCount = DefaultConfig::BcMagicParticlesCount;
+				g_Config.m_BcMagicParticlesRadius = DefaultConfig::BcMagicParticlesRadius;
+				g_Config.m_BcMagicParticlesSize = DefaultConfig::BcMagicParticlesSize;
+				g_Config.m_BcMagicParticlesAlphaDelay = DefaultConfig::BcMagicParticlesAlphaDelay;
+				g_Config.m_BcMagicParticlesType = DefaultConfig::BcMagicParticlesType;
 			}
-			Ui()->DoLabel(&TitleLabel, Localize("Jelly Tee"), HeadlineFontSize, TEXTALIGN_ML);
+			Ui()->DoLabel(&TitleLabel, Localize("Magic Particles"), HeadlineFontSize, TEXTALIGN_ML);
 			Content.HSplitTop(MarginSmall, nullptr, &Content);
 
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcJellyTee, Localize("Enable Jelly Tee"), &g_Config.m_BcJellyTee, &Content, LineSize);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcMagicParticles, Localize("Magic Particles"), &g_Config.m_BcMagicParticles, &Content, LineSize);
 
-			const float ExtraHeight = ExtraTargetHeight * s_JellyTeePhase;
-			if(!JellyTeeResetClicked && ExtraHeight > 0.0f)
+			const float ExpandedHeight = ExpandedTargetHeight * s_MagicParticlesPhase;
+			if(!MagicParticlesResetClicked && ExpandedHeight > 0.0f)
 			{
-				Content.HSplitTop(ExtraHeight, &Visible, &Content);
+				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
 				Ui()->ClipEnable(&Visible);
 				struct SScopedClip
 				{
@@ -4625,15 +4605,35 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 					~SScopedClip() { m_pUi->ClipDisable(); }
 				} ClipGuard{Ui()};
 
-				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExtraTargetHeight};
-
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcJellyTeeOthers, Localize("Jelly Others"), &g_Config.m_BcJellyTeeOthers, &Expand, LineSize);
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
 
 				Expand.HSplitTop(LineSize, &Row, &Expand);
-				Ui()->DoScrollbarOption(&g_Config.m_BcJellyTeeStrength, &g_Config.m_BcJellyTeeStrength, &Row, Localize("Jelly strength"), 0, 1000);
+				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesCount, &g_Config.m_BcMagicParticlesCount, &Row, Localize("Particles count"), 1, 100);
 
 				Expand.HSplitTop(LineSize, &Row, &Expand);
-				Ui()->DoScrollbarOption(&g_Config.m_BcJellyTeeDuration, &g_Config.m_BcJellyTeeDuration, &Row, Localize("Jelly duration"), 1, 500);
+				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesRadius, &g_Config.m_BcMagicParticlesRadius, &Row, Localize("Radius"), 1, 1000);
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesSize, &g_Config.m_BcMagicParticlesSize, &Row, Localize("Size"), 1, 50);
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				Ui()->DoScrollbarOption(&g_Config.m_BcMagicParticlesAlphaDelay, &g_Config.m_BcMagicParticlesAlphaDelay, &Row, Localize("Alpha delay"), 1, 100);
+
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				CUIRect TypeLabel, TypeSelect;
+				Row.VSplitLeft(150.0f, &TypeLabel, &TypeSelect);
+				Ui()->DoLabel(&TypeLabel, Localize("Particle type"), 14.0f, TEXTALIGN_ML);
+
+				static CUi::SDropDownState s_MagicParticlesTypeState;
+				static CScrollRegion s_MagicParticlesTypeScrollRegion;
+				s_MagicParticlesTypeState.m_SelectionPopupContext.m_pScrollRegion = &s_MagicParticlesTypeScrollRegion;
+				const char *apMagicParticleTypes[4] = {
+					Localize("Slice"),
+					Localize("Ball"),
+					Localize("Smoke"),
+					Localize("Shell"),
+				};
+				g_Config.m_BcMagicParticlesType = Ui()->DoDropDown(&TypeSelect, g_Config.m_BcMagicParticlesType - 1, apMagicParticleTypes, (int)std::size(apMagicParticleTypes), s_MagicParticlesTypeState) + 1;
 			}
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		}

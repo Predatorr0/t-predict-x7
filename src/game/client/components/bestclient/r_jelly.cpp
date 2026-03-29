@@ -150,8 +150,9 @@ JellyTee CRJelly::GetDeform(int ClientId, vec2 PrevVel, vec2 Vel, vec2 LookDir, 
 	Deform.m_FeetScale.x += LandingSquash * 0.15f + HorizontalStretch * 0.03f;
 	Deform.m_FeetScale.y += AirStretch * 0.05f - LandingSquash * 0.24f - HorizontalStretch * 0.01f;
 
-	Deform.m_BodyAngle = std::clamp(-pState->m_Deform.x * 0.12f - pState->m_DeformVelocity.x * 0.008f + DeformDirection.x * VerticalStretch * 0.02f, -0.12f, 0.12f);
-	Deform.m_FeetAngle = std::clamp(-Deform.m_BodyAngle * 0.30f + pState->m_Deform.x * 0.025f, -0.06f, 0.06f);
+	const float MoveLean = std::clamp(Vel.x / 11.0f, -1.0f, 1.0f) * 0.055f * (InAir ? 0.70f : 1.0f);
+	Deform.m_BodyAngle = std::clamp(-pState->m_Deform.x * 0.12f - pState->m_DeformVelocity.x * 0.008f + DeformDirection.x * VerticalStretch * 0.02f + MoveLean, -0.17f, 0.17f);
+	Deform.m_FeetAngle = std::clamp(-Deform.m_BodyAngle * 0.30f + pState->m_Deform.x * 0.025f + MoveLean * 0.25f, -0.08f, 0.08f);
 	ClampDeform(Deform);
 
 	pState->m_PrevInputVel = Vel;

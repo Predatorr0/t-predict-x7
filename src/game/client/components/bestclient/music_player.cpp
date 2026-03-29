@@ -67,9 +67,19 @@
 #include <winrt/Windows.Media.Control.h>
 #include <winrt/Windows.Storage.Streams.h>
 #include <winrt/base.h>
+#if !defined(NOBITMAP)
+#define BC_MUSICPLAYER_DEFINED_NOBITMAP
+#define NOBITMAP
+#endif
+#define IStorage BCMusicPlayerWin32IStorage
 #include <audioclient.h>
 #include <ksmedia.h>
 #include <mmdeviceapi.h>
+#undef IStorage
+#if defined(BC_MUSICPLAYER_DEFINED_NOBITMAP)
+#undef BC_MUSICPLAYER_DEFINED_NOBITMAP
+#undef NOBITMAP
+#endif
 #else
 #define BC_MUSICPLAYER_HAS_WINRT 0
 #endif
@@ -2124,7 +2134,7 @@ class CWindowsLoopbackVisualizer final : public IMusicVisualizerSource
 				return false;
 			if(FAILED(pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, pDevice.put())))
 				return false;
-			if(FAILED(pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, pAudioClient.put())))
+			if(FAILED(pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void **>(pAudioClient.put()))))
 				return false;
 			if(FAILED(pAudioClient->GetMixFormat(&pFormat)))
 				return false;
