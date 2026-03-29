@@ -1323,7 +1323,8 @@ void CVoiceChat::RenderHudMuteStatusIndicator(float HudWidth, float HudHeight, b
 	const float DrawY = Rect.y;
 
 	const ColorRGBA BackgroundColor = ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f));
-	Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, BackgroundColor, IGraphics::CORNER_B, 3.0f * Scale);
+	const int Corners = VoiceHudBackgroundCorners(GameClient(), HudLayout::MODULE_VOICE_STATUS, IGraphics::CORNER_ALL, DrawX, DrawY, BoxWidth, BoxHeight, HudWidth, HudHeight);
+	Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, BackgroundColor, Corners, 3.0f * Scale);
 
 	struct SVoiceStatusIcon
 	{
@@ -1443,7 +1444,8 @@ void CVoiceChat::RenderHudTalkingIndicator(float HudWidth, float HudHeight, bool
 		{
 			const STalkingEntry &Entry = vPreviewEntries[Index];
 			const float RowY = DrawY + Index * (RowHeight + RowGap);
-			Graphics()->DrawRect(DrawX, RowY, BoxWidth, RowHeight, ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.06f, 0.07f, 0.09f, 0.72f)), IGraphics::CORNER_ALL, 4.0f * Scale);
+			const int RowCorners = VoiceHudBackgroundCorners(GameClient(), HudLayout::MODULE_VOICE_TALKERS, IGraphics::CORNER_ALL, DrawX, RowY, BoxWidth, RowHeight, HudWidth, HudHeight);
+			Graphics()->DrawRect(DrawX, RowY, BoxWidth, RowHeight, ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.06f, 0.07f, 0.09f, 0.72f)), RowCorners, 4.0f * Scale);
 
 			const float AvatarX = DrawX + RowPadding;
 			const float AvatarY = RowY + (RowHeight - AvatarSize) * 0.5f;
@@ -1533,7 +1535,8 @@ void CVoiceChat::RenderHudTalkingIndicator(float HudWidth, float HudHeight, bool
 	{
 		const STalkingEntry &Entry = vEntries[Index];
 		const float RowY = DrawY + Index * (RowHeight + RowGap);
-		Graphics()->DrawRect(DrawX, RowY, BoxWidth, RowHeight, ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.06f, 0.07f, 0.09f, 0.72f)), IGraphics::CORNER_ALL, 4.0f * Scale);
+		const int RowCorners = VoiceHudBackgroundCorners(GameClient(), HudLayout::MODULE_VOICE_TALKERS, IGraphics::CORNER_ALL, DrawX, RowY, BoxWidth, RowHeight, HudWidth, HudHeight);
+		Graphics()->DrawRect(DrawX, RowY, BoxWidth, RowHeight, ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.06f, 0.07f, 0.09f, 0.72f)), RowCorners, 4.0f * Scale);
 
 		const float AvatarX = DrawX + RowPadding;
 		const float AvatarY = RowY + (RowHeight - AvatarSize) * 0.5f;

@@ -141,7 +141,9 @@ void CHud::RenderGameTimer()
 	if(MusicPlayerOccupiesTimerSlot)
 		return;
 
-	float Half = m_Width / 2.0f;
+	const CUIRect TimerSlotRect = GameClient()->m_MusicPlayer.GetHudEditorRect(true);
+	const bool HasTimerSlotRect = TimerSlotRect.w > 0.0f && TimerSlotRect.h > 0.0f;
+	const float Half = HasTimerSlotRect ? (TimerSlotRect.x + TimerSlotRect.w * 0.5f) : (m_Width / 2.0f);
 
 	if(!(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_SUDDENDEATH))
 	{
@@ -164,6 +166,7 @@ void CHud::RenderGameTimer()
 
 		str_time((int64_t)Time * 100, ETimeFormat::DAYS, aBuf, sizeof(aBuf));
 		float FontSize = 10.0f;
+		const float TextY = HasTimerSlotRect ? (TimerSlotRect.y + (TimerSlotRect.h - FontSize) * 0.5f) : 2.0f;
 		static float s_TextWidthM = TextRender()->TextWidth(FontSize, "00:00", -1, -1.0f);
 		static float s_TextWidthH = TextRender()->TextWidth(FontSize, "00:00:00", -1, -1.0f);
 		static float s_TextWidth0D = TextRender()->TextWidth(FontSize, "0d 00:00:00", -1, -1.0f);
@@ -176,7 +179,7 @@ void CHud::RenderGameTimer()
 			float Alpha = Time <= 10 && (2 * time() / time_freq()) % 2 ? 0.5f : 1.0f;
 			TextRender()->TextColor(1.0f, 0.25f, 0.25f, Alpha);
 		}
-		TextRender()->Text(Half - w / 2, 2, FontSize, aBuf, -1.0f);
+		TextRender()->Text(Half - w / 2, TextY, FontSize, aBuf, -1.0f);
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	}
 }

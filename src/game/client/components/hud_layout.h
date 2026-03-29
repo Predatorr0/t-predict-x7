@@ -3,6 +3,9 @@
 
 #include <engine/graphics.h>
 
+class IConsole;
+class IConfigManager;
+
 namespace HudLayout
 {
 
@@ -61,6 +64,7 @@ void ResetEditableModules();
 SModuleRect ClampRectToScreen(const SModuleRect &Rect, float HudWidth, float HudHeight);
 float CanvasXToHud(float CanvasX, float HudWidth);
 int BackgroundCorners(int DefaultCorners, float RectX, float RectY, float RectW, float RectH, float CanvasWidth, float CanvasHeight);
+void OnConsoleInit(IConsole *pConsole, IConfigManager *pConfigManager);
 
 } // namespace HudLayout
 

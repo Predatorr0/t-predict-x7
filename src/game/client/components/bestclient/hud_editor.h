@@ -9,6 +9,7 @@ class CHudEditor : public CComponent
 {
 public:
 	int Sizeof() const override { return sizeof(*this); }
+	void OnConsoleInit() override;
 	void OnRender() override;
 	bool OnInput(const IInput::CEvent &Event) override;
 	bool OnCursorMove(float x, float y, IInput::ECursorType CursorType) override;

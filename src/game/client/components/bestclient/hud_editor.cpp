@@ -9,6 +9,7 @@
 
 #include <engine/graphics.h>
 #include <engine/keys.h>
+#include <engine/storage.h>
 #include <engine/shared/config.h>
 
 #include <game/client/components/chat.h>
@@ -19,6 +20,23 @@
 namespace
 {
 constexpr float SNAP_THRESHOLD = 6.0f;
+
+bool IsMusicPlayerEnabled(const CGameClient *pGameClient)
+{
+	return g_Config.m_BcMusicPlayer != 0 &&
+	       !pGameClient->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER);
+}
+
+bool IsEditorModule(HudLayout::EModule Module)
+{
+	return Module == HudLayout::MODULE_CHAT ||
+	       Module == HudLayout::MODULE_VOICE_TALKERS ||
+	       Module == HudLayout::MODULE_VOICE_STATUS ||
+	       Module == HudLayout::MODULE_NOTIFY_LAST ||
+	       Module == HudLayout::MODULE_VOTES ||
+	       Module == HudLayout::MODULE_HOOK_COMBO ||
+	       Module == HudLayout::MODULE_MUSIC_PLAYER;
+}
 
 bool IsLivePreviewModule(HudLayout::EModule Module)
 {
@@ -43,6 +61,12 @@ CUIRect ClampToBounds(CUIRect Rect, float Width, float Height)
 	return Rect;
 }
 } // namespace
+
+void CHudEditor::OnConsoleInit()
+{
+	Storage()->CreateFolder("BestClient", IStorage::TYPE_SAVE);
+	HudLayout::OnConsoleInit(Console(), ConfigManager());
+}
 
 void CHudEditor::Activate()
 {
@@ -113,19 +137,20 @@ float CHudEditor::HudHeight() const
 
 bool CHudEditor::IsEditableModule(HudLayout::EModule Module) const
 {
-	return HudLayout::IsEditableModule(Module);
+	return IsEditorModule(Module) && HudLayout::IsEditableModule(Module);
 }
 
 CUIRect CHudEditor::GetFallbackModuleRect(HudLayout::EModule Module) const
 {
 	const float Width = HudWidth();
 	const float Height = HudHeight();
+	const auto Layout = HudLayout::Get(Module, Width, Height);
 	CUIRect Rect{};
 
 	switch(Module)
 	{
 	case HudLayout::MODULE_SCORE:
-		Rect = {Width - 112.0f, 229.0f, 112.0f, 56.0f};
+		Rect = {Layout.m_X, Layout.m_Y, 112.0f, 56.0f};
 		break;
 	case HudLayout::MODULE_MOVEMENT_INFO:
 	{
@@ -138,56 +163,51 @@ CUIRect CHudEditor::GetFallbackModuleRect(HudLayout::EModule Module) const
 		if(ShowPos || ShowSpeed || ShowAngle)
 			BoxHeight += 2.0f;
 		BoxHeight = maximum(BoxHeight, 12.0f);
-		const float StartY = 285.0f - BoxHeight - 4.0f - (g_Config.m_ClShowhudScore ? 56.0f : 0.0f);
-		Rect = {Width - 62.0f, StartY, 62.0f, BoxHeight};
+		Rect = {Layout.m_X, Layout.m_Y, 62.0f, BoxHeight};
 		break;
 	}
 	case HudLayout::MODULE_GAME_TIMER:
-		Rect = {Width * 0.5f - 32.0f, 2.0f, 64.0f, 12.0f};
+		Rect = {Layout.m_X, Layout.m_Y, 64.0f, 12.0f};
 		break;
 	case HudLayout::MODULE_FPS:
-		Rect = {Width - 28.0f, 5.0f, 26.0f, 9.0f};
+		Rect = {Layout.m_X, Layout.m_Y, 26.0f, 9.0f};
 		break;
 	case HudLayout::MODULE_PING:
-		Rect = {Width - 28.0f, 20.0f, 26.0f, 9.0f};
+		Rect = {Layout.m_X, Layout.m_Y, 26.0f, 9.0f};
 		break;
 	case HudLayout::MODULE_LOCAL_TIME:
-		Rect = {Width * 0.5f - 28.0f, 2.0f, 56.0f, 12.0f};
+		Rect = {Layout.m_X, Layout.m_Y, 56.0f, 12.0f};
 		break;
 	case HudLayout::MODULE_SPECTATOR_COUNT:
-		Rect = {Width - 120.0f, 141.0f, 118.0f, 16.0f};
+		Rect = {Layout.m_X, Layout.m_Y, 118.0f, 16.0f};
 		break;
 	case HudLayout::MODULE_HOOK_COMBO:
 	{
-		const auto Layout = HudLayout::Get(HudLayout::MODULE_HOOK_COMBO, Width, Height);
 		const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
 		const float FontSize = 13.0f * Scale;
 		const float BoxWidth = TextRender()->TextWidth(FontSize, "fantastic (x7)", -1, -1.0f) + 8.0f * Scale;
 		const float BoxHeight = FontSize + 4.0f * Scale;
-		Rect = {Width * 0.5f - BoxWidth * 0.5f, Height * 0.84f, BoxWidth, BoxHeight};
+		Rect = {Layout.m_X, Layout.m_Y, BoxWidth, BoxHeight};
 		break;
 	}
 	case HudLayout::MODULE_MINI_VOTE:
-		Rect = {0.0f, 60.0f, 70.0f, 35.0f};
+		Rect = {Layout.m_X, Layout.m_Y, 70.0f, 35.0f};
 		break;
 	case HudLayout::MODULE_FROZEN_HUD:
-		Rect = {Width - 180.0f, 0.0f, 176.0f, 34.0f};
+		Rect = {Layout.m_X, Layout.m_Y, 176.0f, 34.0f};
 		break;
 	case HudLayout::MODULE_NOTIFY_LAST:
-		Rect = {Width * 0.2f, 3.0f, 185.0f, 16.0f};
+		Rect = {Layout.m_X, Layout.m_Y, 185.0f, 16.0f};
 		break;
 	case HudLayout::MODULE_LOCK_CAM:
-		Rect = {Width * 0.5f - 8.0f, 200.0f, 16.0f, 16.0f};
+		Rect = {Layout.m_X, Layout.m_Y, 16.0f, 16.0f};
 		break;
 	case HudLayout::MODULE_KILLFEED:
-		Rect = {Width - 160.0f, 5.0f, 155.0f, 70.0f};
+		Rect = {Layout.m_X, Layout.m_Y, 155.0f, 70.0f};
 		break;
 	default:
-	{
-		const auto Layout = HudLayout::Get(Module, Width, Height);
 		Rect = {Layout.m_X, Layout.m_Y, 78.0f, 18.0f};
 		break;
-	}
 	}
 
 	return ClampToBounds(Rect, Width, Height);
@@ -248,8 +268,6 @@ CHudEditor::SModuleVisual CHudEditor::GetModuleVisual(HudLayout::EModule Module)
 void CHudEditor::CollectModuleVisuals(SModuleVisual *pOut, int &Count) const
 {
 	Count = 0;
-	const bool MusicEnabled = g_Config.m_BcMusicPlayer != 0 &&
-				  !GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER);
 
 	auto AddModule = [&](HudLayout::EModule Module) {
 		if(Count >= MAX_MODULE_VISUALS)
@@ -257,26 +275,13 @@ void CHudEditor::CollectModuleVisuals(SModuleVisual *pOut, int &Count) const
 		pOut[Count++] = GetModuleVisual(Module);
 	};
 
-	if(MusicEnabled)
-		AddModule(HudLayout::MODULE_MUSIC_PLAYER);
-	else
-		AddModule(HudLayout::MODULE_GAME_TIMER);
-
+	AddModule(HudLayout::MODULE_MUSIC_PLAYER);
 	AddModule(HudLayout::MODULE_CHAT);
 	AddModule(HudLayout::MODULE_VOTES);
 	AddModule(HudLayout::MODULE_VOICE_TALKERS);
 	AddModule(HudLayout::MODULE_VOICE_STATUS);
-
-	AddModule(HudLayout::MODULE_SCORE);
-	AddModule(HudLayout::MODULE_MOVEMENT_INFO);
-	AddModule(HudLayout::MODULE_FPS);
-	AddModule(HudLayout::MODULE_PING);
-	AddModule(HudLayout::MODULE_LOCAL_TIME);
-	AddModule(HudLayout::MODULE_SPECTATOR_COUNT);
 	AddModule(HudLayout::MODULE_HOOK_COMBO);
 	AddModule(HudLayout::MODULE_NOTIFY_LAST);
-	AddModule(HudLayout::MODULE_FROZEN_HUD);
-	AddModule(HudLayout::MODULE_KILLFEED);
 }
 
 HudLayout::EModule CHudEditor::HitTestModule(vec2 MousePos) const
@@ -440,10 +445,12 @@ void CHudEditor::RenderModuleOutline(const SModuleVisual &Visual, bool Hovered, 
 void CHudEditor::RenderModuleLabel(const SModuleVisual &Visual) const
 {
 	char aLabel[96];
+	const bool MusicDisabled = Visual.m_Module == HudLayout::MODULE_MUSIC_PLAYER && !IsMusicPlayerEnabled(GameClient());
+	const char *pName = MusicDisabled ? "Game Timer" : HudLayout::Name(Visual.m_Module);
 	if(Visual.m_Editable)
-		str_format(aLabel, sizeof(aLabel), "%s", HudLayout::Name(Visual.m_Module));
+		str_format(aLabel, sizeof(aLabel), "%s", pName);
 	else
-		str_format(aLabel, sizeof(aLabel), "%s (%s)", HudLayout::Name(Visual.m_Module), Localize("preview"));
+		str_format(aLabel, sizeof(aLabel), "%s (%s)", pName, Localize("preview"));
 
 	const float Width = HudWidth();
 	const float Height = HudHeight();
@@ -497,7 +504,9 @@ void CHudEditor::RenderModulePreview(const SModuleVisual &Visual) const
 	if(Rect.w <= 0.0f || Rect.h <= 0.0f)
 		return;
 
-	const bool LivePreview = IsLivePreviewModule(Visual.m_Module);
+	const bool MusicEnabled = IsMusicPlayerEnabled(GameClient());
+	const bool LivePreview = IsLivePreviewModule(Visual.m_Module) &&
+				 !(Visual.m_Module == HudLayout::MODULE_MUSIC_PLAYER && !MusicEnabled);
 	ColorRGBA Fill = Visual.m_Editable ? ColorRGBA(0.22f, 0.37f, 0.56f, 0.26f) : ColorRGBA(0.25f, 0.25f, 0.25f, 0.22f);
 	if(LivePreview)
 		Fill = Visual.m_Editable ? ColorRGBA(0.22f, 0.37f, 0.56f, 0.10f) : ColorRGBA(0.25f, 0.25f, 0.25f, 0.08f);
@@ -523,6 +532,12 @@ void CHudEditor::RenderModulePreview(const SModuleVisual &Visual) const
 	if(Visual.m_Module == HudLayout::MODULE_CHAT)
 	{
 		RenderChatExtraPreview(Visual);
+		return;
+	}
+	if(Visual.m_Module == HudLayout::MODULE_MUSIC_PLAYER && !MusicEnabled)
+	{
+		CUIRect TimerRect = Rect;
+		Ui()->DoLabel(&TimerRect, "00:37", 8.0f, TEXTALIGN_MC);
 		return;
 	}
 	if(Visual.m_Module == HudLayout::MODULE_VOTES)
@@ -649,8 +664,7 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 	Graphics()->DrawRect(0.0f, 0.0f, Width, Height, ColorRGBA(0.0f, 0.0f, 0.0f, 0.38f), IGraphics::CORNER_ALL, 0.0f);
 
 	// Draw true HUD previews first, then add interactive editor overlays on top.
-	const bool MusicEnabled = g_Config.m_BcMusicPlayer != 0 &&
-				  !GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER);
+	const bool MusicEnabled = IsMusicPlayerEnabled(GameClient());
 	if(MusicEnabled)
 		GameClient()->m_MusicPlayer.RenderHudEditor(true);
 
@@ -737,7 +751,14 @@ void CHudEditor::OnRender()
 
 	if(LeftClicked && ResetHovered)
 	{
-		HudLayout::ResetEditableModules();
+		SModuleVisual aVisuals[MAX_MODULE_VISUALS];
+		int Count = 0;
+		CollectModuleVisuals(aVisuals, Count);
+		for(int i = 0; i < Count; ++i)
+		{
+			if(IsEditableModule(aVisuals[i].m_Module))
+				HudLayout::Reset(aVisuals[i].m_Module);
+		}
 		m_Dragging = false;
 		m_PressedModule = HudLayout::MODULE_COUNT;
 		m_SelectedModule = HudLayout::MODULE_COUNT;
