@@ -5197,6 +5197,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_GAMEPLAY_FAST_ACTIONS))
 		{
+			static char s_aBindName[FAST_ACTIONS_MAX_NAME] = "";
 			static char s_aBindCommand[FAST_ACTIONS_MAX_CMD] = "";
 			static int s_SelectedBindIndex = 0;
 			static int s_LastSelectedBindIndex = -1;
@@ -5204,6 +5205,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const float WheelPreviewHeight = 96.0f;
 			const float ContentHeight = LineSize + MarginSmall +
 				WheelPreviewHeight + MarginSmall +
+				LineSize + MarginSmall +
 				LineSize + MarginSmall +
 				LineSize + MarginSmall +
 				LineSize + MarginSmall +
@@ -5233,6 +5235,13 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 			const vec2 MouseDelta = Ui()->MousePos() - Center;
 			const int SegmentCount = static_cast<int>(GameClient()->m_FastActions.m_vBinds.size());
+			const auto IsLegacySlotName = [](const char *pName, int SlotIndex) {
+				if(pName[0] == '\0')
+					return false;
+				char aSlotName[16];
+				str_format(aSlotName, sizeof(aSlotName), "%d", SlotIndex + 1);
+				return str_comp(pName, aSlotName) == 0;
+			};
 			const bool HoverInsideLine = absolute(MouseDelta.x) <= LineHalfWidth && absolute(MouseDelta.y) <= SelectBandHalfHeight;
 			if(HoverInsideLine && SegmentCount > 0)
 			{
@@ -5242,6 +5251,11 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				if(Ui()->MouseButtonClicked(0) || Ui()->MouseButtonClicked(2))
 				{
 					s_SelectedBindIndex = HoveringIndex;
+					const CFastActions::CBind &Bind = GameClient()->m_FastActions.m_vBinds[HoveringIndex];
+					if(IsLegacySlotName(Bind.m_aName, HoveringIndex))
+						s_aBindName[0] = '\0';
+					else
+						str_copy(s_aBindName, Bind.m_aName);
 					str_copy(s_aBindCommand, GameClient()->m_FastActions.m_vBinds[HoveringIndex].m_aCommand);
 				}
 			}
@@ -5250,6 +5264,11 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			if(s_SelectedBindIndex != s_LastSelectedBindIndex &&
 				s_SelectedBindIndex < static_cast<int>(GameClient()->m_FastActions.m_vBinds.size()))
 			{
+				const CFastActions::CBind &Bind = GameClient()->m_FastActions.m_vBinds[s_SelectedBindIndex];
+				if(IsLegacySlotName(Bind.m_aName, s_SelectedBindIndex))
+					s_aBindName[0] = '\0';
+				else
+					str_copy(s_aBindName, Bind.m_aName);
 				str_copy(s_aBindCommand, GameClient()->m_FastActions.m_vBinds[s_SelectedBindIndex].m_aCommand);
 				s_LastSelectedBindIndex = s_SelectedBindIndex;
 			}
@@ -5268,11 +5287,12 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 					SegmentFontSize = FontSize * 1.35f;
 				}
 
-				const CFastActions::CBind Bind = GameClient()->m_FastActions.m_vBinds[i];
 				const float Pos01 = GameClient()->m_FastActions.m_vBinds.size() <= 1 ? 0.5f : (float)i / (float)(GameClient()->m_FastActions.m_vBinds.size() - 1);
 				const vec2 Pos = vec2(Center.x - TextHalfRange + Pos01 * (TextHalfRange * 2.0f), Center.y);
 				const CUIRect Rect = CUIRect{Pos.x - LabelW / 2.0f, Pos.y - LabelH / 2.0f, LabelW, LabelH};
-				Ui()->DoLabel(&Rect, Bind.m_aName, SegmentFontSize, TEXTALIGN_MC);
+				char aBindPreviewText[16];
+				str_format(aBindPreviewText, sizeof(aBindPreviewText), "%d", i + 1);
+				Ui()->DoLabel(&Rect, aBindPreviewText, SegmentFontSize, TEXTALIGN_MC);
 			}
 			TextRender()->TextColor(TextRender()->DefaultTextColor());
 
@@ -5285,6 +5305,15 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Content.HSplitTop(MarginSmall, nullptr, &Content);
 			Content.HSplitTop(LineSize, &Button, &Content);
 			Button.VSplitLeft(150.0f, &Label, &Button);
+			Ui()->DoLabel(&Label, Localize("Name:"), FontSize, TEXTALIGN_ML);
+			static CLineInput s_BindNameInput;
+			s_BindNameInput.SetBuffer(s_aBindName, sizeof(s_aBindName));
+			s_BindNameInput.SetEmptyText(Localize("Name (optional)"));
+			Ui()->DoEditBox(&s_BindNameInput, &Button, EditBoxFontSize);
+
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+			Content.HSplitTop(LineSize, &Button, &Content);
+			Button.VSplitLeft(150.0f, &Label, &Button);
 			Ui()->DoLabel(&Label, Localize("Command:"), FontSize, TEXTALIGN_ML);
 			static CLineInput s_BindInput;
 			s_BindInput.SetBuffer(s_aBindCommand, sizeof(s_aBindCommand));
@@ -5292,7 +5321,10 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Ui()->DoEditBox(&s_BindInput, &Button, EditBoxFontSize);
 
 			if(s_SelectedBindIndex < static_cast<int>(GameClient()->m_FastActions.m_vBinds.size()))
+			{
+				str_copy(GameClient()->m_FastActions.m_vBinds[s_SelectedBindIndex].m_aName, s_aBindName);
 				str_copy(GameClient()->m_FastActions.m_vBinds[s_SelectedBindIndex].m_aCommand, s_aBindCommand);
+			}
 
 			static CButtonContainer s_ClearButton;
 			Content.HSplitTop(MarginSmall, nullptr, &Content);

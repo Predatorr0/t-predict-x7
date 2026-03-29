@@ -43,7 +43,7 @@ public:
 	class CBind
 	{
 	public:
-		char m_aName[FAST_ACTIONS_MAX_NAME] = "EMPTY";
+		char m_aName[FAST_ACTIONS_MAX_NAME] = "";
 		char m_aCommand[FAST_ACTIONS_MAX_CMD] = "";
 
 		bool operator==(const CBind &Other) const

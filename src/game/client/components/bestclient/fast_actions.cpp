@@ -22,12 +22,6 @@ void EnsureFixedBindSlots(std::vector<CFastActions::CBind> &vBinds)
 {
 	if(vBinds.size() != FAST_ACTIONS_FIXED_SLOTS)
 		vBinds.resize(FAST_ACTIONS_FIXED_SLOTS);
-	for(int i = 0; i < FAST_ACTIONS_FIXED_SLOTS; i++)
-	{
-		char aName[FAST_ACTIONS_MAX_NAME];
-		str_format(aName, sizeof(aName), "%d", i + 1);
-		str_copy(vBinds[i].m_aName, aName);
-	}
 }
 
 int SlotFromName(const char *pName)
@@ -40,6 +34,16 @@ int SlotFromName(const char *pName)
 		return -1;
 	const int Index = (int)Value - 1;
 	return Index >= 0 && Index < FAST_ACTIONS_FIXED_SLOTS ? Index : -1;
+}
+
+bool IsLegacySlotName(const char *pName, int SlotIndex)
+{
+	if(!pName || pName[0] == '\0')
+		return false;
+
+	char aSlotName[16];
+	str_format(aSlotName, sizeof(aSlotName), "%d", SlotIndex + 1);
+	return str_comp(pName, aSlotName) == 0;
 }
 
 int KeyToSlotIndex(int Key)
@@ -112,10 +116,12 @@ void CFastActions::ConAddFaLegacy(IConsole::IResult *pResult, void *pUserData)
 	if(BindPos < 0 || BindPos >= FAST_ACTIONS_FIXED_SLOTS)
 		return;
 
+	const char *aName = pResult->GetString(1);
 	const char *aCommand = pResult->GetString(2);
 
 	CFastActions *pThis = static_cast<CFastActions *>(pUserData);
 	EnsureFixedBindSlots(pThis->m_vBinds);
+	str_copy(pThis->m_vBinds[BindPos].m_aName, aName);
 	str_copy(pThis->m_vBinds[BindPos].m_aCommand, aCommand);
 }
 
@@ -149,7 +155,8 @@ void CFastActions::AddBind(const char *pName, const char *pCommand)
 	if(pCommand[0] == '\0')
 		return;
 
-	int Slot = SlotFromName(pName);
+	const int NameAsSlot = SlotFromName(pName);
+	int Slot = NameAsSlot;
 	if(Slot < 0)
 	{
 		for(int i = 0; i < FAST_ACTIONS_FIXED_SLOTS; i++)
@@ -164,6 +171,14 @@ void CFastActions::AddBind(const char *pName, const char *pCommand)
 	if(Slot < 0)
 		return;
 
+	if(pName[0] == '\0')
+	{
+		m_vBinds[Slot].m_aName[0] = '\0';
+	}
+	else if(NameAsSlot < 0)
+	{
+		str_copy(m_vBinds[Slot].m_aName, pName);
+	}
 	str_copy(m_vBinds[Slot].m_aCommand, pCommand);
 }
 
@@ -364,10 +379,12 @@ void CFastActions::OnRender()
 
 	const CBind &SelectedBind = m_vBinds[m_DisplayBind];
 	char aText[FAST_ACTIONS_MAX_CMD + 16];
-	if(SelectedBind.m_aCommand[0] != '\0')
+	if(SelectedBind.m_aName[0] != '\0')
+		str_copy(aText, SelectedBind.m_aName);
+	else if(SelectedBind.m_aCommand[0] != '\0')
 		str_copy(aText, SelectedBind.m_aCommand);
 	else
-		str_format(aText, sizeof(aText), TCLocalize("Slot %s is empty"), SelectedBind.m_aName);
+		str_format(aText, sizeof(aText), TCLocalize("Slot %d is empty"), m_DisplayBind + 1);
 
 	const float TextWidth = TextRender()->TextWidth(s_FontSize, aText);
 	const float BoxW = std::clamp(TextWidth + 52.0f, 180.0f, 680.0f) * aAnimationPhase[1];
@@ -428,12 +445,14 @@ void CFastActions::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUse
 		if(Bind.m_aCommand[0] == '\0')
 			continue;
 
-		char aBuf[FAST_ACTIONS_MAX_CMD * 2] = "";
+		char aBuf[FAST_ACTIONS_MAX_NAME * 2 + FAST_ACTIONS_MAX_CMD * 2 + 32] = "";
 		char *pEnd = aBuf + sizeof(aBuf);
 		char *pDst;
-		char aSlotName[16];
-		str_format(aSlotName, sizeof(aSlotName), "%d", i + 1);
-		str_format(aBuf, sizeof(aBuf), "fa %d \"%s\" \"", i, aSlotName);
+		str_format(aBuf, sizeof(aBuf), "fa %d \"", i);
+		pDst = aBuf + str_length(aBuf);
+		const char *pName = IsLegacySlotName(Bind.m_aName, i) ? "" : Bind.m_aName;
+		str_escape(&pDst, pName, pEnd);
+		str_append(aBuf, "\" \"");
 		pDst = aBuf + str_length(aBuf);
 		str_escape(&pDst, Bind.m_aCommand, pEnd);
 		str_append(aBuf, "\"");
