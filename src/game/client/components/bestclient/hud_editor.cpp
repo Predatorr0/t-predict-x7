@@ -35,6 +35,7 @@ void CHudEditor::Activate()
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 	m_Active = true;
+	m_MouseDownLast = false;
 	m_Dragging = false;
 	m_PressedModule = HudLayout::MODULE_COUNT;
 	m_HoveredModule = HudLayout::MODULE_COUNT;
@@ -45,6 +46,7 @@ void CHudEditor::Activate()
 void CHudEditor::Deactivate()
 {
 	m_Active = false;
+	m_MouseDownLast = false;
 	m_Dragging = false;
 	m_PressedModule = HudLayout::MODULE_COUNT;
 	m_HoveredModule = HudLayout::MODULE_COUNT;
@@ -62,10 +64,12 @@ void CHudEditor::OnStateChange(int NewState, int OldState)
 
 bool CHudEditor::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 {
-	(void)x;
-	(void)y;
-	(void)CursorType;
-	return m_Active;
+	if(!m_Active)
+		return false;
+
+	Ui()->ConvertMouseMove(&x, &y, CursorType);
+	Ui()->OnCursorMove(x, y);
+	return true;
 }
 
 bool CHudEditor::OnInput(const IInput::CEvent &Event)
