@@ -5633,6 +5633,22 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		Column = RightView;
 		Column.HSplitTop(10.0f, nullptr, &Column);
 
+		{
+			const float VoiceSettingsHeight = 430.0f;
+			CUIRect VoiceSettingsView;
+			BeginBlock(Column, VoiceSettingsHeight, VoiceSettingsView);
+			GameClient()->m_VoiceChat.RenderMenuSettingsBlock(VoiceSettingsView);
+		}
+		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+
+		{
+			const float ContentHeight = 24.0f + 4.0f + 24.0f + 4.0f + 24.0f;
+			CUIRect BindsView;
+			BeginBlock(Column, ContentHeight, BindsView);
+			GameClient()->m_VoiceChat.RenderMenuControlBinds(BindsView);
+		}
+		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_OTHERS_CLIENT_INDICATOR))
 		{
 			const bool ShowNamePlateSettings = g_Config.m_BcClientIndicatorInNamePlate != 0;

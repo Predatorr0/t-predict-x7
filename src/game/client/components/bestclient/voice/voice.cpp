@@ -427,6 +427,7 @@ void CVoiceChat::OnReset()
 	m_LastEncoderLossPerc = -1;
 	m_LastEncoderFec = -1;
 	m_PlaybackQueueErrorLogged = false;
+	m_LastServerListAutoFetchTick = 0;
 	m_HelloResetPending = false;
 	m_AdvertisedRoomKey.clear();
 	m_AdvertisedGameClientId = BestClientVoice::INVALID_GAME_CLIENT_ID - 1;
@@ -498,9 +499,16 @@ void CVoiceChat::OnStateChange(int NewState, int OldState)
 		m_vServerEntries.clear();
 		ResetServerListTask();
 		CloseServerListPingSocket();
+		m_LastServerListAutoFetchTick = 0;
 	}
 	else if(NewState == IClient::STATE_ONLINE)
 	{
+		ResetServerListTask();
+		CloseServerListPingSocket();
+		m_vServerEntries.clear();
+		m_ServerRowButtons.clear();
+		m_SelectedServerIndex = -1;
+		m_LastServerListAutoFetchTick = time_get();
 		FetchServerList();
 	}
 }
@@ -540,6 +548,20 @@ void CVoiceChat::OnUpdate()
 	{
 		FinishServerList();
 		ResetServerListTask();
+	}
+	else if(m_pServerListTask && (m_pServerListTask->State() == EHttpState::ERROR || m_pServerListTask->State() == EHttpState::ABORTED))
+	{
+		ResetServerListTask();
+	}
+
+	if(Online && m_vServerEntries.empty() && !m_pServerListTask)
+	{
+		const int64_t Now = time_get();
+		if(m_LastServerListAutoFetchTick == 0 || Now - m_LastServerListAutoFetchTick >= 3 * time_freq())
+		{
+			m_LastServerListAutoFetchTick = Now;
+			FetchServerList();
+		}
 	}
 
 	ProcessServerListPing();
@@ -745,6 +767,301 @@ void CVoiceChat::RenderMenuPanel(const CUIRect &View)
 	RenderPanel(View, false);
 }
 
+void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View)
+{
+	CUIRect Area = View;
+	Area.HMargin(2.0f, &Area);
+	Area.VMargin(2.0f, &Area);
+
+	static CScrollRegion s_MenuVoiceSettingsScrollRegion;
+	static vec2 s_MenuVoiceSettingsScrollOffset(0.0f, 0.0f);
+	CScrollRegionParams ScrollParams;
+	ScrollParams.m_ScrollUnit = 26.0f;
+	ScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
+	ScrollParams.m_ScrollbarMargin = 4.0f;
+	s_MenuVoiceSettingsScrollRegion.Begin(&Area, &s_MenuVoiceSettingsScrollOffset, &ScrollParams);
+	Area.y += s_MenuVoiceSettingsScrollOffset.y;
+
+	if(Client()->State() == IClient::STATE_ONLINE && m_vServerEntries.empty() && !m_pServerListTask)
+	{
+		m_LastServerListAutoFetchTick = time_get();
+		FetchServerList();
+	}
+
+	auto ReloadServerList = [&]() {
+		ResetServerListTask();
+		CloseServerListPingSocket();
+		m_vServerEntries.clear();
+		m_ServerRowButtons.clear();
+		m_SelectedServerIndex = -1;
+		m_LastServerListAutoFetchTick = time_get();
+		FetchServerList();
+	};
+
+	auto ConnectToServer = [&](const char *pAddress) {
+		if(!pAddress || pAddress[0] == '\0')
+			return;
+		if(str_comp(g_Config.m_BcVoiceChatServerAddress, pAddress) != 0)
+		{
+			str_copy(g_Config.m_BcVoiceChatServerAddress, pAddress, sizeof(g_Config.m_BcVoiceChatServerAddress));
+			str_copy(m_aLastServerAddr, g_Config.m_BcVoiceChatServerAddress, sizeof(m_aLastServerAddr));
+			if(Client()->State() == IClient::STATE_ONLINE && g_Config.m_BcVoiceChatEnable)
+			{
+				if(m_Socket)
+					StopVoice();
+				m_RuntimeState = RUNTIME_RECONNECTING;
+				StartVoice();
+			}
+		}
+	};
+
+	auto AddSpacing = [&](float Height) {
+		CUIRect Spacing;
+		Area.HSplitTop(Height, &Spacing, &Area);
+		s_MenuVoiceSettingsScrollRegion.AddRect(Spacing);
+	};
+
+	auto AddRow = [&](float Height, CUIRect &Row) {
+		Area.HSplitTop(Height, &Row, &Area);
+		return s_MenuVoiceSettingsScrollRegion.AddRect(Row);
+	};
+
+	auto RenderDeviceDropDown = [&](const char *pLabel, int IsCapture, int &ConfigDeviceIndex, CUi::SDropDownState &DropDownState, CScrollRegion &DropDownScrollRegion) {
+		CUIRect LabelRow, DropDownRow;
+		if(AddRow(18.0f, LabelRow))
+			Ui()->DoLabel(&LabelRow, pLabel, 14.0f, TEXTALIGN_ML);
+		AddSpacing(2.0f);
+		if(!AddRow(26.0f, DropDownRow))
+			return;
+
+		int DeviceCount = SDL_GetNumAudioDevices(IsCapture);
+		if(DeviceCount < 0)
+			DeviceCount = 0;
+
+		std::vector<std::string> vDeviceNames;
+		vDeviceNames.reserve((size_t)DeviceCount + 1);
+		vDeviceNames.emplace_back(Localize("System default"));
+		for(int i = 0; i < DeviceCount; ++i)
+		{
+			const char *pDeviceName = SDL_GetAudioDeviceName(i, IsCapture);
+			if(pDeviceName && pDeviceName[0] != '\0')
+				vDeviceNames.emplace_back(pDeviceName);
+			else
+			{
+				char aDevice[32];
+				str_format(aDevice, sizeof(aDevice), "Device #%d", i + 1);
+				vDeviceNames.emplace_back(aDevice);
+			}
+		}
+
+		std::vector<const char *> vpDeviceNames;
+		vpDeviceNames.reserve(vDeviceNames.size());
+		for(const std::string &DeviceName : vDeviceNames)
+			vpDeviceNames.push_back(DeviceName.c_str());
+
+		int Selection = ConfigDeviceIndex + 1;
+		if(Selection < 0 || Selection >= (int)vpDeviceNames.size())
+			Selection = 0;
+
+		DropDownState.m_SelectionPopupContext.m_pScrollRegion = &DropDownScrollRegion;
+		const int NewSelection = Ui()->DoDropDown(&DropDownRow, Selection, vpDeviceNames.data(), (int)vpDeviceNames.size(), DropDownState);
+		if(NewSelection >= 0 && NewSelection < (int)vpDeviceNames.size() && NewSelection != Selection)
+			ConfigDeviceIndex = NewSelection - 1;
+	};
+
+	CUIRect Row;
+	if(AddRow(24.0f, Row))
+		Ui()->DoLabel(&Row, Localize("Voice"), 20.0f, TEXTALIGN_ML);
+
+	AddSpacing(6.0f);
+	if(AddRow(20.0f, Row))
+	{
+		if(GameClient()->m_Menus.DoButton_CheckBox(&m_EnableVoiceButton, Localize("Enable voice chat"), g_Config.m_BcVoiceChatEnable, &Row))
+		{
+			g_Config.m_BcVoiceChatEnable ^= 1;
+			if(!g_Config.m_BcVoiceChatEnable && m_Socket)
+				StopVoice();
+		}
+	}
+
+	AddSpacing(6.0f);
+	if(AddRow(16.0f, Row))
+		Ui()->DoLabel(&Row, Localize("Activation mode"), 14.0f, TEXTALIGN_ML);
+	AddSpacing(3.0f);
+	if(AddRow(24.0f, Row))
+	{
+		static CButtonContainer s_ModeAutomaticButton;
+		static CButtonContainer s_ModePttButton;
+		CUIRect Left, Right;
+		Row.VSplitMid(&Left, &Right, 2.0f);
+		const bool Automatic = g_Config.m_BcVoiceChatActivationMode == 0;
+		const bool Ptt = g_Config.m_BcVoiceChatActivationMode == 1;
+		if(GameClient()->m_Menus.DoButton_Menu(&s_ModeAutomaticButton, Localize("Automatic"), Automatic, &Left, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+			g_Config.m_BcVoiceChatActivationMode = 0;
+		if(GameClient()->m_Menus.DoButton_Menu(&s_ModePttButton, Localize("Push-to-talk"), Ptt, &Right, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+			g_Config.m_BcVoiceChatActivationMode = 1;
+	}
+
+	AddSpacing(8.0f);
+	static CScrollRegion s_InputDeviceDropDownScrollRegion;
+	static CScrollRegion s_OutputDeviceDropDownScrollRegion;
+	RenderDeviceDropDown(Localize("Microphone"), 1, g_Config.m_BcVoiceChatInputDevice, m_InputDeviceDropDownState, s_InputDeviceDropDownScrollRegion);
+	AddSpacing(6.0f);
+	RenderDeviceDropDown(Localize("Headphones"), 0, g_Config.m_BcVoiceChatOutputDevice, m_OutputDeviceDropDownState, s_OutputDeviceDropDownScrollRegion);
+
+	AddSpacing(8.0f);
+	if(AddRow(20.0f, Row))
+	{
+		char aStatus[256];
+		str_format(aStatus, sizeof(aStatus), "%s: %s | %s: %s",
+			Localize("Status"),
+			m_Registered ? Localize("Connected") : Localize("Offline"),
+			Localize("Server"),
+			g_Config.m_BcVoiceChatServerAddress);
+		Ui()->DoLabel(&Row, aStatus, 12.0f, TEXTALIGN_ML);
+	}
+
+	AddSpacing(4.0f);
+	if(AddRow(24.0f, Row))
+	{
+		if(GameClient()->m_Menus.DoButton_Menu(&m_ReloadServerListButton, Localize("Reload servers"), 0, &Row))
+			ReloadServerList();
+	}
+
+	AddSpacing(8.0f);
+	if(AddRow(18.0f, Row))
+		Ui()->DoLabel(&Row, Localize("Available servers"), 14.0f, TEXTALIGN_ML);
+	AddSpacing(4.0f);
+
+	const int ServerCount = (int)m_vServerEntries.size();
+	const int VisibleRows = std::clamp(ServerCount > 0 ? ServerCount : 1, 1, 5);
+	const float ServerRowHeight = 24.0f;
+	const float ServerRowGap = 3.0f;
+	const float ServerListHeight = 4.0f + VisibleRows * ServerRowHeight + maximum(0, VisibleRows - 1) * ServerRowGap;
+	CUIRect ServerListView;
+	if(AddRow(ServerListHeight, ServerListView))
+	{
+		if(ServerCount <= 5)
+		{
+			if(ServerCount <= 0)
+			{
+				CUIRect EmptyRow;
+				ServerListView.HSplitTop(20.0f, &EmptyRow, &ServerListView);
+				const bool IsLoadingServerList = m_pServerListTask && !m_pServerListTask->Done();
+				Ui()->DoLabel(&EmptyRow, IsLoadingServerList ? Localize("Loading server list...") : Localize("No servers loaded"), 12.0f, TEXTALIGN_ML);
+			}
+			else
+			{
+				if(m_ServerRowButtons.size() < m_vServerEntries.size())
+					m_ServerRowButtons.resize(m_vServerEntries.size());
+				for(size_t i = 0; i < m_vServerEntries.size(); ++i)
+				{
+					const auto &Entry = m_vServerEntries[i];
+					CUIRect ServerRow;
+					ServerListView.HSplitTop(ServerRowHeight, &ServerRow, &ServerListView);
+					char aServerLabel[256];
+					if(Entry.m_PingMs >= 0)
+						str_format(aServerLabel, sizeof(aServerLabel), "%s (%dms)", Entry.m_Name.c_str(), Entry.m_PingMs);
+					else
+						str_format(aServerLabel, sizeof(aServerLabel), "%s (--)", Entry.m_Name.c_str());
+					const bool Selected = str_comp(Entry.m_Address.c_str(), g_Config.m_BcVoiceChatServerAddress) == 0;
+					if(GameClient()->m_Menus.DoButton_Menu(&m_ServerRowButtons[i], aServerLabel, Selected, &ServerRow))
+						ConnectToServer(Entry.m_Address.c_str());
+					ServerListView.HSplitTop(ServerRowGap, nullptr, &ServerListView);
+				}
+			}
+		}
+		else
+		{
+			if(m_ServerRowButtons.size() < m_vServerEntries.size())
+				m_ServerRowButtons.resize(m_vServerEntries.size());
+			static CScrollRegion s_ServerListScrollRegion;
+			static vec2 s_ServerListScrollOffset(0.0f, 0.0f);
+			CScrollRegionParams ServerScrollParams;
+			ServerScrollParams.m_ScrollUnit = 24.0f;
+			ServerScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
+			ServerScrollParams.m_ScrollbarMargin = 2.0f;
+			s_ServerListScrollRegion.Begin(&ServerListView, &s_ServerListScrollOffset, &ServerScrollParams);
+			ServerListView.y += s_ServerListScrollOffset.y;
+			for(size_t i = 0; i < m_vServerEntries.size(); ++i)
+			{
+				const auto &Entry = m_vServerEntries[i];
+				CUIRect ServerRow;
+				ServerListView.HSplitTop(ServerRowHeight, &ServerRow, &ServerListView);
+				const bool RowVisible = s_ServerListScrollRegion.AddRect(ServerRow);
+				ServerListView.HSplitTop(ServerRowGap, nullptr, &ServerListView);
+				if(!RowVisible)
+					continue;
+
+				char aServerLabel[256];
+				if(Entry.m_PingMs >= 0)
+					str_format(aServerLabel, sizeof(aServerLabel), "%s (%dms)", Entry.m_Name.c_str(), Entry.m_PingMs);
+				else
+					str_format(aServerLabel, sizeof(aServerLabel), "%s (--)", Entry.m_Name.c_str());
+				const bool Selected = str_comp(Entry.m_Address.c_str(), g_Config.m_BcVoiceChatServerAddress) == 0;
+				if(GameClient()->m_Menus.DoButton_Menu(&m_ServerRowButtons[i], aServerLabel, Selected, &ServerRow))
+					ConnectToServer(Entry.m_Address.c_str());
+			}
+			s_ServerListScrollRegion.AddRect(ServerListView);
+			s_ServerListScrollRegion.End();
+		}
+	}
+
+	s_MenuVoiceSettingsScrollRegion.AddRect(Area);
+	s_MenuVoiceSettingsScrollRegion.End();
+}
+
+void CVoiceChat::RenderMenuControlBinds(const CUIRect &View)
+{
+	auto RenderBindRow = [&](const CUIRect &RowView, const char *pLabel, const char *pCommand, CButtonContainer &Reader, CButtonContainer &Clear) {
+		CBindSlot CurrentBind(KEY_UNKNOWN, KeyModifier::NONE);
+		bool Found = false;
+		for(int Mod = 0; Mod < KeyModifier::COMBINATION_COUNT && !Found; ++Mod)
+		{
+			for(int KeyId = 0; KeyId < KEY_LAST; ++KeyId)
+			{
+				const char *pBind = GameClient()->m_Binds.Get(KeyId, Mod);
+				if(!pBind[0])
+					continue;
+				if(str_comp(pBind, pCommand) == 0)
+				{
+					CurrentBind = CBindSlot(KeyId, Mod);
+					Found = true;
+					break;
+				}
+			}
+		}
+
+		CUIRect LabelRect, BindRect;
+		RowView.VSplitLeft(170.0f, &LabelRect, &BindRect);
+		Ui()->DoLabel(&LabelRect, pLabel, 12.0f, TEXTALIGN_ML);
+		BindRect.VSplitLeft(6.0f, nullptr, &BindRect);
+
+		const auto Result = GameClient()->m_KeyBinder.DoKeyReader(&Reader, &Clear, &BindRect, CurrentBind, false);
+		if(Result.m_Bind != CurrentBind)
+		{
+			if(CurrentBind.m_Key != KEY_UNKNOWN)
+				GameClient()->m_Binds.Bind(CurrentBind.m_Key, "", false, CurrentBind.m_ModifierMask);
+			if(Result.m_Bind.m_Key != KEY_UNKNOWN)
+				GameClient()->m_Binds.Bind(Result.m_Bind.m_Key, pCommand, false, Result.m_Bind.m_ModifierMask);
+		}
+	};
+
+	CUIRect Rows = View;
+	CUIRect Row;
+
+	Rows.HSplitTop(24.0f, &Row, &Rows);
+	RenderBindRow(Row, Localize("Voice panel"), "toggle_voice_panel", m_PanelBindReaderButton, m_PanelBindClearButton);
+
+	Rows.HSplitTop(4.0f, nullptr, &Rows);
+	Rows.HSplitTop(24.0f, &Row, &Rows);
+	RenderBindRow(Row, Localize("Mute microphone"), "toggle_voice_mic_mute", m_MicMuteBindReaderButton, m_MicMuteBindClearButton);
+
+	Rows.HSplitTop(4.0f, nullptr, &Rows);
+	Rows.HSplitTop(24.0f, &Row, &Rows);
+	RenderBindRow(Row, Localize("Mute headphones"), "toggle_voice_headphones_mute", m_HeadphonesMuteBindReaderButton, m_HeadphonesMuteBindClearButton);
+}
+
 void CVoiceChat::RenderMenuPanelToggleBind(const CUIRect &View)
 {
 	auto RenderBindRow = [&](const char *pLabel, const char *pCommand, CButtonContainer &Reader, CButtonContainer &Clear) {
@@ -782,7 +1099,7 @@ void CVoiceChat::RenderMenuPanelToggleBind(const CUIRect &View)
 		}
 	};
 
-	RenderBindRow(Localize("Voice panel bind"), "toggle_voice_panel", m_PanelBindReaderButton, m_PanelBindClearButton);
+	RenderBindRow(Localize("Voice panel"), "toggle_voice_panel", m_PanelBindReaderButton, m_PanelBindClearButton);
 }
 
 bool CVoiceChat::TryHandleChatCommand(const char *pLine)
@@ -3414,9 +3731,9 @@ void CVoiceChat::RenderSettingsSection(CUIRect View)
 		AddSpacing(4.0f);
 	};
 
-	RenderBindRow(Localize("PTT bind"), "+voicechat", m_PttBindReaderButton, m_PttBindClearButton);
-	RenderBindRow(Localize("Mute microphone bind"), "toggle_voice_mic_mute", m_MicMuteBindReaderButton, m_MicMuteBindClearButton);
-	RenderBindRow(Localize("Mute headphones bind"), "toggle_voice_headphones_mute", m_HeadphonesMuteBindReaderButton, m_HeadphonesMuteBindClearButton);
+	RenderBindRow(Localize("PTT"), "+voicechat", m_PttBindReaderButton, m_PttBindClearButton);
+	RenderBindRow(Localize("Mute microphone"), "toggle_voice_mic_mute", m_MicMuteBindReaderButton, m_MicMuteBindClearButton);
+	RenderBindRow(Localize("Mute headphones"), "toggle_voice_headphones_mute", m_HeadphonesMuteBindReaderButton, m_HeadphonesMuteBindClearButton);
 
 	s_SettingsScrollRegion.AddRect(View);
 	s_SettingsScrollRegion.End();
