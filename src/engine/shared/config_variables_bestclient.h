@@ -128,7 +128,7 @@ MACRO_CONFIG_INT(BcHudMusicPlayerScale, bc_hud_music_player_scale, 100, 25, 300,
 MACRO_CONFIG_INT(BcHudVoiceHudX, bc_hud_voice_hud_x, 4, -1000, 1000, CFGFLAG_CLIENT, "HUD editor X position for voice HUD")
 MACRO_CONFIG_INT(BcHudVoiceHudY, bc_hud_voice_hud_y, 122, -1000, 1000, CFGFLAG_CLIENT, "HUD editor Y position for voice HUD")
 MACRO_CONFIG_INT(BcHudVoiceHudScale, bc_hud_voice_hud_scale, 100, 25, 300, CFGFLAG_CLIENT, "HUD editor scale for voice HUD")
-MACRO_CONFIG_INT(BcHudVoiceMuteIconsX, bc_hud_voice_mute_icons_x, 160, -1000, 1000, CFGFLAG_CLIENT, "HUD editor X position for voice mute icons")
+MACRO_CONFIG_INT(BcHudVoiceMuteIconsX, bc_hud_voice_mute_icons_x, 136, -1000, 1000, CFGFLAG_CLIENT, "HUD editor X position for voice mute icons")
 MACRO_CONFIG_INT(BcHudVoiceMuteIconsY, bc_hud_voice_mute_icons_y, 0, -1000, 1000, CFGFLAG_CLIENT, "HUD editor Y position for voice mute icons")
 MACRO_CONFIG_INT(BcHudVoiceMuteIconsScale, bc_hud_voice_mute_icons_scale, 100, 25, 300, CFGFLAG_CLIENT, "HUD editor scale for voice mute icons")
 MACRO_CONFIG_INT(BcHudChatX, bc_hud_chat_x, 5, -1000, 1000, CFGFLAG_CLIENT, "HUD editor X position for ingame chat")

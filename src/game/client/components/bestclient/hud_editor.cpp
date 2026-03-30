@@ -32,9 +32,7 @@ bool IsEditorModule(HudLayout::EModule Module)
 	return Module == HudLayout::MODULE_CHAT ||
 	       Module == HudLayout::MODULE_VOICE_TALKERS ||
 	       Module == HudLayout::MODULE_VOICE_STATUS ||
-	       Module == HudLayout::MODULE_NOTIFY_LAST ||
 	       Module == HudLayout::MODULE_VOTES ||
-	       Module == HudLayout::MODULE_HOOK_COMBO ||
 	       Module == HudLayout::MODULE_MUSIC_PLAYER;
 }
 
@@ -44,8 +42,7 @@ bool IsLivePreviewModule(HudLayout::EModule Module)
 		Module == HudLayout::MODULE_CHAT ||
 		Module == HudLayout::MODULE_VOTES ||
 		Module == HudLayout::MODULE_VOICE_TALKERS ||
-		Module == HudLayout::MODULE_VOICE_STATUS ||
-		Module == HudLayout::MODULE_HOOK_COMBO;
+		Module == HudLayout::MODULE_VOICE_STATUS;
 }
 
 bool PointInRect(vec2 Point, const CUIRect &Rect)
@@ -226,7 +223,17 @@ CHudEditor::SModuleVisual CHudEditor::GetModuleVisual(HudLayout::EModule Module)
 	switch(Module)
 	{
 	case HudLayout::MODULE_MUSIC_PLAYER:
-		Visual.m_Rect = GameClient()->m_MusicPlayer.GetHudEditorRect(true);
+		if(IsMusicPlayerEnabled(GameClient()))
+		{
+			Visual.m_Rect = GameClient()->m_MusicPlayer.GetHudEditorRect(false);
+			if(Visual.m_Rect.w <= 0.0f || Visual.m_Rect.h <= 0.0f)
+				Visual.m_Rect = GameClient()->m_MusicPlayer.GetHudEditorRect(true);
+		}
+		else
+		{
+			const auto Layout = HudLayout::Get(HudLayout::MODULE_MUSIC_PLAYER, Width, Height);
+			Visual.m_Rect = {Layout.m_X, Layout.m_Y, 92.0f, 12.0f};
+		}
 		Visual.m_Rounding = 8.0f;
 		break;
 	case HudLayout::MODULE_VOICE_TALKERS:
@@ -280,8 +287,6 @@ void CHudEditor::CollectModuleVisuals(SModuleVisual *pOut, int &Count) const
 	AddModule(HudLayout::MODULE_VOTES);
 	AddModule(HudLayout::MODULE_VOICE_TALKERS);
 	AddModule(HudLayout::MODULE_VOICE_STATUS);
-	AddModule(HudLayout::MODULE_HOOK_COMBO);
-	AddModule(HudLayout::MODULE_NOTIFY_LAST);
 }
 
 HudLayout::EModule CHudEditor::HitTestModule(vec2 MousePos) const
@@ -666,13 +671,12 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 	// Draw true HUD previews first, then add interactive editor overlays on top.
 	const bool MusicEnabled = IsMusicPlayerEnabled(GameClient());
 	if(MusicEnabled)
-		GameClient()->m_MusicPlayer.RenderHudEditor(true);
+		GameClient()->m_MusicPlayer.RenderHudEditor(false);
 
 	GameClient()->m_Chat.RenderHud(true);
 	GameClient()->m_Voting.RenderHud(true);
 	GameClient()->m_VoiceChat.RenderHudTalkingIndicator(Width, Height, true);
 	GameClient()->m_VoiceChat.RenderHudMuteStatusIndicator(Width, Height, true);
-	GameClient()->m_BestClient.RenderHookCombo(true);
 
 	SModuleVisual aVisuals[MAX_MODULE_VISUALS];
 	int Count = 0;
@@ -785,8 +789,6 @@ void CHudEditor::OnRender()
 	}
 	else if(!LeftDown && m_MouseDownLast)
 	{
-		if(m_PressedModule != HudLayout::MODULE_COUNT && !m_Dragging)
-			OpenModuleSettings(GetModuleVisual(m_PressedModule));
 		m_Dragging = false;
 		m_PressedModule = HudLayout::MODULE_COUNT;
 		m_PressedOnReset = false;

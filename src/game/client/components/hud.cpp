@@ -5,6 +5,7 @@
 #include "binds.h"
 #include "camera.h"
 #include "controls.h"
+#include "hud_layout.h"
 #include "voting.h"
 
 #include <base/color.h>
@@ -141,10 +142,6 @@ void CHud::RenderGameTimer()
 	if(MusicPlayerOccupiesTimerSlot)
 		return;
 
-	const CUIRect TimerSlotRect = GameClient()->m_MusicPlayer.GetHudEditorRect(true);
-	const bool HasTimerSlotRect = TimerSlotRect.w > 0.0f && TimerSlotRect.h > 0.0f;
-	const float Half = HasTimerSlotRect ? (TimerSlotRect.x + TimerSlotRect.w * 0.5f) : (m_Width / 2.0f);
-
 	if(!(GameClient()->m_Snap.m_pGameInfoObj->m_GameStateFlags & GAMESTATEFLAG_SUDDENDEATH))
 	{
 		char aBuf[32];
@@ -166,20 +163,25 @@ void CHud::RenderGameTimer()
 
 		str_time((int64_t)Time * 100, ETimeFormat::DAYS, aBuf, sizeof(aBuf));
 		float FontSize = 10.0f;
-		const float TextY = HasTimerSlotRect ? (TimerSlotRect.y + (TimerSlotRect.h - FontSize) * 0.5f) : 2.0f;
 		static float s_TextWidthM = TextRender()->TextWidth(FontSize, "00:00", -1, -1.0f);
 		static float s_TextWidthH = TextRender()->TextWidth(FontSize, "00:00:00", -1, -1.0f);
 		static float s_TextWidth0D = TextRender()->TextWidth(FontSize, "0d 00:00:00", -1, -1.0f);
 		static float s_TextWidth00D = TextRender()->TextWidth(FontSize, "00d 00:00:00", -1, -1.0f);
 		static float s_TextWidth000D = TextRender()->TextWidth(FontSize, "000d 00:00:00", -1, -1.0f);
 		float w = Time >= 3600 * 24 * 100 ? s_TextWidth000D : (Time >= 3600 * 24 * 10 ? s_TextWidth00D : (Time >= 3600 * 24 ? s_TextWidth0D : (Time >= 3600 ? s_TextWidthH : s_TextWidthM)));
+		float Half = m_Width / 2.0f;
+		float TextY = 2.0f;
+		const auto MusicLayout = HudLayout::Get(HudLayout::MODULE_MUSIC_PLAYER, m_Width, m_Height);
+		const float TextX = std::clamp(MusicLayout.m_X, 0.0f, maximum(0.0f, m_Width - w));
+		Half = TextX + w * 0.5f;
+		TextY = std::clamp(MusicLayout.m_Y, 0.0f, maximum(0.0f, m_Height - FontSize));
 		// last 60 sec red, last 10 sec blink
 		if(GameClient()->m_Snap.m_pGameInfoObj->m_TimeLimit && Time <= 60 && (GameClient()->m_Snap.m_pGameInfoObj->m_WarmupTimer <= 0))
 		{
 			float Alpha = Time <= 10 && (2 * time() / time_freq()) % 2 ? 0.5f : 1.0f;
 			TextRender()->TextColor(1.0f, 0.25f, 0.25f, Alpha);
 		}
-		TextRender()->Text(Half - w / 2, TextY, FontSize, aBuf, -1.0f);
+		TextRender()->Text(Half - w / 2.0f, TextY, FontSize, aBuf, -1.0f);
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	}
 }
