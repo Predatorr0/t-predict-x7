@@ -531,7 +531,7 @@ Override
 == Изменить
 
 Command
-== Command
+== Команда
 
 Extra tick other tees (increases other tees latency, \nmakes dragging slightly easier when using fast input)
 == Дополнительный тик других тии (увеличивает задержку других тии,\n немного облегчает перетаскивание при использовании быстрого ввода)
@@ -949,9 +949,6 @@ Dynamic FOV amount
 Dynamic FOV smoothness
 == Плавность динамического FOV
 
-[[red]] This feature is disabled on this server
-== [[red]] На этих серверах это запрещено
-
 Afterimage
 == Афтеримедж
 
@@ -1107,3 +1104,1183 @@ Your messages to
 
 Slot %s is empty
 == Слот %s пуст
+
+Gameplay
+== Геймплей
+
+Others
+== Другое
+
+Fun
+== Игры
+
+Shop
+== Магазин
+
+Editors
+== Редакторы
+
+Info
+== Инфо
+
+BestClient Links
+== Ссылки BestClient
+
+Telegram
+== Телеграм
+
+Check update
+== Проверить обновление
+
+Preparing update...
+== Подготовка обновления...
+
+Downloading
+== Загрузка
+
+Update downloaded
+== Обновление загружено
+
+Update failed
+== Ошибка обновления
+
+Config Files
+== Файлы конфигурации
+
+BestClient Settings
+== Настройки BestClient
+
+BestClient Developers
+== Разработчики BestClient
+
+Hide Settings Tabs
+== Скрыть вкладки настроек
+
+Search
+== Поиск
+
+Assets directory
+== Папка ассетов
+
+Auto set
+== Автоустановка
+
+Search results
+== Результаты поиска
+
+Items
+== Элементы
+
+Preview unavailable
+== Предпросмотр недоступен
+
+Preview is still loading
+== Предпросмотр ещё загружается
+
+Unknown author
+== Неизвестный автор
+
+Saved as
+== Сохранено как
+
+Unable to delete asset
+== Не удалось удалить ассет
+
+Entities
+== Сущности
+
+Game
+== Игра
+
+Emoticons
+== Эмотиконы
+
+Arrows
+== Стрелки
+
+Audio
+== Аудио
+
+BestClient %s is available
+== Доступен BestClient %s
+
+0 keeps the image fixed to the screen. 100 fixes it to the map for a full parallax effect.
+== 0 удерживает изображение на экране. 100 привязывает его к карте для полного эффекта параллакса.
+
+1 = Local two players
+== 1 = Локальная игра на двоих
+
+2 = Versus bot
+== 2 = Против бота
+
+2 = Versus smart bot
+== 2 = Против умного бота
+
+2048!
+== 2048!
+
+All Lights Off
+== Все огни выключены
+
+All bricks cleared
+== Все кирпичи разбиты
+
+All pairs connected
+== Все пары соединены
+
+All pairs found
+== Все пары найдены
+
+All staged component changes will be lost.
+== Все подготовленные изменения компонентов будут потеряны.
+
+Allowed media domains
+== Разрешённые домены для медиа
+
+Alpha delay
+== Задержка альфы
+
+Animations
+== Анимации
+
+Applied
+== Применено
+
+Assets editor
+== Редактор ассетов
+
+Aura alpha
+== Прозрачность ауры
+
+Aura radius
+== Радиус ауры
+
+Aura speed
+== Скорость ауры
+
+Author
+== Автор
+
+Auto disable after time end
+== Автоматически выключать после окончания времени
+
+Auto team lock
+== Автолок команды
+
+Available blocks
+== Доступные блоки
+
+Black Wins
+== Чёрные победили
+
+Black wins
+== Чёрные победили
+
+Board Size
+== Размер поля
+
+Bot Skill
+== Сила бота
+
+Bot Wins
+== Бот победил
+
+Bot wins
+== Бот победил
+
+Bottom
+== Снизу
+
+Brick Rows
+== Ряды кирпичей
+
+By zoom
+== По зуму
+
+Calm board
+== Спокойное поле
+
+Cancel
+== Отмена
+
+Cancel all changes?
+== Отменить все изменения?
+
+Cat escaped
+== Кот сбежал
+
+Cat trapped
+== Кот пойман
+
+Caught by ghost
+== Пойман призраком
+
+Center
+== По центру
+
+Chance For 4
+== Шанс на 4
+
+Chat Media
+== Медиа в чате
+
+Chat message animation time (ms)
+== Время анимации сообщений чата (мс)
+
+Chat message animations
+== Анимации сообщений чата
+
+Chat open animation
+== Анимация открытия чата
+
+Chat open animation time (ms)
+== Время анимации открытия чата (мс)
+
+Chat typing animation
+== Анимация набора в чате
+
+Chat typing animation time (ms)
+== Время анимации набора в чате (мс)
+
+Classic block blast
+== Классический Block Blast
+
+Clear command
+== Очистить команду
+
+Client Indicator
+== Индикатор клиента
+
+Close
+== Закрыть
+
+Color mode
+== Режим цвета
+
+Components editor
+== Редактор компонентов
+
+Content filtering
+== Фильтрация контента
+
+Course complete
+== Трасса пройдена
+
+Cover accent color
+== Акцентный цвет обложки
+
+Crash
+== Столкновение
+
+Create mixed assets or jump to the name plate editor.
+== Создавайте смешанные ассеты или переходите в редактор неймплейтов.
+
+Crystal Laser
+== Кристальный лазер
+
+Cull map tiles outside FPS fog
+== Скрывать тайлы карты вне FPS-тумана
+
+Custom
+== Кастомизация
+
+Custom size
+== Свой размер
+
+DDNet priority: High
+== Приоритет DDNet: высокий
+
+Deleted
+== Удалено
+
+Dice Count
+== Количество кубиков
+
+Difficulty
+== Сложность
+
+Disable all particles render
+== Отключить рендер всех частиц
+
+Disable if you have shotgun, grenade or laser
+== Отключать, если у вас есть дробовик, граната или лазер
+
+Disabled components: %d
+== Отключённых компонентов: %d
+
+Discord priority: Below Normal
+== Приоритет Discord: ниже обычного
+
+Dominant cover color
+== Доминирующий цвет обложки
+
+Download
+== Скачать
+
+Download canceled
+== Загрузка отменена
+
+Draw
+== Ничья
+
+ESC menu animation
+== Анимация ESC-меню
+
+ESC menu animation time (ms)
+== Время анимации ESC-меню (мс)
+
+Edit HUD positions directly above the live game.
+== Редактируйте позиции HUD прямо поверх живой игры.
+
+Enable
+== Включить
+
+Enable Jelly Tee
+== Включить Jelly Tee
+
+Enable animations
+== Включить анимации
+
+Enable fullscreen media viewer in chat
+== Включить полноэкранный просмотр медиа в чате
+
+Enable gores mode
+== Включить режим gores
+
+Enable music player
+== Включить музыкальный плеер
+
+Enable optimizer
+== Включить оптимизатор
+
+Enable speedrun timer
+== Включить спидран-таймер
+
+Enable visualizer
+== Включить визуализатор
+
+FPS fog (cull outside limit)
+== FPS-туман (скрывать всё вне лимита)
+
+FPS fog mode
+== Режим FPS-тумана
+
+Failed to build a download URL
+== Не удалось создать URL загрузки
+
+Fast Actions
+== Быстрые действия
+
+Fast Actions key
+== Клавиша быстрых действий
+
+Fast Input
+== Быстрый ввод
+
+Fast Input others
+== Быстрый ввод для остальных
+
+Fast input
+== Быстрый ввод
+
+Field Size
+== Размер поля
+
+Fleet destroyed
+== Флот уничтожен
+
+Focus mode bind
+== Бинд режима фокуса
+
+Full
+== Полностью
+
+Game Over
+== Игра окончена
+
+Game only
+== Только игра
+
+Games
+== Игры
+
+Ghost Skill
+== Сила призрака
+
+Glow alpha
+== Прозрачность свечения
+
+Glow offset
+== Смещение свечения
+
+Gores mode
+== Режим gores
+
+Grid Size
+== Размер сетки
+
+HUD editor
+== Редактор HUD
+
+Hard patterns
+== Сложные паттерны
+
+Hide hud in settings
+== Скрывать HUD в настройках
+
+Hide media bind
+== Бинд скрытия медиа
+
+High Detail
+== Высокая детализация
+
+Hole complete
+== Лунка пройдена
+
+Hook combo
+== Хук-комбо
+
+Hook combo size
+== Размер hook combo
+
+Hook combo sound volume
+== Громкость звука hook combo
+
+Hours
+== Часы
+
+In game: hold bind key, press 1..6, release key to execute
+== В игре: зажмите клавишу бинда, нажмите 1..6, отпустите клавишу для выполнения
+
+Installed
+== Установлено
+
+Installed and applied
+== Установлено и применено
+
+Jelly Others
+== Jelly для других
+
+Jelly Tee
+== Желейный тии
+
+Jelly duration
+== Длительность jelly
+
+Jelly strength
+== Сила jelly
+
+Killfeed animation
+== Анимация киллфида
+
+Killfeed animation time (ms)
+== Время анимации киллфида (мс)
+
+Level Cleared
+== Уровень пройден
+
+Lives
+== Жизни
+
+Loading shop...
+== Загрузка магазина...
+
+Lock team automatically after joining
+== Автоматически закрывать команду после входа
+
+Looks like you're on a server where this feature is forbidden
+== Похоже, вы на сервере, где эта функция запрещена
+
+Low delta
+== Низкая дельта
+
+Manual radius
+== Ручной радиус
+
+Map offset
+== Смещение карты
+
+Max time between hooks
+== Макс. время между хуками
+
+Media preview width
+== Ширина предпросмотра медиа
+
+Milliseconds
+== Миллисекунды
+
+Minutes
+== Минуты
+
+Misc
+== Разное
+
+Mode
+== Режим
+
+Module reveal time (ms)
+== Время раскрытия модуля (мс)
+
+Module settings reveals
+== Раскрытие настроек модулей
+
+Music Player
+== Музыкальный плеер
+
+Mute headphones
+== Выключить наушники
+
+Mute microphone
+== Выключить микрофон
+
+Name (optional)
+== Имя (необязательно)
+
+Name plate indicator size
+== Размер индикатора в неймплейте
+
+Next
+== Следующее
+
+No assets found on this page
+== На этой странице ассеты не найдены
+
+No media files in backgrounds folder
+== В папке backgrounds нет медиафайлов
+
+No space for blocks
+== Нет места для блоков
+
+O wins
+== O победил
+
+Object Balls
+== Шары-объекты
+
+Open a dedicated component toggles page.
+== Открыть отдельную страницу переключения компонентов.
+
+Hook combo
+== Хук-комбо
+
+Jelly Tee
+== Желейный тии
+
+Command
+== Команда
+
+Snap Tap
+== Снэп-тап
+
+Sweat Weapon
+== Потное оружие
+
+eco-freeze chimera
+== Эко-фриз химера
+
+true low delta
+== Истинная low delta
+
+Visuals
+== Отображение
+
+Others
+== Прочее
+
+Enable Jelly Tee
+== Включить желейного тии
+
+Sub-Tick aiming
+== Субтиковое наведение
+
+low delta others
+== Низкая дельта для остальных
+
+true low delta
+== Настоящая низкая дельта
+
+Visuals
+== Отображение
+
+Others
+== Прочее
+
+Enable Jelly Tee
+== Включить желейного тии
+
+Sub-Tick aiming
+== Субтиковое наведение
+
+low delta others
+== Низкая дельта для остальных
+
+true low delta
+== Настоящая низкая дельта
+
+##### bestclient terminal overrides #####
+
+Visuals
+== Отображение
+
+Others
+== Прочее
+
+Enable Jelly Tee
+== Включить желейного тии
+
+No media files in backgrounds folder
+== В папке фонов нет медиафайлов
+
+Sub-Tick aiming
+== Субтиковое наведение
+
+low delta others
+== Низкая дельта для остальных
+
+true low delta
+== Настоящая низкая дельта
+
+##### bestclient final overrides #####
+
+Visuals
+== Отображение
+
+Others
+== Прочее
+
+Info
+== Информация
+
+Hook combo
+== Хук-комбо
+
+Hook combo size
+== Размер хук-комбо
+
+Hook combo sound volume
+== Громкость звука хук-комбо
+
+Jelly Tee
+== Желейный тии
+
+Enable Jelly Tee
+== Включить желейного тии
+
+Jelly Others
+== Желе для других
+
+Jelly strength
+== Сила желе
+
+Jelly duration
+== Длительность желе
+
+Music Player
+== Музыкальный плеер
+
+Color mode
+== Цветовой режим
+
+Static color
+== Статичный цвет
+
+Cover accent color
+== Акцентный цвет обложки
+
+Dominant cover color
+== Доминирующий цвет обложки
+
+Enable visualizer
+== Включить визуализатор
+
+Visualizer mode
+== Режим визуализатора
+
+Center
+== По центру
+
+Map offset
+== Смещение карты
+
+Disabled.
+== Отключено.
+
+hook
+== хук
+
+hammer
+== молоток
+
+hook&hammer
+== хук и молоток
+
+Dynamic FOV
+== Динамический угол обзора
+
+Dynamic FOV amount
+== Сила динамического угла обзора
+
+Dynamic FOV smoothness
+== Плавность динамического угла обзора
+
+Gores mode
+== Режим кровавых эффектов
+
+Enable gores mode
+== Включить режим кровавых эффектов
+
+Command
+== Команда
+
+Snap Tap
+== Снэп-тап
+
+low delta others
+== Низкая дельта для остальных
+
+true low delta
+== Настоящая низкая дельта
+
+Sub-Tick aiming
+== Субтиковое наведение
+
+UI scale
+== Масштаб интерфейса
+
+Failed to load PNG.
+== Не удалось загрузить PNG.
+
+Failed to upload PNG.
+== Не удалось загрузить PNG в видеопамять.
+
+Loaded image.
+== Изображение загружено.
+
+Failed to read file.
+== Не удалось прочитать файл.
+
+Failed to upload image.
+== Не удалось загрузить изображение в видеопамять.
+
+Failed to decode image.
+== Не удалось декодировать изображение.
+
+Loaded animated image.
+== Анимированное изображение загружено.
+
+Failed to open video.
+== Не удалось открыть видео.
+
+Failed to read video info.
+== Не удалось прочитать информацию о видео.
+
+No video stream found.
+== Видеопоток не найден.
+
+Unsupported video codec.
+== Неподдерживаемый видеокодек.
+
+Failed to initialize video decoder.
+== Не удалось инициализировать видеодекодер.
+
+Invalid video dimensions.
+== Некорректные размеры видео.
+
+Failed to allocate video frames.
+== Не удалось выделить кадры видео.
+
+Failed to allocate RGBA frame.
+== Не удалось выделить RGBA-кадр.
+
+Failed to initialize video scaler.
+== Не удалось инициализировать масштабирование видео.
+
+Failed to decode first video frame.
+== Не удалось декодировать первый кадр видео.
+
+Loaded video.
+== Видео загружено.
+
+No media selected.
+== Медиафайл не выбран.
+
+Failed while decoding video.
+== Ошибка при декодировании видео.
+
+Disabled.
+== Отключено.
+
+Save asset before closing?
+== Сохранить ассет перед закрытием?
+
+You have unsaved changes.
+== У вас есть несохранённые изменения.
+
+Discard
+== Отменить изменения
+
+No preview
+== Нет предпросмотра
+
+Reload
+== Перезагрузить
+
+Export
+== Экспорт
+
+Show Grid
+== Показать сетку
+
+Donor (drag parts from left)
+== Донор (перетаскивайте части слева)
+
+Frankenstein (drop parts on right)
+== Франкенштейн (бросайте части справа)
+
+No assets found.
+== Ассеты не найдены.
+
+Part reset to main asset.
+== Часть сброшена к основному ассету.
+
+Can only drop onto same-size parts.
+== Можно перетаскивать только на части того же размера.
+
+Applied to %d same-family part(s).
+== Применено к %d частям того же семейства.
+
+Selected candidate %d/%d under cursor.
+== Выбран кандидат %d/%d под курсором.
+
+Part updated.
+== Часть обновлена.
+
+Click again to cycle parts (%d options).
+== Нажмите ещё раз, чтобы переключить части (%d вариантов).
+
+Donor Asset
+== Донорский ассет
+
+Main Asset
+== Основной ассет
+
+Drop on right canvas to replace one part.
+== Перетащите на правый холст, чтобы заменить одну часть.
+
+Drag from left to right. Right-click a Frankenstein part to reset it.
+== Перетаскивайте слева направо. Нажмите правой кнопкой по части Франкенштейна, чтобы сбросить её.
+
+Reset All
+== Сбросить всё
+
+Reloaded images.
+== Изображения перезагружены.
+
+Reloaded images. %d slot(s) fell back to main asset.
+== Изображения перезагружены. %d слот(ов) возвращены к основному ассету.
+
+Added %d missing required slot(s).
+== Добавлено %d недостающих обязательных слот(ов).
+
+No assets available for composition.
+== Нет ассетов для сборки.
+
+Failed to load main asset: %s
+== Не удалось загрузить основной ассет: %s
+
+Preview built with %d skipped slot(s).
+== Предпросмотр собран с пропуском %d слот(ов).
+
+Choose export name first.
+== Сначала укажите имя экспорта.
+
+Export name contains invalid characters.
+== Имя экспорта содержит недопустимые символы.
+
+Asset with this name already exists.
+== Ассет с таким именем уже существует.
+
+Failed to write PNG export.
+== Не удалось записать PNG-экспорт.
+
+Exported to %s
+== Экспортировано в %s
+
+%s from %s
+== %s из %s
+
+Emoticons
+== Эмотиконы
+
+Entities
+== Сущности
+
+Particles
+== Частицы
+
+Extras
+== Дополнения
+
+Game
+== Игра
+
+Optimizer
+== Оптимизатор
+
+Particle type
+== Тип частицы
+
+Particles count
+== Количество частиц
+
+Play same color or same number
+== Играй той же мастью или тем же номером
+
+Puzzle Set
+== Набор головоломок
+
+Radius
+== Радиус
+
+Radius (tiles)
+== Радиус (тайлы)
+
+Real hitbox dot color
+== Цвет точки реального хитбокса
+
+Red wins
+== Красные победили
+
+Render FPS fog rectangle
+== Показывать прямоугольник FPS-тумана
+
+Render media previews from chat links
+== Показывать предпросмотр медиа по ссылкам из чата
+
+Reset to defaults
+== Сбросить настройки
+
+Restart
+== Рестарт
+
+Restart client now so component changes fully apply?
+== Перезапустить клиент сейчас, чтобы изменения компонентов полностью применились?
+
+Roll
+== Бросить
+
+Sand Shotgun
+== Песчаный дробовик
+
+Save unsent messages
+== Сохранять неотправленные сообщения
+
+Scoreboard indicator size
+== Размер индикатора в табе
+
+Seconds
+== Секунды
+
+Selected slot
+== Выбранный слот
+
+Semicolon-separated allowlist, for example: tenor.com; imgur.com; giphy.com; cdn.discordapp.com
+== Список разрешённых доменов через ;, например: tenor.com; imgur.com; giphy.com; cdn.discordapp.com
+
+Setup
+== Настройка
+
+Shadow of Emotions
+== Тень эмоций
+
+Shop request failed
+== Ошибка запроса магазина
+
+Shop response is invalid
+== Некорректный ответ магазина
+
+Show ESC players list
+== Показывать список игроков по ESC
+
+Show GIFs in chat media
+== Показывать GIF в медиа чата
+
+Show above yourself
+== Показывать над собой
+
+Show conflicts
+== Показывать конфликты
+
+Show indicator in name plates
+== Показывать индикатор в неймплейтах
+
+Show indicator in scoreboard
+== Показывать индикатор в табе
+
+Show legal moves
+== Показывать допустимые ходы
+
+Show photos in chat media
+== Показывать фото в медиа чата
+
+Show player below indicator
+== Показывать игрока под индикатором
+
+Show real hitbox
+== Показывать реальный хитбокс
+
+Simplified UNO: colors and numbers 0-9
+== Упрощённое UNO: цвета и числа 0-9
+
+Snap Tap
+== Snap Tap
+
+Solved
+== Решено
+
+Speedrun timer
+== Спидран-таймер
+
+Start
+== Старт
+
+Start Level
+== Стартовый уровень
+
+Start Speed
+== Стартовая скорость
+
+Static color
+== Статичный цвет
+
+Sub-Tick aiming
+== Sub-Tick наведение
+
+Sweat Weapon
+== Sweat Weapon
+
+Table cleared
+== Стол очищен
+
+Turn: Black
+== Ход: чёрные
+
+Turn: O
+== Ход: O
+
+Turn: Red
+== Ход: красные
+
+Turn: White
+== Ход: белые
+
+Turn: X
+== Ход: X
+
+Turn: Yellow
+== Ход: жёлтые
+
+UI scale
+== Масштаб UI
+
+Unable to install asset
+== Не удалось установить ассет
+
+Use new menu layout
+== Использовать новый макет меню
+
+Use short KoG server name
+== Использовать короткое имя сервера KoG
+
+Victory
+== Победа
+
+Viewer max zoom
+== Макс. зум просмотра
+
+Visible area (%)
+== Видимая область (%)
+
+Visualizer mode
+== Режим визуализатора
+
+Visualizer sensitivity
+== Чувствительность визуализатора
+
+Visualizer smoothing
+== Сглаживание визуализатора
+
+Visuals
+== Визуал
+
+Voice panel
+== Голосовая панель
+
+White Wins
+== Белые победили
+
+White wins
+== Белые победили
+
+Winner: Black
+== Победитель: чёрные
+
+Winner: White
+== Победитель: белые
+
+Wrap Through Walls
+== Проходить через стены
+
+X wins
+== X победил
+
+Yellow wins
+== Жёлтые победили
+
+You Win
+== Вы победили
+
+You hit a cactus
+== Вы врезались в кактус
+
+You win
+== Вы победили
+
+eco-freeze chimera
+== eco-freeze chimera
+
+low delta others
+== low delta для остальных
+
+true low delta
+== true low delta
+
+Snap Tap
+== Снэп-тап
+
+Sweat Weapon
+== Потное оружие
+
+eco-freeze chimera
+== Эко-фриз химера
+
+true low delta
+== Истинная low delta
+
+Visuals
+== Отображение
+
+Others
+== Прочее
+
+Enable Jelly Tee
+== Включить желейного тии
+
+Sub-Tick aiming
+== Субтиковое наведение
+
+low delta others
+== Низкая дельта для остальных
+
+true low delta
+== Настоящая низкая дельта

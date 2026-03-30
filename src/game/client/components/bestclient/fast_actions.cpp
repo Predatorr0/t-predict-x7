@@ -384,7 +384,7 @@ void CFastActions::OnRender()
 	else if(SelectedBind.m_aCommand[0] != '\0')
 		str_copy(aText, SelectedBind.m_aCommand);
 	else
-		str_format(aText, sizeof(aText), TCLocalize("Slot %d is empty"), m_DisplayBind + 1);
+		str_format(aText, sizeof(aText), BCLocalize("Slot %d is empty"), m_DisplayBind + 1);
 
 	const float TextWidth = TextRender()->TextWidth(s_FontSize, aText);
 	const float BoxW = std::clamp(TextWidth + 52.0f, 180.0f, 680.0f) * aAnimationPhase[1];

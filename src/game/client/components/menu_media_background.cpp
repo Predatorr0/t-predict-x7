@@ -4,6 +4,8 @@
 
 #include <engine/shared/config.h>
 
+#include <game/localization.h>
+
 #include <algorithm>
 #include <limits>
 
@@ -169,7 +171,7 @@ void CMenuMediaBackground::Init(IGraphics *pGraphics, IStorage *pStorage)
 {
 	m_pGraphics = pGraphics;
 	m_pStorage = pStorage;
-	SetStatus("Disabled.");
+	SetStatus(BCLocalize("Disabled."));
 }
 
 void CMenuMediaBackground::SetStatus(const char *pText)
@@ -235,7 +237,7 @@ void CMenuMediaBackground::Unload()
 	m_MaxUpdateCostTick = 0;
 	m_TotalUpdateCostTick = 0;
 	m_UpdateSamples = 0;
-	str_copy(m_aStatus, "Disabled.", sizeof(m_aStatus));
+	str_copy(m_aStatus, BCLocalize("Disabled."), sizeof(m_aStatus));
 }
 
 void CMenuMediaBackground::Shutdown()
@@ -259,14 +261,14 @@ bool CMenuMediaBackground::LoadStaticMedia(const char *pPath, int StorageType)
 			unsigned PngDataSize = 0;
 			if(!m_pStorage->ReadFile(pPath, StorageType, &pPngData, &PngDataSize))
 			{
-				SetError("Failed to load PNG.");
+				SetError(BCLocalize("Failed to load PNG."));
 				return false;
 			}
 			const bool Decoded = MediaDecoder::DecodeImageToRgba(m_pGraphics, static_cast<unsigned char *>(pPngData), PngDataSize, pPath, Image);
 			free(pPngData);
 			if(!Decoded)
 			{
-				SetError("Failed to load PNG.");
+				SetError(BCLocalize("Failed to load PNG."));
 				return false;
 			}
 		}
@@ -279,7 +281,7 @@ bool CMenuMediaBackground::LoadStaticMedia(const char *pPath, int StorageType)
 		if(!Frame.m_Texture.IsValid())
 		{
 			Image.Free();
-			SetError("Failed to upload PNG.");
+			SetError(BCLocalize("Failed to upload PNG."));
 			return false;
 		}
 
@@ -289,7 +291,7 @@ bool CMenuMediaBackground::LoadStaticMedia(const char *pPath, int StorageType)
 		m_Height = ImageHeight;
 		m_AnimationStart = time_get();
 		m_IsLoaded = true;
-		SetStatus("Loaded image.");
+		SetStatus(BCLocalize("Loaded image."));
 		return true;
 	}
 
@@ -297,7 +299,7 @@ bool CMenuMediaBackground::LoadStaticMedia(const char *pPath, int StorageType)
 	unsigned DataSize = 0;
 	if(!m_pStorage->ReadFile(pPath, StorageType, &pData, &DataSize))
 	{
-		SetError("Failed to read file.");
+		SetError(BCLocalize("Failed to read file."));
 		return false;
 	}
 
@@ -333,7 +335,7 @@ bool CMenuMediaBackground::LoadStaticMedia(const char *pPath, int StorageType)
 			if(!Frame.m_Texture.IsValid())
 			{
 				FallbackImage.Free();
-				SetError("Failed to upload image.");
+				SetError(BCLocalize("Failed to upload image."));
 				return false;
 			}
 
@@ -343,16 +345,16 @@ bool CMenuMediaBackground::LoadStaticMedia(const char *pPath, int StorageType)
 			m_Height = ImageHeight;
 			m_AnimationStart = time_get();
 			m_IsLoaded = true;
-			SetStatus("Loaded image.");
+			SetStatus(BCLocalize("Loaded image."));
 			return true;
 		}
 
-		SetError("Failed to decode image.");
+		SetError(BCLocalize("Failed to decode image."));
 		return false;
 	}
 
 	m_IsLoaded = true;
-	SetStatus(m_Animated ? "Loaded animated image." : "Loaded image.");
+	SetStatus(m_Animated ? BCLocalize("Loaded animated image.") : BCLocalize("Loaded image."));
 	return true;
 }
 
@@ -451,19 +453,19 @@ bool CMenuMediaBackground::LoadVideo(const char *pPath, int StorageType)
 
 	if(avformat_open_input(&m_pFormatCtx, aPath, nullptr, nullptr) != 0)
 	{
-		SetError("Failed to open video.");
+		SetError(BCLocalize("Failed to open video."));
 		return false;
 	}
 	if(avformat_find_stream_info(m_pFormatCtx, nullptr) < 0)
 	{
-		SetError("Failed to read video info.");
+		SetError(BCLocalize("Failed to read video info."));
 		return false;
 	}
 
 	m_VideoStream = av_find_best_stream(m_pFormatCtx, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
 	if(m_VideoStream < 0)
 	{
-		SetError("No video stream found.");
+		SetError(BCLocalize("No video stream found."));
 		return false;
 	}
 
@@ -471,7 +473,7 @@ bool CMenuMediaBackground::LoadVideo(const char *pPath, int StorageType)
 	const AVCodec *pCodec = avcodec_find_decoder(pStream->codecpar->codec_id);
 	if(!pCodec)
 	{
-		SetError("Unsupported video codec.");
+		SetError(BCLocalize("Unsupported video codec."));
 		ClearVideoState();
 		return false;
 	}
@@ -479,7 +481,7 @@ bool CMenuMediaBackground::LoadVideo(const char *pPath, int StorageType)
 	m_pCodecCtx = avcodec_alloc_context3(pCodec);
 	if(!m_pCodecCtx || avcodec_parameters_to_context(m_pCodecCtx, pStream->codecpar) < 0 || avcodec_open2(m_pCodecCtx, pCodec, nullptr) < 0)
 	{
-		SetError("Failed to initialize video decoder.");
+		SetError(BCLocalize("Failed to initialize video decoder."));
 		ClearVideoState();
 		return false;
 	}
@@ -488,7 +490,7 @@ bool CMenuMediaBackground::LoadVideo(const char *pPath, int StorageType)
 	m_Height = m_pCodecCtx->height;
 	if(m_Width <= 0 || m_Height <= 0)
 	{
-		SetError("Invalid video dimensions.");
+		SetError(BCLocalize("Invalid video dimensions."));
 		ClearVideoState();
 		return false;
 	}
@@ -498,7 +500,7 @@ bool CMenuMediaBackground::LoadVideo(const char *pPath, int StorageType)
 	m_pPacket = av_packet_alloc();
 	if(!m_pFrame || !m_pFrameRgba || !m_pPacket)
 	{
-		SetError("Failed to allocate video frames.");
+		SetError(BCLocalize("Failed to allocate video frames."));
 		ClearVideoState();
 		return false;
 	}
@@ -508,7 +510,7 @@ bool CMenuMediaBackground::LoadVideo(const char *pPath, int StorageType)
 	m_pFrameRgba->height = m_Height;
 	if(av_frame_get_buffer(m_pFrameRgba, 1) < 0)
 	{
-		SetError("Failed to allocate RGBA frame.");
+		SetError(BCLocalize("Failed to allocate RGBA frame."));
 		ClearVideoState();
 		return false;
 	}
@@ -516,20 +518,20 @@ bool CMenuMediaBackground::LoadVideo(const char *pPath, int StorageType)
 	m_pSwsCtx = sws_getContext(m_Width, m_Height, m_pCodecCtx->pix_fmt, m_Width, m_Height, AV_PIX_FMT_RGBA, SWS_BILINEAR, nullptr, nullptr, nullptr);
 	if(!m_pSwsCtx)
 	{
-		SetError("Failed to initialize video scaler.");
+		SetError(BCLocalize("Failed to initialize video scaler."));
 		ClearVideoState();
 		return false;
 	}
 
 	if(!DecodeNextVideoFrame(true))
 	{
-		SetError("Failed to decode first video frame.");
+		SetError(BCLocalize("Failed to decode first video frame."));
 		ClearVideoState();
 		return false;
 	}
 
 	m_IsLoaded = true;
-	SetStatus("Loaded video.");
+	SetStatus(BCLocalize("Loaded video."));
 	return true;
 }
 
@@ -545,12 +547,12 @@ void CMenuMediaBackground::ReloadFromConfig(int Enabled, const char *pPath)
 
 	if(!Enabled)
 	{
-		SetStatus("Disabled.");
+		SetStatus(BCLocalize("Disabled."));
 		return;
 	}
 	if(aPath[0] == '\0')
 	{
-		SetError("No media selected.");
+		SetError(BCLocalize("No media selected."));
 		return;
 	}
 
@@ -602,7 +604,7 @@ void CMenuMediaBackground::Update()
 	{
 		if(!DecodeNextVideoFrame(true))
 		{
-			SetError("Failed while decoding video.");
+			SetError(BCLocalize("Failed while decoding video."));
 			m_IsLoaded = false;
 			m_RuntimeState = ESubsystemRuntimeState::DISABLED;
 			ClearVideoState();

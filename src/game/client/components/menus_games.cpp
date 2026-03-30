@@ -310,7 +310,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 
 	CUIRect Header;
 	MainView.HSplitTop(HEADLINE_HEIGHT, &Header, &MainView);
-	Ui()->DoLabel(&Header, TCLocalize("Fun"), HEADLINE_FONT_SIZE, TEXTALIGN_ML);
+	Ui()->DoLabel(&Header, BCLocalize("Fun"), HEADLINE_FONT_SIZE, TEXTALIGN_ML);
 	MainView.HSplitTop(MARGIN_SMALL, nullptr, &MainView);
 
 	CUIRect SideBar, GameArea;
@@ -329,7 +329,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 	RenderIconLabel(Label, FONT_ICON_GAMEPAD, FONT_SIZE, TEXTALIGN_ML);
 	CUIRect LabelText = Label;
 	LabelText.VSplitLeft(22.0f, nullptr, &LabelText);
-	Ui()->DoLabel(&LabelText, TCLocalize("Games"), FONT_SIZE, TEXTALIGN_ML);
+	Ui()->DoLabel(&LabelText, BCLocalize("Games"), FONT_SIZE, TEXTALIGN_ML);
 	SideContent.HSplitTop(MARGIN_SMALL, nullptr, &SideContent);
 
 	CScrollRegionParams ScrollParams;
@@ -369,7 +369,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 		}
 		const int Active = s_SelectedGame == i;
 		const bool Hovered = Ui()->MouseInside(&Button);
-		if(DoButton_Menu(&s_aGameButtons[i], TCLocalize(s_aGames[i].m_pName), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.35f)))
+		if(DoButton_Menu(&s_aGameButtons[i], BCLocalize(s_aGames[i].m_pName), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.35f)))
 			s_SelectedGame = i;
 		if(Hovered)
 		{
@@ -398,8 +398,8 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 	RenderIconLabel(GameTitle, s_aGames[s_SelectedGame].m_pIcon, FONT_SIZE, TEXTALIGN_ML, &TitleIconColor);
 	CUIRect GameTitleText = GameTitle;
 	GameTitleText.VSplitLeft(24.0f, nullptr, &GameTitleText);
-	Ui()->DoLabel(&GameTitleText, TCLocalize(s_aGames[s_SelectedGame].m_pName), FONT_SIZE, TEXTALIGN_ML);
-	Ui()->DoLabel(&GameHint, TCLocalize(s_aGames[s_SelectedGame].m_pHint), FONT_SIZE, TEXTALIGN_ML);
+	Ui()->DoLabel(&GameTitleText, BCLocalize(s_aGames[s_SelectedGame].m_pName), FONT_SIZE, TEXTALIGN_ML);
+	Ui()->DoLabel(&GameHint, BCLocalize(s_aGames[s_SelectedGame].m_pHint), FONT_SIZE, TEXTALIGN_ML);
 	auto PrepareSetupView = [&](CUIRect &SetupView) {
 		SetupView.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.34f), IGraphics::CORNER_ALL, 8.0f);
 		CUIRect Inner = SetupView;
@@ -412,7 +412,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 		RenderIconLabel(SetupHeader, FONT_ICON_GEAR, FONT_SIZE, TEXTALIGN_ML, &SetupIconColor);
 		CUIRect SetupText = SetupHeader;
 		SetupText.VSplitLeft(24.0f, nullptr, &SetupText);
-		Ui()->DoLabel(&SetupText, TCLocalize("Setup"), FONT_SIZE, TEXTALIGN_ML);
+		Ui()->DoLabel(&SetupText, BCLocalize("Setup"), FONT_SIZE, TEXTALIGN_ML);
 		if(IsPsj3IdeaGame((EFunGame)s_SelectedGame))
 		{
 			const ColorRGBA IdeaColor = ColorRGBA(0.95f, 0.95f, 0.95f, 0.72f);
@@ -535,19 +535,19 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int SizeClick = DoButton_CheckBox_Number(&s_Snake.m_SizePreset, TCLocalize("Field Size"), s_Snake.m_SizePreset + 1, &Option);
+			int SizeClick = DoButton_CheckBox_Number(&s_Snake.m_SizePreset, BCLocalize("Field Size"), s_Snake.m_SizePreset + 1, &Option);
 			UpdateSettingByClick(SizeClick, s_Snake.m_SizePreset, 0, 2);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int SpeedClick = DoButton_CheckBox_Number(&s_Snake.m_SpeedPreset, TCLocalize("Start Speed"), s_Snake.m_SpeedPreset + 1, &Option);
+			int SpeedClick = DoButton_CheckBox_Number(&s_Snake.m_SpeedPreset, BCLocalize("Start Speed"), s_Snake.m_SpeedPreset + 1, &Option);
 			UpdateSettingByClick(SpeedClick, s_Snake.m_SpeedPreset, 0, 2);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			DoButton_CheckBoxAutoVMarginAndSet(&s_Snake.m_Wrap, TCLocalize("Wrap Through Walls"), &s_Snake.m_Wrap, &SetupView, LINE_SIZE);
+			DoButton_CheckBoxAutoVMarginAndSet(&s_Snake.m_Wrap, BCLocalize("Wrap Through Walls"), &s_Snake.m_Wrap, &SetupView, LINE_SIZE);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_SnakeStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_SnakeStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Snake.m_InGame = true;
 				ResetSnake(true);
@@ -571,9 +571,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aScore[128];
 			str_format(aScore, sizeof(aScore), "Score: %d   Best: %d", s_Snake.m_Score, s_Snake.m_BestScore);
 			Ui()->DoLabel(&ScoreLabel, aScore, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_SnakeRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_SnakeRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetSnake(true);
-			if(DoButton_Menu(&s_SnakeSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_SnakeSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Snake.m_InGame = false;
 
 			const float CellSize = minimum(BoardArea.w / s_Snake.m_BoardW, BoardArea.h / s_Snake.m_BoardH);
@@ -703,7 +703,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.45f), IGraphics::CORNER_ALL, 4.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("Game Over"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("Game Over"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -866,7 +866,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int DiffClick = DoButton_CheckBox_Number(&s_Mines.m_Difficulty, TCLocalize("Difficulty"), s_Mines.m_Difficulty + 1, &Option);
+			int DiffClick = DoButton_CheckBox_Number(&s_Mines.m_Difficulty, BCLocalize("Difficulty"), s_Mines.m_Difficulty + 1, &Option);
 			UpdateSettingByClick(DiffClick, s_Mines.m_Difficulty, 0, 2);
 
 			char aDiffInfo[128];
@@ -881,7 +881,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_MinesStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_MinesStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Mines.m_InGame = true;
 				ResetMines();
@@ -905,9 +905,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[128];
 			str_format(aStats, sizeof(aStats), "Bombs: %d   Flags: %d", s_Mines.m_Bombs, s_Mines.m_Flags);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_MinesRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_MinesRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetMines();
-			if(DoButton_Menu(&s_MinesSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_MinesSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Mines.m_InGame = false;
 
 			const float CellSize = minimum(BoardArea.w / s_Mines.m_W, BoardArea.h / s_Mines.m_H);
@@ -1074,7 +1074,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_ALL, 4.0f);
-				Ui()->DoLabel(&Overlay, s_Mines.m_Won ? TCLocalize("Victory") : TCLocalize("Game Over"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, s_Mines.m_Won ? BCLocalize("Victory") : BCLocalize("Game Over"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -1224,18 +1224,18 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int SizeClick = DoButton_CheckBox_Number(&s_2048.m_SizePreset, TCLocalize("Board Size"), s_2048.m_SizePreset + 4, &Option);
+			int SizeClick = DoButton_CheckBox_Number(&s_2048.m_SizePreset, BCLocalize("Board Size"), s_2048.m_SizePreset + 4, &Option);
 			UpdateSettingByClick(SizeClick, s_2048.m_SizePreset, 0, 2);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int SpawnClick = DoButton_CheckBox_Number(&s_2048.m_Spawn4Preset, TCLocalize("Chance For 4"), (s_2048.m_Spawn4Preset == 0 ? 5 : s_2048.m_Spawn4Preset == 1 ? 10 :
+			int SpawnClick = DoButton_CheckBox_Number(&s_2048.m_Spawn4Preset, BCLocalize("Chance For 4"), (s_2048.m_Spawn4Preset == 0 ? 5 : s_2048.m_Spawn4Preset == 1 ? 10 :
 																						     20),
 				&Option);
 			UpdateSettingByClick(SpawnClick, s_2048.m_Spawn4Preset, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_2048StartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_2048StartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_2048.m_InGame = true;
 				Reset2048();
@@ -1259,9 +1259,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[128];
 			str_format(aStats, sizeof(aStats), "Score: %d   Best: %d", s_2048.m_Score, s_2048.m_BestScore);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_2048RestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_2048RestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				Reset2048();
-			if(DoButton_Menu(&s_2048SetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_2048SetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_2048.m_InGame = false;
 
 			if(!s_2048.m_GameOver)
@@ -1336,7 +1336,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.35f), IGraphics::CORNER_ALL, 6.0f);
-				Ui()->DoLabel(&Overlay, s_2048.m_GameOver ? TCLocalize("Game Over") : TCLocalize("2048!"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, s_2048.m_GameOver ? BCLocalize("Game Over") : BCLocalize("2048!"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -1652,16 +1652,16 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int ModeClick = DoButton_CheckBox_Number(&s_Chess.m_Mode, TCLocalize("Mode"), s_Chess.m_Mode + 1, &Option);
+			int ModeClick = DoButton_CheckBox_Number(&s_Chess.m_Mode, BCLocalize("Mode"), s_Chess.m_Mode + 1, &Option);
 			UpdateSettingByClick(ModeClick, s_Chess.m_Mode, 0, 1);
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			Ui()->DoLabel(&Option, s_Chess.m_Mode == 0 ? TCLocalize("1 = Local two players") : TCLocalize("2 = Versus smart bot"), FONT_SIZE, TEXTALIGN_ML);
+			Ui()->DoLabel(&Option, s_Chess.m_Mode == 0 ? BCLocalize("1 = Local two players") : BCLocalize("2 = Versus smart bot"), FONT_SIZE, TEXTALIGN_ML);
 
-			DoButton_CheckBoxAutoVMarginAndSet(&s_Chess.m_ShowMoves, TCLocalize("Show legal moves"), &s_Chess.m_ShowMoves, &SetupView, LINE_SIZE);
+			DoButton_CheckBoxAutoVMarginAndSet(&s_Chess.m_ShowMoves, BCLocalize("Show legal moves"), &s_Chess.m_ShowMoves, &SetupView, LINE_SIZE);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_ChessStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_ChessStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Chess.m_InGame = true;
 				ResetChess();
@@ -1682,11 +1682,11 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			BtnArea.VSplitRight(110.0f, &BtnArea, &RestartButton);
 			SetupButton.VSplitLeft(10.0f, nullptr, &SetupButton);
 
-			const char *pStatus = s_Chess.m_GameOver ? (s_Chess.m_WhiteWon ? TCLocalize("Winner: White") : TCLocalize("Winner: Black")) : (s_Chess.m_WhiteTurn ? TCLocalize("Turn: White") : TCLocalize("Turn: Black"));
+			const char *pStatus = s_Chess.m_GameOver ? (s_Chess.m_WhiteWon ? BCLocalize("Winner: White") : BCLocalize("Winner: Black")) : (s_Chess.m_WhiteTurn ? BCLocalize("Turn: White") : BCLocalize("Turn: Black"));
 			Ui()->DoLabel(&TurnLabel, pStatus, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_ChessRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_ChessRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetChess();
-			if(DoButton_Menu(&s_ChessSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_ChessSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Chess.m_InGame = false;
 
 			const float BoardSize = minimum(BoardArea.w, BoardArea.h);
@@ -1857,7 +1857,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.32f), IGraphics::CORNER_ALL, 4.0f);
-				Ui()->DoLabel(&Overlay, s_Chess.m_WhiteWon ? TCLocalize("White Wins") : TCLocalize("Black Wins"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, s_Chess.m_WhiteWon ? BCLocalize("White Wins") : BCLocalize("Black Wins"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -1996,13 +1996,13 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int DiffClick = DoButton_CheckBox_Number(&s_Sudoku.m_Difficulty, TCLocalize("Difficulty"), s_Sudoku.m_Difficulty + 1, &Option);
+			int DiffClick = DoButton_CheckBox_Number(&s_Sudoku.m_Difficulty, BCLocalize("Difficulty"), s_Sudoku.m_Difficulty + 1, &Option);
 			UpdateSettingByClick(DiffClick, s_Sudoku.m_Difficulty, 0, 2);
-			DoButton_CheckBoxAutoVMarginAndSet(&s_Sudoku.m_ShowConflicts, TCLocalize("Show conflicts"), &s_Sudoku.m_ShowConflicts, &SetupView, LINE_SIZE);
+			DoButton_CheckBoxAutoVMarginAndSet(&s_Sudoku.m_ShowConflicts, BCLocalize("Show conflicts"), &s_Sudoku.m_ShowConflicts, &SetupView, LINE_SIZE);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_SudokuStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_SudokuStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Sudoku.m_InGame = true;
 				ResetSudoku();
@@ -2026,9 +2026,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[128];
 			str_format(aStats, sizeof(aStats), "Mistakes: %d", s_Sudoku.m_Mistakes);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_SudokuRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_SudokuRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetSudoku();
-			if(DoButton_Menu(&s_SudokuSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_SudokuSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Sudoku.m_InGame = false;
 
 			const float BoardSize = minimum(BoardArea.w, BoardArea.h);
@@ -2148,7 +2148,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.30f), IGraphics::CORNER_ALL, 4.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("Solved"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("Solved"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -2269,14 +2269,14 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int ModeClick = DoButton_CheckBox_Number(&s_Ttt.m_Mode, TCLocalize("Mode"), s_Ttt.m_Mode + 1, &Option);
+			int ModeClick = DoButton_CheckBox_Number(&s_Ttt.m_Mode, BCLocalize("Mode"), s_Ttt.m_Mode + 1, &Option);
 			UpdateSettingByClick(ModeClick, s_Ttt.m_Mode, 0, 1);
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			Ui()->DoLabel(&Option, s_Ttt.m_Mode == 0 ? TCLocalize("1 = Local two players") : TCLocalize("2 = Versus bot"), FONT_SIZE, TEXTALIGN_ML);
+			Ui()->DoLabel(&Option, s_Ttt.m_Mode == 0 ? BCLocalize("1 = Local two players") : BCLocalize("2 = Versus bot"), FONT_SIZE, TEXTALIGN_ML);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_TttStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_TttStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Ttt.m_InGame = true;
 				ResetTtt();
@@ -2297,11 +2297,11 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			BtnArea.VSplitRight(110.0f, &BtnArea, &RestartButton);
 			SetupButton.VSplitLeft(10.0f, nullptr, &SetupButton);
 
-			const char *pStatus = s_Ttt.m_GameOver ? (s_Ttt.m_Winner == 'D' ? TCLocalize("Draw") : (s_Ttt.m_Winner == 'X' ? TCLocalize("X wins") : TCLocalize("O wins"))) : (s_Ttt.m_XTurn ? TCLocalize("Turn: X") : TCLocalize("Turn: O"));
+			const char *pStatus = s_Ttt.m_GameOver ? (s_Ttt.m_Winner == 'D' ? BCLocalize("Draw") : (s_Ttt.m_Winner == 'X' ? BCLocalize("X wins") : BCLocalize("O wins"))) : (s_Ttt.m_XTurn ? BCLocalize("Turn: X") : BCLocalize("Turn: O"));
 			Ui()->DoLabel(&Status, pStatus, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_TttRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_TttRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetTtt();
-			if(DoButton_Menu(&s_TttSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_TttSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Ttt.m_InGame = false;
 
 			const float BoardSize = minimum(BoardArea.w, BoardArea.h);
@@ -2479,14 +2479,14 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int SizeClick = DoButton_CheckBox_Number(&s_Lights.m_SizePreset, TCLocalize("Grid Size"), s_Lights.m_SizePreset == 0 ? 5 : s_Lights.m_SizePreset == 1 ? 7 :
+			int SizeClick = DoButton_CheckBox_Number(&s_Lights.m_SizePreset, BCLocalize("Grid Size"), s_Lights.m_SizePreset == 0 ? 5 : s_Lights.m_SizePreset == 1 ? 7 :
 																						9,
 				&Option);
 			UpdateSettingByClick(SizeClick, s_Lights.m_SizePreset, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_LightsStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_LightsStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Lights.m_InGame = true;
 				ResetLights();
@@ -2510,9 +2510,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aMoves[128];
 			str_format(aMoves, sizeof(aMoves), "Moves: %d", s_Lights.m_Moves);
 			Ui()->DoLabel(&MovesLabel, aMoves, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_LightsRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_LightsRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetLights();
-			if(DoButton_Menu(&s_LightsSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_LightsSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Lights.m_InGame = false;
 
 			const float GridSize = minimum(BoardArea.w, BoardArea.h);
@@ -2565,7 +2565,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.28f), IGraphics::CORNER_ALL, 4.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("All Lights Off"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("All Lights Off"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -2656,12 +2656,12 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int SizeClick = DoButton_CheckBox_Number(&s_Memory.m_SizePreset, TCLocalize("Board Size"), s_Memory.m_SizePreset == 0 ? 4 : 6, &Option);
+			int SizeClick = DoButton_CheckBox_Number(&s_Memory.m_SizePreset, BCLocalize("Board Size"), s_Memory.m_SizePreset == 0 ? 4 : 6, &Option);
 			UpdateSettingByClick(SizeClick, s_Memory.m_SizePreset, 0, 1);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_MemoryStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_MemoryStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Memory.m_InGame = true;
 				ResetMemory();
@@ -2686,9 +2686,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[128];
 			str_format(aStats, sizeof(aStats), "Moves: %d   Pairs: %d/%d", s_Memory.m_Moves, s_Memory.m_PairsFound, (int)s_Memory.m_vCards.size() / 2);
 			Ui()->DoLabel(&StatsLabel, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_MemoryRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_MemoryRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetMemory();
-			if(DoButton_Menu(&s_MemorySetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_MemorySetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Memory.m_InGame = false;
 
 			const float GridSize = minimum(BoardArea.w, BoardArea.h);
@@ -2765,7 +2765,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.28f), IGraphics::CORNER_ALL, 4.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("All pairs found"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("All pairs found"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -3069,12 +3069,12 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int DiceClick = DoButton_CheckBox_Number(&s_Dice3D.m_DiceCount, TCLocalize("Dice Count"), s_Dice3D.m_DiceCount, &Option);
+			int DiceClick = DoButton_CheckBox_Number(&s_Dice3D.m_DiceCount, BCLocalize("Dice Count"), s_Dice3D.m_DiceCount, &Option);
 			UpdateSettingByClick(DiceClick, s_Dice3D.m_DiceCount, 1, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_DiceStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_DiceStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Dice3D.m_InGame = true;
 				ResetDice3D();
@@ -3129,11 +3129,11 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			Ui()->DoLabel(&StatusLabel, aStatus, FONT_SIZE, TEXTALIGN_ML);
 
 			const bool RollHotkey = Input()->KeyPress(KEY_SPACE);
-			if((DoButton_Menu(&s_DiceRollButton, TCLocalize("Roll"), 0, &RollButton) || RollHotkey) && !s_Dice3D.m_Rolling)
+			if((DoButton_Menu(&s_DiceRollButton, BCLocalize("Roll"), 0, &RollButton) || RollHotkey) && !s_Dice3D.m_Rolling)
 				StartDiceRoll();
-			if(DoButton_Menu(&s_DiceRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_DiceRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetDice3D();
-			if(DoButton_Menu(&s_DiceSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_DiceSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Dice3D.m_InGame = false;
 
 			BoardArea.Draw(ColorRGBA(0.01f, 0.05f, 0.1f, 0.24f), IGraphics::CORNER_ALL, 8.0f);
@@ -3390,17 +3390,17 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int ModeClick = DoButton_CheckBox_Number(&s_BlockBlast.m_Mode, TCLocalize("Mode"), s_BlockBlast.m_Mode + 1, &Option);
+			int ModeClick = DoButton_CheckBox_Number(&s_BlockBlast.m_Mode, BCLocalize("Mode"), s_BlockBlast.m_Mode + 1, &Option);
 			UpdateSettingByClick(ModeClick, s_BlockBlast.m_Mode, 0, 2);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			Ui()->DoLabel(&Option, s_BlockBlast.m_Mode == 0 ? TCLocalize("Calm board") : s_BlockBlast.m_Mode == 1 ? TCLocalize("Classic block blast") :
-																TCLocalize("Hard patterns"),
+			Ui()->DoLabel(&Option, s_BlockBlast.m_Mode == 0 ? BCLocalize("Calm board") : s_BlockBlast.m_Mode == 1 ? BCLocalize("Classic block blast") :
+																BCLocalize("Hard patterns"),
 				FONT_SIZE, TEXTALIGN_ML);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_BlockBlastStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_BlockBlastStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_BlockBlast.m_InGame = true;
 				ResetBlockBlast();
@@ -3424,9 +3424,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[128];
 			str_format(aStats, sizeof(aStats), "Score: %d   Best: %d", s_BlockBlast.m_Score, s_BlockBlast.m_BestScore);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_BlockBlastRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_BlockBlastRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetBlockBlast();
-			if(DoButton_Menu(&s_BlockBlastSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_BlockBlastSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_BlockBlast.m_InGame = false;
 
 			CUIRect BoardArea, OffersArea;
@@ -3572,7 +3572,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			OffersArea.Margin(MARGIN_SMALL, &OffersArea);
 			CUIRect OfferHeader;
 			OffersArea.HSplitTop(LINE_SIZE, &OfferHeader, &OffersArea);
-			Ui()->DoLabel(&OfferHeader, TCLocalize("Available blocks"), FONT_SIZE, TEXTALIGN_ML);
+			Ui()->DoLabel(&OfferHeader, BCLocalize("Available blocks"), FONT_SIZE, TEXTALIGN_ML);
 			OffersArea.HSplitTop(MARGIN_SMALL, nullptr, &OffersArea);
 
 			CUIRect OfferRow = OffersArea;
@@ -3647,7 +3647,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.42f), IGraphics::CORNER_ALL, 5.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("No space for blocks"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("No space for blocks"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -3812,12 +3812,12 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int SpeedClick = DoButton_CheckBox_Number(&s_Tetris.m_SpeedPreset, TCLocalize("Start Speed"), s_Tetris.m_SpeedPreset + 1, &Option);
+			int SpeedClick = DoButton_CheckBox_Number(&s_Tetris.m_SpeedPreset, BCLocalize("Start Speed"), s_Tetris.m_SpeedPreset + 1, &Option);
 			UpdateSettingByClick(SpeedClick, s_Tetris.m_SpeedPreset, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_TetrisStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_TetrisStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Tetris.m_InGame = true;
 				ResetTetris();
@@ -3841,9 +3841,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[128];
 			str_format(aStats, sizeof(aStats), "Score: %d   Lines: %d   Best: %d", s_Tetris.m_Score, s_Tetris.m_Lines, s_Tetris.m_BestScore);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_TetrisRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_TetrisRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetTetris();
-			if(DoButton_Menu(&s_TetrisSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_TetrisSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Tetris.m_InGame = false;
 
 			if(!s_Tetris.m_GameOver)
@@ -3970,7 +3970,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			SideRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.18f), IGraphics::CORNER_ALL, 4.0f);
 			CUIRect NextLabel, NextPreview;
 			SideRect.HSplitTop(LINE_SIZE, &NextLabel, &NextPreview);
-			Ui()->DoLabel(&NextLabel, TCLocalize("Next"), FONT_SIZE, TEXTALIGN_ML);
+			Ui()->DoLabel(&NextLabel, BCLocalize("Next"), FONT_SIZE, TEXTALIGN_ML);
 			NextPreview.HSplitTop(MARGIN_SMALL, nullptr, &NextPreview);
 
 			const float PreviewCell = minimum(NextPreview.w, NextPreview.h) / 5.5f;
@@ -4000,7 +4000,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.42f), IGraphics::CORNER_ALL, 4.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("Game Over"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("Game Over"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -4050,12 +4050,12 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int DiffClick = DoButton_CheckBox_Number(&s_Pong.m_Difficulty, TCLocalize("Bot Skill"), s_Pong.m_Difficulty + 1, &Option);
+			int DiffClick = DoButton_CheckBox_Number(&s_Pong.m_Difficulty, BCLocalize("Bot Skill"), s_Pong.m_Difficulty + 1, &Option);
 			UpdateSettingByClick(DiffClick, s_Pong.m_Difficulty, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_PongStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_PongStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Pong.m_InGame = true;
 				ResetPong();
@@ -4079,9 +4079,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[128];
 			str_format(aStats, sizeof(aStats), "You %d : %d Bot", s_Pong.m_PlayerScore, s_Pong.m_BotScore);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_PongRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_PongRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetPong();
-			if(DoButton_Menu(&s_PongSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_PongSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Pong.m_InGame = false;
 
 			CUIRect Arena = ArenaArea;
@@ -4219,7 +4219,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Arena;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.42f), IGraphics::CORNER_ALL, 6.0f);
-				Ui()->DoLabel(&Overlay, s_Pong.m_PlayerScore > s_Pong.m_BotScore ? TCLocalize("You Win") : TCLocalize("Bot Wins"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, s_Pong.m_PlayerScore > s_Pong.m_BotScore ? BCLocalize("You Win") : BCLocalize("Bot Wins"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -4431,12 +4431,12 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int SkillClick = DoButton_CheckBox_Number(&s_Packman.m_GhostSkill, TCLocalize("Ghost Skill"), s_Packman.m_GhostSkill + 1, &Option);
+			int SkillClick = DoButton_CheckBox_Number(&s_Packman.m_GhostSkill, BCLocalize("Ghost Skill"), s_Packman.m_GhostSkill + 1, &Option);
 			UpdateSettingByClick(SkillClick, s_Packman.m_GhostSkill, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_PackmanStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_PackmanStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Packman.m_InGame = true;
 				ResetPackman();
@@ -4460,9 +4460,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[128];
 			str_format(aStats, sizeof(aStats), "Score: %d   Dots left: %d   Best: %d", s_Packman.m_Score, s_Packman.m_RemainingDots, s_Packman.m_BestScore);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_PackmanRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_PackmanRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetPackman();
-			if(DoButton_Menu(&s_PackmanSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_PackmanSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Packman.m_InGame = false;
 
 			if(Input()->KeyPress(KEY_LEFT) || Input()->KeyPress(KEY_A))
@@ -4571,7 +4571,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.45f), IGraphics::CORNER_ALL, 4.0f);
-				Ui()->DoLabel(&Overlay, s_Packman.m_Won ? TCLocalize("Level Cleared") : TCLocalize("Caught by ghost"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, s_Packman.m_Won ? BCLocalize("Level Cleared") : BCLocalize("Caught by ghost"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -4625,12 +4625,12 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int DiffClick = DoButton_CheckBox_Number(&s_Flappy.m_Difficulty, TCLocalize("Difficulty"), s_Flappy.m_Difficulty + 1, &Option);
+			int DiffClick = DoButton_CheckBox_Number(&s_Flappy.m_Difficulty, BCLocalize("Difficulty"), s_Flappy.m_Difficulty + 1, &Option);
 			UpdateSettingByClick(DiffClick, s_Flappy.m_Difficulty, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_FlappyStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_FlappyStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Flappy.m_InGame = true;
 				ResetFlappy();
@@ -4654,9 +4654,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[128];
 			str_format(aStats, sizeof(aStats), "Score: %d   Best: %d", s_Flappy.m_Score, s_Flappy.m_BestScore);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_FlappyRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_FlappyRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetFlappy();
-			if(DoButton_Menu(&s_FlappySetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_FlappySetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Flappy.m_InGame = false;
 
 			CUIRect Arena = ArenaArea;
@@ -4776,7 +4776,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Arena;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.36f), IGraphics::CORNER_ALL, 6.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("Crash"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("Crash"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -4830,12 +4830,12 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int DiffClick = DoButton_CheckBox_Number(&s_Dino.m_Difficulty, TCLocalize("Speed"), s_Dino.m_Difficulty + 1, &Option);
+			int DiffClick = DoButton_CheckBox_Number(&s_Dino.m_Difficulty, BCLocalize("Speed"), s_Dino.m_Difficulty + 1, &Option);
 			UpdateSettingByClick(DiffClick, s_Dino.m_Difficulty, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_DinoStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_DinoStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Dino.m_InGame = true;
 				ResetDino();
@@ -4860,9 +4860,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[128];
 			str_format(aStats, sizeof(aStats), "Score: %d   Best: %d", CurrentScore, s_Dino.m_BestScore);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_DinoRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_DinoRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetDino();
-			if(DoButton_Menu(&s_DinoSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_DinoSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Dino.m_InGame = false;
 
 			CUIRect Arena = ArenaArea;
@@ -4990,7 +4990,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Arena;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.32f), IGraphics::CORNER_ALL, 6.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("You hit a cactus"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("You hit a cactus"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -5119,14 +5119,14 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int SizeClick = DoButton_CheckBox_Number(&s_CatTrap.m_SizePreset, TCLocalize("Field Size"), s_CatTrap.m_SizePreset == 0 ? 9 : s_CatTrap.m_SizePreset == 1 ? 11 :
+			int SizeClick = DoButton_CheckBox_Number(&s_CatTrap.m_SizePreset, BCLocalize("Field Size"), s_CatTrap.m_SizePreset == 0 ? 9 : s_CatTrap.m_SizePreset == 1 ? 11 :
 																						    13,
 				&Option);
 			UpdateSettingByClick(SizeClick, s_CatTrap.m_SizePreset, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_CatTrapStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_CatTrapStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_CatTrap.m_InGame = true;
 				ResetCatTrap();
@@ -5150,9 +5150,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[128];
 			str_format(aStats, sizeof(aStats), "Turns: %d", s_CatTrap.m_Turns);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_CatTrapRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_CatTrapRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetCatTrap();
-			if(DoButton_Menu(&s_CatTrapSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_CatTrapSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_CatTrap.m_InGame = false;
 
 			const float CellSize = minimum(BoardArea.w / (s_CatTrap.m_Size + 0.7f), BoardArea.h / (s_CatTrap.m_Size * 0.88f + 0.35f));
@@ -5256,7 +5256,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.36f), IGraphics::CORNER_ALL, 6.0f);
-				Ui()->DoLabel(&Overlay, s_CatTrap.m_Won ? TCLocalize("Cat trapped") : TCLocalize("Cat escaped"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, s_CatTrap.m_Won ? BCLocalize("Cat trapped") : BCLocalize("Cat escaped"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -5327,20 +5327,20 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int RowsClick = DoButton_CheckBox_Number(&s_Brick.m_RowPreset, TCLocalize("Brick Rows"), s_Brick.m_RowPreset == 0 ? 4 : s_Brick.m_RowPreset == 1 ? 6 :
+			int RowsClick = DoButton_CheckBox_Number(&s_Brick.m_RowPreset, BCLocalize("Brick Rows"), s_Brick.m_RowPreset == 0 ? 4 : s_Brick.m_RowPreset == 1 ? 6 :
 																					   8,
 				&Option);
 			UpdateSettingByClick(RowsClick, s_Brick.m_RowPreset, 0, 2);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int LivesClick = DoButton_CheckBox_Number(&s_Brick.m_LivesPreset, TCLocalize("Lives"), s_Brick.m_LivesPreset == 0 ? 2 : s_Brick.m_LivesPreset == 1 ? 3 :
+			int LivesClick = DoButton_CheckBox_Number(&s_Brick.m_LivesPreset, BCLocalize("Lives"), s_Brick.m_LivesPreset == 0 ? 2 : s_Brick.m_LivesPreset == 1 ? 3 :
 																					     5,
 				&Option);
 			UpdateSettingByClick(LivesClick, s_Brick.m_LivesPreset, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_BrickStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_BrickStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Brick.m_InGame = true;
 				ResetBrickBreaker();
@@ -5364,9 +5364,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[160];
 			str_format(aStats, sizeof(aStats), "Score: %d   Bricks: %d   Lives: %d   Best: %d", s_Brick.m_Score, s_Brick.m_RemainingBricks, s_Brick.m_Lives, s_Brick.m_BestScore);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_BrickRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_BrickRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetBrickBreaker();
-			if(DoButton_Menu(&s_BrickSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_BrickSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Brick.m_InGame = false;
 
 			CUIRect Arena = ArenaArea;
@@ -5538,7 +5538,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Arena;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.40f), IGraphics::CORNER_ALL, 6.0f);
-				Ui()->DoLabel(&Overlay, s_Brick.m_Won ? TCLocalize("All bricks cleared") : TCLocalize("Game Over"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, s_Brick.m_Won ? BCLocalize("All bricks cleared") : BCLocalize("Game Over"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -5651,14 +5651,14 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int ModeClick = DoButton_CheckBox_Number(&s_Connect4.m_Mode, TCLocalize("Mode"), s_Connect4.m_Mode + 1, &Option);
+			int ModeClick = DoButton_CheckBox_Number(&s_Connect4.m_Mode, BCLocalize("Mode"), s_Connect4.m_Mode + 1, &Option);
 			UpdateSettingByClick(ModeClick, s_Connect4.m_Mode, 0, 1);
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			Ui()->DoLabel(&Option, s_Connect4.m_Mode == 0 ? TCLocalize("1 = Local two players") : TCLocalize("2 = Versus bot"), FONT_SIZE, TEXTALIGN_ML);
+			Ui()->DoLabel(&Option, s_Connect4.m_Mode == 0 ? BCLocalize("1 = Local two players") : BCLocalize("2 = Versus bot"), FONT_SIZE, TEXTALIGN_ML);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_Connect4StartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_Connect4StartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Connect4.m_InGame = true;
 				ResetConnect4();
@@ -5679,13 +5679,13 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			BtnArea.VSplitRight(110.0f, &BtnArea, &RestartButton);
 			SetupButton.VSplitLeft(10.0f, nullptr, &SetupButton);
 
-			const char *pStatus = s_Connect4.m_GameOver ? (s_Connect4.m_Winner == 1 ? TCLocalize("Red wins") : s_Connect4.m_Winner == 2 ? TCLocalize("Yellow wins") :
-																		      TCLocalize("Draw")) :
-								      (s_Connect4.m_Turn == 1 ? TCLocalize("Turn: Red") : TCLocalize("Turn: Yellow"));
+			const char *pStatus = s_Connect4.m_GameOver ? (s_Connect4.m_Winner == 1 ? BCLocalize("Red wins") : s_Connect4.m_Winner == 2 ? BCLocalize("Yellow wins") :
+																		      BCLocalize("Draw")) :
+								      (s_Connect4.m_Turn == 1 ? BCLocalize("Turn: Red") : BCLocalize("Turn: Yellow"));
 			Ui()->DoLabel(&Status, pStatus, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_Connect4RestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_Connect4RestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetConnect4();
-			if(DoButton_Menu(&s_Connect4SetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_Connect4SetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Connect4.m_InGame = false;
 
 			CUIRect Board;
@@ -5897,12 +5897,12 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int LevelClick = DoButton_CheckBox_Number(&s_Golf.m_StartLevelPreset, TCLocalize("Start Level"), s_Golf.m_StartLevelPreset + 1, &Option);
+			int LevelClick = DoButton_CheckBox_Number(&s_Golf.m_StartLevelPreset, BCLocalize("Start Level"), s_Golf.m_StartLevelPreset + 1, &Option);
 			UpdateSettingByClick(LevelClick, s_Golf.m_StartLevelPreset, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_GolfStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_GolfStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Golf.m_InGame = true;
 				ResetMiniGolf();
@@ -5931,9 +5931,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[196];
 			str_format(aStats, sizeof(aStats), "Level: %d/%d   Level strokes: %d   Total: %d   Best: %s", s_Golf.m_CurrentLevel + 1, s_Golf.m_TotalLevels, s_Golf.m_LevelStrokes, s_Golf.m_TotalStrokes, aBest);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_GolfRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_GolfRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetMiniGolf();
-			if(DoButton_Menu(&s_GolfSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_GolfSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Golf.m_InGame = false;
 
 			CUIRect Arena = ArenaArea;
@@ -6132,13 +6132,13 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Arena;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.24f), IGraphics::CORNER_ALL, 8.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("Hole complete"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("Hole complete"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 			if(s_Golf.m_CourseDone)
 			{
 				CUIRect Overlay = Arena;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.34f), IGraphics::CORNER_ALL, 8.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("Course complete"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("Course complete"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -6309,14 +6309,14 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int ModeClick = DoButton_CheckBox_Number(&s_Checkers.m_Mode, TCLocalize("Mode"), s_Checkers.m_Mode + 1, &Option);
+			int ModeClick = DoButton_CheckBox_Number(&s_Checkers.m_Mode, BCLocalize("Mode"), s_Checkers.m_Mode + 1, &Option);
 			UpdateSettingByClick(ModeClick, s_Checkers.m_Mode, 0, 1);
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			Ui()->DoLabel(&Option, s_Checkers.m_Mode == 0 ? TCLocalize("1 = Local two players") : TCLocalize("2 = Versus bot"), FONT_SIZE, TEXTALIGN_ML);
+			Ui()->DoLabel(&Option, s_Checkers.m_Mode == 0 ? BCLocalize("1 = Local two players") : BCLocalize("2 = Versus bot"), FONT_SIZE, TEXTALIGN_ML);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_CheckersStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_CheckersStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Checkers.m_InGame = true;
 				ResetCheckers();
@@ -6337,11 +6337,11 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			BtnArea.VSplitRight(110.0f, &BtnArea, &RestartButton);
 			SetupButton.VSplitLeft(10.0f, nullptr, &SetupButton);
 
-			const char *pStatus = s_Checkers.m_GameOver ? (s_Checkers.m_Winner > 0 ? TCLocalize("White wins") : TCLocalize("Black wins")) : (s_Checkers.m_Turn > 0 ? TCLocalize("Turn: White") : TCLocalize("Turn: Black"));
+			const char *pStatus = s_Checkers.m_GameOver ? (s_Checkers.m_Winner > 0 ? BCLocalize("White wins") : BCLocalize("Black wins")) : (s_Checkers.m_Turn > 0 ? BCLocalize("Turn: White") : BCLocalize("Turn: Black"));
 			Ui()->DoLabel(&Status, pStatus, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_CheckersRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_CheckersRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetCheckers();
-			if(DoButton_Menu(&s_CheckersSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_CheckersSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Checkers.m_InGame = false;
 
 			CUIRect Board;
@@ -6543,12 +6543,12 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int SizeClick = DoButton_CheckBox_Number(&s_Battle.m_SizePreset, TCLocalize("Board Size"), s_Battle.m_SizePreset == 0 ? 8 : 10, &Option);
+			int SizeClick = DoButton_CheckBox_Number(&s_Battle.m_SizePreset, BCLocalize("Board Size"), s_Battle.m_SizePreset == 0 ? 8 : 10, &Option);
 			UpdateSettingByClick(SizeClick, s_Battle.m_SizePreset, 0, 1);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_BattleStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_BattleStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Battle.m_InGame = true;
 				ResetBattleship();
@@ -6577,9 +6577,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[160];
 			str_format(aStats, sizeof(aStats), "Hits: %d/%d   Shots: %d   Best: %s", s_Battle.m_Hits, s_Battle.m_TotalShipCells, s_Battle.m_Shots, aBest);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_BattleRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_BattleRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetBattleship();
-			if(DoButton_Menu(&s_BattleSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_BattleSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Battle.m_InGame = false;
 
 			CUIRect Board;
@@ -6659,7 +6659,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.30f), IGraphics::CORNER_ALL, 6.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("Fleet destroyed"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("Fleet destroyed"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -6796,12 +6796,12 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int PresetClick = DoButton_CheckBox_Number(&s_Flow.m_Preset, TCLocalize("Puzzle Set"), s_Flow.m_Preset + 1, &Option);
+			int PresetClick = DoButton_CheckBox_Number(&s_Flow.m_Preset, BCLocalize("Puzzle Set"), s_Flow.m_Preset + 1, &Option);
 			UpdateSettingByClick(PresetClick, s_Flow.m_Preset, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_FlowStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_FlowStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Flow.m_InGame = true;
 				ResetFlowmania();
@@ -6825,9 +6825,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStatus[180];
 			str_format(aStatus, sizeof(aStatus), "Active color: %d   Moves: %d", s_Flow.m_ActiveColor, s_Flow.m_Moves);
 			Ui()->DoLabel(&Status, aStatus, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_FlowRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_FlowRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetFlowmania();
-			if(DoButton_Menu(&s_FlowSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_FlowSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Flow.m_InGame = false;
 
 			CUIRect Board;
@@ -6974,7 +6974,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Board;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.34f), IGraphics::CORNER_ALL, 6.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("All pairs connected"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("All pairs connected"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -7062,13 +7062,13 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE * 1.2f, &Option, &SetupView);
-			Ui()->DoLabel(&Option, TCLocalize("Simplified UNO: colors and numbers 0-9"), FONT_SIZE, TEXTALIGN_ML);
+			Ui()->DoLabel(&Option, BCLocalize("Simplified UNO: colors and numbers 0-9"), FONT_SIZE, TEXTALIGN_ML);
 			SetupView.HSplitTop(LINE_SIZE * 1.2f, &Option, &SetupView);
-			Ui()->DoLabel(&Option, TCLocalize("Play same color or same number"), FONT_SIZE, TEXTALIGN_ML);
+			Ui()->DoLabel(&Option, BCLocalize("Play same color or same number"), FONT_SIZE, TEXTALIGN_ML);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_UnoStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_UnoStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Uno.m_InGame = true;
 				ResetUno();
@@ -7102,13 +7102,13 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			str_format(aStatus, sizeof(aStatus), "Your cards: %d   Bot cards: %d   Score %d:%d", (int)s_Uno.m_vPlayer.size(), (int)s_Uno.m_vBot.size(), s_Uno.m_PlayerWins, s_Uno.m_BotWins);
 			Ui()->DoLabel(&Status, aStatus, FONT_SIZE, TEXTALIGN_ML);
 
-			if(DoButton_Menu(&s_UnoRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_UnoRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetUno();
-			if(DoButton_Menu(&s_UnoSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_UnoSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Uno.m_InGame = false;
 
 			bool DrawPressed = false;
-			if(DoButton_Menu(&s_UnoDrawButton, TCLocalize("Draw"), 0, &DrawButton))
+			if(DoButton_Menu(&s_UnoDrawButton, BCLocalize("Draw"), 0, &DrawButton))
 				DrawPressed = true;
 
 			CUIRect Arena = ArenaArea;
@@ -7271,7 +7271,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Arena;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.34f), IGraphics::CORNER_ALL, 8.0f);
-				Ui()->DoLabel(&Overlay, s_Uno.m_Winner == 1 ? TCLocalize("You win") : TCLocalize("Bot wins"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, s_Uno.m_Winner == 1 ? BCLocalize("You win") : BCLocalize("Bot wins"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
@@ -7371,14 +7371,14 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			PrepareSetupView(SetupView);
 
 			SetupView.HSplitTop(LINE_SIZE, &Option, &SetupView);
-			int BallClick = DoButton_CheckBox_Number(&s_Billiards.m_BallPreset, TCLocalize("Object Balls"), s_Billiards.m_BallPreset == 0 ? 5 : s_Billiards.m_BallPreset == 1 ? 8 :
+			int BallClick = DoButton_CheckBox_Number(&s_Billiards.m_BallPreset, BCLocalize("Object Balls"), s_Billiards.m_BallPreset == 0 ? 5 : s_Billiards.m_BallPreset == 1 ? 8 :
 																							    12,
 				&Option);
 			UpdateSettingByClick(BallClick, s_Billiards.m_BallPreset, 0, 2);
 
 			SetupView.HSplitTop(MARGIN, nullptr, &SetupView);
 			SetupView.HSplitTop(LINE_SIZE * 1.5f, &Option, &SetupView);
-			if(DoButton_Menu(&s_BilliardsStartButton, TCLocalize("Start"), 0, &Option))
+			if(DoButton_Menu(&s_BilliardsStartButton, BCLocalize("Start"), 0, &Option))
 			{
 				s_Billiards.m_InGame = true;
 				ResetBilliards();
@@ -7407,9 +7407,9 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			char aStats[180];
 			str_format(aStats, sizeof(aStats), "Remaining: %d   Shots: %d   Best: %s", s_Billiards.m_Remaining, s_Billiards.m_Shots, aBest);
 			Ui()->DoLabel(&Stats, aStats, FONT_SIZE, TEXTALIGN_ML);
-			if(DoButton_Menu(&s_BilliardsRestartButton, TCLocalize("Restart"), 0, &RestartButton))
+			if(DoButton_Menu(&s_BilliardsRestartButton, BCLocalize("Restart"), 0, &RestartButton))
 				ResetBilliards();
-			if(DoButton_Menu(&s_BilliardsSetupButton, TCLocalize("Setup"), 0, &SetupButton))
+			if(DoButton_Menu(&s_BilliardsSetupButton, BCLocalize("Setup"), 0, &SetupButton))
 				s_Billiards.m_InGame = false;
 
 			CUIRect Table = ArenaArea;
@@ -7615,7 +7615,7 @@ void CMenus::RenderSettingsBestClientFun(CUIRect MainView)
 			{
 				CUIRect Overlay = Table;
 				Overlay.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.35f), IGraphics::CORNER_ALL, 10.0f);
-				Ui()->DoLabel(&Overlay, TCLocalize("Table cleared"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
+				Ui()->DoLabel(&Overlay, BCLocalize("Table cleared"), HEADLINE_FONT_SIZE, TEXTALIGN_MC);
 			}
 		}
 	}
