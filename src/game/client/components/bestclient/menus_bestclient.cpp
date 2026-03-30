@@ -2349,7 +2349,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const float ColorPickerLineSpacing = 5.0f;
 			const bool ShowRealHitboxEnabled = g_Config.m_BcShowRealHitbox != 0;
 			const float ColorPickerHeight = ShowRealHitboxEnabled ? (ColorPickerLineSize + ColorPickerLineSpacing) : 0.0f;
-			const float ContentHeight = LineSize + MarginSmall + 9.0f * LineSize + ColorPickerHeight;
+			const float ContentHeight = LineSize + MarginSmall + 8.0f * LineSize + ColorPickerHeight;
 			CUIRect Content, Label, Row;
 			BeginBlock(Column, ContentHeight, Content);
 
@@ -2368,7 +2368,6 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatSaveDraft, BCLocalize("Save unsent messages"), &g_Config.m_BcChatSaveDraft, &Content, LineSize);
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcShowhudDummyCoordIndicator, BCLocalize("Show player below indicator"), &g_Config.m_BcShowhudDummyCoordIndicator, &Content, LineSize);
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcShowRealHitbox, BCLocalize("Show real hitbox"), &g_Config.m_BcShowRealHitbox, &Content, LineSize);
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcUseShortKogServerName, BCLocalize("Use short KoG server name"), &g_Config.m_BcUseShortKogServerName, &Content, LineSize);
 			Content.HSplitTop(LineSize, &Row, &Content);
 			Ui()->DoScrollbarOption(&g_Config.m_UiScale, &g_Config.m_UiScale, &Row, BCLocalize("UI scale"), 50, 200, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_DELAYUPDATE, "%");
 			if(g_Config.m_BcShowRealHitbox)
@@ -2376,6 +2375,23 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				static CButtonContainer s_RealHitboxDotColorButton;
 				DoLine_ColorPicker(&s_RealHitboxDotColorButton, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Content, BCLocalize("Real hitbox dot color"), &g_Config.m_BcShowRealHitboxColor, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::BcShowRealHitboxColor, true)), false, nullptr, true);
 			}
+			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+		}
+
+		{
+			const float ContentHeight = LineSize + MarginSmall + 3.0f * LineSize;
+			CUIRect Content, Label, Row;
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, BCLocalize("Browser Utils"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcAutoServerListRefresh, BCLocalize("Auto server list refresh"), &g_Config.m_BcAutoServerListRefresh, &Content, LineSize);
+			Content.HSplitTop(LineSize, &Row, &Content);
+			Ui()->DoScrollbarOption(&g_Config.m_BcAutoServerListRefreshSeconds, &g_Config.m_BcAutoServerListRefreshSeconds, &Row, BCLocalize("Seconds"), 1, 300, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_DELAYUPDATE, " s");
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcUseShortKogServerName, BCLocalize("Use short KoG server name"), &g_Config.m_BcUseShortKogServerName, &Content, LineSize);
+
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		}
 

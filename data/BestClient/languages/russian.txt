@@ -1585,6 +1585,12 @@ Minutes
 Misc
 == Разное
 
+Auto server list refresh
+== Автообновление списка серверов
+
+Browser Utils
+== Утилиты браузера
+
 Mode
 == Режим
 

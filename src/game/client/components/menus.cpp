@@ -1230,6 +1230,25 @@ void CMenus::Render()
 		m_JoinTutorial.m_Queued = false;
 	}
 
+	const bool BrowserPageActive = m_MenuPage >= PAGE_INTERNET && m_MenuPage <= PAGE_FAVORITE_COMMUNITY_5;
+	if(BrowserPageActive && g_Config.m_BcAutoServerListRefresh)
+	{
+		const bool BrowserBusy = ServerBrowser()->IsRefreshing() || ServerBrowser()->IsGettingServerlist();
+		if(!BrowserBusy)
+		{
+			const int64_t Now = time_get();
+			const int64_t RefreshInterval = (int64_t)g_Config.m_BcAutoServerListRefreshSeconds * time_freq();
+			if(m_LastServerBrowserRefreshTick == 0)
+				m_LastServerBrowserRefreshTick = Now;
+			else if(RefreshInterval > 0 && Now - m_LastServerBrowserRefreshTick >= RefreshInterval)
+				RefreshBrowserTab(true);
+		}
+	}
+	else if(!BrowserPageActive)
+	{
+		m_LastServerBrowserRefreshTick = 0;
+	}
+
 	// Determine the client state once before rendering because it can change
 	// while rendering which causes frames with broken user interface.
 	const IClient::EClientState ClientState = Client()->State();
@@ -3085,6 +3104,7 @@ void CMenus::RefreshBrowserTab(bool Force)
 			}
 			ServerBrowser()->Refresh(IServerBrowser::TYPE_INTERNET);
 			UpdateCommunityCache(true);
+			m_LastServerBrowserRefreshTick = time_get();
 		}
 	}
 	else if(g_Config.m_UiPage == PAGE_LAN)
@@ -3093,6 +3113,7 @@ void CMenus::RefreshBrowserTab(bool Force)
 		{
 			ServerBrowser()->Refresh(IServerBrowser::TYPE_LAN);
 			UpdateCommunityCache(true);
+			m_LastServerBrowserRefreshTick = time_get();
 		}
 	}
 	else if(g_Config.m_UiPage == PAGE_FAVORITES)
@@ -3105,6 +3126,7 @@ void CMenus::RefreshBrowserTab(bool Force)
 			}
 			ServerBrowser()->Refresh(IServerBrowser::TYPE_FAVORITES);
 			UpdateCommunityCache(true);
+			m_LastServerBrowserRefreshTick = time_get();
 		}
 	}
 	else if(g_Config.m_UiPage >= PAGE_FAVORITE_COMMUNITY_1 && g_Config.m_UiPage <= PAGE_FAVORITE_COMMUNITY_5)
@@ -3118,6 +3140,7 @@ void CMenus::RefreshBrowserTab(bool Force)
 			}
 			ServerBrowser()->Refresh(BrowserType);
 			UpdateCommunityCache(true);
+			m_LastServerBrowserRefreshTick = time_get();
 		}
 	}
 }

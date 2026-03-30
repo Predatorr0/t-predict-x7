@@ -70,6 +70,8 @@ MACRO_CONFIG_COL(BcShowhudDummyCoordIndicatorColor, bc_showhud_dummy_coord_indic
 MACRO_CONFIG_COL(BcShowhudDummyCoordIndicatorSameHeightColor, bc_showhud_dummy_coord_indicator_same_height_color, 5635967, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Player-below indicator color when aligned vertically")
 MACRO_CONFIG_INT(BcShowRealHitbox, bc_show_real_hitbox, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show a dot at the center of your real hitbox")
 MACRO_CONFIG_COL(BcShowRealHitboxColor, bc_show_real_hitbox_color, 0xFFFFFFFFU, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of the real hitbox center dot")
+MACRO_CONFIG_INT(BcAutoServerListRefresh, bc_auto_server_list_refresh, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Automatically refresh the server browser list while a browser tab is open")
+MACRO_CONFIG_INT(BcAutoServerListRefreshSeconds, bc_auto_server_list_refresh_seconds, 10, 1, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Auto refresh interval for the server browser list in seconds")
 MACRO_CONFIG_INT(BcUseShortKogServerName, bc_use_short_kog_server_name, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use short name for KoG gores servers in browser list")
 
 // Fast input

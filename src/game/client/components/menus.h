@@ -338,6 +338,7 @@ protected:
 
 	bool m_CreateDefaultFavoriteCommunities = false;
 	bool m_ForceRefreshLanPage = false;
+	int64_t m_LastServerBrowserRefreshTick = 0;
 
 	char m_aNextServer[256];
 
