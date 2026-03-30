@@ -43,7 +43,10 @@ void CMenus::RenderGame(CUIRect MainView)
 {
 	CUIRect Button, ButtonBars, ButtonBar, ButtonBar2;
 	bool ShowDDRaceButtons = MainView.w > 855.0f;
-	MainView.HSplitTop(45.0f + (g_Config.m_ClTouchControls ? 35.0f : 0.0f), &ButtonBars, &MainView);
+	const bool ShowEscPlayersCarousel = !g_Config.m_ClTouchControls || !GameClient()->m_TouchControls.IsEditingActive();
+	const float ButtonRowsHeight = 45.0f + (g_Config.m_ClTouchControls ? 35.0f : 0.0f);
+	const float CarouselHeight = ShowEscPlayersCarousel ? 96.0f : 0.0f;
+	MainView.HSplitTop(ButtonRowsHeight + CarouselHeight, &ButtonBars, &MainView);
 	ButtonBars.Draw(ms_ColorTabbarActive, IGraphics::CORNER_B, 10.0f);
 	ButtonBars.Margin(10.0f, &ButtonBars);
 	ButtonBars.HSplitTop(25.0f, &ButtonBar, &ButtonBars);
@@ -372,21 +375,19 @@ void CMenus::RenderGame(CUIRect MainView)
 		}
 	}
 
-	if(!g_Config.m_ClTouchControls || !GameClient()->m_TouchControls.IsEditingActive())
+	if(ShowEscPlayersCarousel)
 	{
-		RenderEscPlayersCarousel(MainView);
+		RenderEscPlayersCarousel(ButtonBars);
 	}
 }
 
 void CMenus::RenderEscPlayersCarousel(CUIRect MainView)
 {
-	CUIRect Panel = MainView;
-	const float PanelHeight = minimum(118.0f, MainView.h);
-	if(PanelHeight <= 0.0f)
+	if(MainView.h <= 6.0f || MainView.w <= 40.0f)
 		return;
-	Panel.HSplitTop(PanelHeight, &Panel, nullptr);
-	Panel.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.8f), IGraphics::CORNER_B, 10.0f);
-	Panel.Margin(10.0f, &Panel);
+
+	CUIRect Panel = MainView;
+	Panel.HSplitTop(12.0f, nullptr, &Panel);
 
 	int aPlayerIds[MAX_CLIENTS];
 	int NumPlayers = 0;
@@ -405,66 +406,78 @@ void CMenus::RenderEscPlayersCarousel(CUIRect MainView)
 
 	if(NumPlayers == 0)
 	{
-		Ui()->DoLabel(&Panel, Localize("No players"), 12.0f, TEXTALIGN_MC);
+		Ui()->DoLabel(&Panel, Localize("No players"), 10.0f, TEXTALIGN_MC);
 		return;
 	}
 
 	CUIRect NamesRow, SkinsRow, SliderRow;
-	Panel.HSplitTop(16.0f, &NamesRow, &Panel);
-	Panel.HSplitTop(70.0f, &SkinsRow, &Panel);
-	Panel.HSplitTop(6.0f, nullptr, &Panel);
-	Panel.HSplitTop(12.0f, &SliderRow, nullptr);
+	Panel.HSplitTop(18.0f, &NamesRow, &Panel);
+	Panel.HSplitTop(48.0f, &SkinsRow, &Panel);
+	Panel.HSplitTop(2.0f, nullptr, &Panel);
+	Panel.HSplitTop(minimum(16.0f, Panel.h), &SliderRow, nullptr);
 
-	const float ItemWidth = 72.0f;
-	const float ItemSpacing = 8.0f;
+	const float ItemWidth = 96.0f;
+	const float ItemSpacing = 12.0f;
 	const float ItemStep = ItemWidth + ItemSpacing;
 	const float ContentWidth = NumPlayers * ItemWidth + maximum(0, NumPlayers - 1) * ItemSpacing;
 	const float MaxScrollPx = maximum(0.0f, ContentWidth - SkinsRow.w);
 	m_EscPlayersCarouselScroll = std::clamp(m_EscPlayersCarouselScroll, 0.0f, 1.0f);
 	if(MaxScrollPx <= 0.0f)
 		m_EscPlayersCarouselScroll = 0.0f;
+
+	const float ScrollStepRel = MaxScrollPx > 0.0f ? std::clamp((ItemStep * 2.0f) / MaxScrollPx, 0.02f, 0.35f) : 0.0f;
+	if(Ui()->MouseInside(&SkinsRow))
+	{
+		if(Input()->KeyPress(KEY_MOUSE_WHEEL_UP))
+			m_EscPlayersCarouselScroll = std::clamp(m_EscPlayersCarouselScroll - ScrollStepRel, 0.0f, 1.0f);
+		if(Input()->KeyPress(KEY_MOUSE_WHEEL_DOWN))
+			m_EscPlayersCarouselScroll = std::clamp(m_EscPlayersCarouselScroll + ScrollStepRel, 0.0f, 1.0f);
+	}
+
 	const float ScrollPx = m_EscPlayersCarouselScroll * MaxScrollPx;
 
+	CUIRect ClipRect = NamesRow;
+	ClipRect.h = (SkinsRow.y + SkinsRow.h) - NamesRow.y;
+	Ui()->ClipEnable(&ClipRect);
 	for(int i = 0; i < NumPlayers; i++)
 	{
 		const int ClientId = aPlayerIds[i];
 		const float ItemX = SkinsRow.x + i * ItemStep - ScrollPx;
-		if(ItemX + ItemWidth < SkinsRow.x || ItemX > SkinsRow.x + SkinsRow.w)
+		if(ItemX + ItemWidth <= SkinsRow.x || ItemX >= SkinsRow.x + SkinsRow.w)
 			continue;
 
 		CUIRect NameRect = {ItemX, NamesRow.y, ItemWidth, NamesRow.h};
 		SLabelProperties LabelProps;
 		LabelProps.m_MaxWidth = NameRect.w;
 		LabelProps.m_EllipsisAtEnd = true;
-		Ui()->DoLabel(&NameRect, GameClient()->m_aClients[ClientId].m_aName, 10.0f, TEXTALIGN_MC, LabelProps);
+		Ui()->DoLabel(&NameRect, GameClient()->m_aClients[ClientId].m_aName, 12.0f, TEXTALIGN_MC, LabelProps);
 
-		CUIRect SkinSlot = {ItemX, SkinsRow.y, ItemWidth, SkinsRow.h};
-		CUIRect SkinButton = SkinSlot;
-		const float CircleSize = minimum(SkinSlot.w, SkinSlot.h - 4.0f);
-		SkinButton.w = CircleSize;
-		SkinButton.h = CircleSize;
-		SkinButton.x = SkinSlot.x + (SkinSlot.w - CircleSize) / 2.0f;
-		SkinButton.y = SkinSlot.y + (SkinSlot.h - CircleSize) / 2.0f;
+		CUIRect ItemRect = {ItemX, SkinsRow.y, ItemWidth, SkinsRow.h};
+		CUIRect TeeRect = ItemRect;
+		const float TeeSize = minimum(42.0f, ItemRect.h);
+		TeeRect.w = TeeSize;
+		TeeRect.h = TeeSize;
+		TeeRect.x = ItemRect.x + (ItemRect.w - TeeSize) / 2.0f;
+		TeeRect.y = ItemRect.y + (ItemRect.h - TeeSize) / 2.0f;
 
 		const bool IsLocal =
 			GameClient()->m_aLocalIds[0] == ClientId ||
 			(Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == ClientId);
 
-		const int ButtonResult = Ui()->DoButtonLogic(&m_aEscPlayersCarouselButtons[ClientId], 0, &SkinButton, BUTTONFLAG_LEFT | BUTTONFLAG_RIGHT);
+		const int ButtonResult = Ui()->DoButtonLogic(&m_aEscPlayersCarouselButtons[ClientId], 0, &ItemRect, BUTTONFLAG_LEFT | BUTTONFLAG_RIGHT);
 		const bool Hot = Ui()->HotItem() == &m_aEscPlayersCarouselButtons[ClientId];
-		SkinButton.Draw(IsLocal ? ColorRGBA(0.35f, 0.55f, 0.35f, 0.5f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.22f), IGraphics::CORNER_ALL, SkinButton.h / 2.0f);
-		if(Hot)
+		if(IsLocal || Hot)
 		{
-			SkinButton.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f), IGraphics::CORNER_ALL, SkinButton.h / 2.0f);
+			ItemRect.Draw(IsLocal ? ColorRGBA(0.30f, 0.55f, 0.30f, 0.22f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.10f), IGraphics::CORNER_ALL, 3.0f);
 		}
 
 		CTeeRenderInfo TeeInfo = GameClient()->m_aClients[ClientId].m_RenderInfo;
 		if(TeeInfo.Valid())
 		{
-			TeeInfo.m_Size = SkinButton.h * 0.88f;
+			TeeInfo.m_Size = TeeRect.h;
 			vec2 OffsetToMid;
 			CRenderTools::GetRenderTeeOffsetToRenderedTee(CAnimState::GetIdle(), &TeeInfo, OffsetToMid);
-			const vec2 TeeRenderPos = vec2(SkinButton.Center().x, SkinButton.Center().y + OffsetToMid.y);
+			const vec2 TeeRenderPos = vec2(TeeRect.Center().x, TeeRect.Center().y + OffsetToMid.y);
 			RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeInfo, EMOTE_NORMAL, vec2(1.0f, 0.0f), TeeRenderPos);
 		}
 
@@ -475,6 +488,7 @@ void CMenus::RenderEscPlayersCarousel(CUIRect MainView)
 			GameClient()->m_Scoreboard.OpenPlayerPopup(ClientId, IsSpectating, Ui()->MouseX(), Ui()->MouseY());
 		}
 	}
+	Ui()->ClipDisable();
 
 	if(MaxScrollPx > 0.0f)
 	{
