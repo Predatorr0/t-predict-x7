@@ -5657,7 +5657,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const float ColorPickerLineSpacing = 5.0f;
 			const bool ShowRealHitboxEnabled = g_Config.m_BcShowRealHitbox != 0;
 			const float ColorPickerHeight = ShowRealHitboxEnabled ? (ColorPickerLineSize + ColorPickerLineSpacing) : 0.0f;
-			const float ContentHeight = LineSize + MarginSmall + 8.0f * LineSize + ColorPickerHeight;
+			const float ContentHeight = LineSize + MarginSmall + 9.0f * LineSize + ColorPickerHeight;
 			CUIRect Content, Label, Row;
 			BeginBlock(Column, ContentHeight, Content);
 
@@ -5670,6 +5670,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			DoButton_CheckBoxAutoVMarginAndSet(&s_SettingsLayoutButton, Localize("Use new menu layout"), &UseNewMenuLayout, &Content, LineSize);
 			g_Config.m_BcSettingsLayout = UseNewMenuLayout ? 0 : 1;
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcHideHudInSettings, Localize("Hide hud in settings"), &g_Config.m_BcHideHudInSettings, &Content, LineSize);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcEscPlayerList, Localize("Show ESC players list"), &g_Config.m_BcEscPlayerList, &Content, LineSize);
 
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcEmoticonShadow, Localize("Shadow of Emotions"), &g_Config.m_BcEmoticonShadow, &Content, LineSize);
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcChatSaveDraft, Localize("Save unsent messages"), &g_Config.m_BcChatSaveDraft, &Content, LineSize);

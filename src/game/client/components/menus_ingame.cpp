@@ -43,7 +43,7 @@ void CMenus::RenderGame(CUIRect MainView)
 {
 	CUIRect Button, ButtonBars, ButtonBar, ButtonBar2;
 	bool ShowDDRaceButtons = MainView.w > 855.0f;
-	const bool ShowEscPlayersCarousel = !g_Config.m_ClTouchControls || !GameClient()->m_TouchControls.IsEditingActive();
+	const bool ShowEscPlayersCarousel = g_Config.m_BcEscPlayerList != 0 && (!g_Config.m_ClTouchControls || !GameClient()->m_TouchControls.IsEditingActive());
 	const float ButtonRowsHeight = 45.0f + (g_Config.m_ClTouchControls ? 35.0f : 0.0f);
 	const float CarouselHeight = ShowEscPlayersCarousel ? 96.0f : 0.0f;
 	MainView.HSplitTop(ButtonRowsHeight + CarouselHeight, &ButtonBars, &MainView);
@@ -387,7 +387,7 @@ void CMenus::RenderEscPlayersCarousel(CUIRect MainView)
 		return;
 
 	CUIRect Panel = MainView;
-	Panel.HSplitTop(12.0f, nullptr, &Panel);
+	Panel.HSplitTop(5.0f, nullptr, &Panel);
 
 	int aPlayerIds[MAX_CLIENTS];
 	int NumPlayers = 0;
@@ -410,17 +410,23 @@ void CMenus::RenderEscPlayersCarousel(CUIRect MainView)
 		return;
 	}
 
-	CUIRect NamesRow, SkinsRow, SliderRow;
-	Panel.HSplitTop(18.0f, &NamesRow, &Panel);
-	Panel.HSplitTop(48.0f, &SkinsRow, &Panel);
-	Panel.HSplitTop(2.0f, nullptr, &Panel);
-	Panel.HSplitTop(minimum(16.0f, Panel.h), &SliderRow, nullptr);
-
-	const float ItemWidth = 96.0f;
-	const float ItemSpacing = 12.0f;
+	const float ItemWidth = 64.0f;
+	const float ItemSpacing = 0.5f;
 	const float ItemStep = ItemWidth + ItemSpacing;
 	const float ContentWidth = NumPlayers * ItemWidth + maximum(0, NumPlayers - 1) * ItemSpacing;
-	const float MaxScrollPx = maximum(0.0f, ContentWidth - SkinsRow.w);
+	const float MaxScrollPx = maximum(0.0f, ContentWidth - Panel.w);
+	const bool ShowSlider = MaxScrollPx > 0.0f;
+
+	CUIRect NamesRow, SkinsRow;
+	Panel.HSplitTop(18.0f, &NamesRow, &Panel);
+	const float SkinsHeight = ShowSlider ? 52.0f : 70.0f;
+	Panel.HSplitTop(minimum(SkinsHeight, Panel.h), &SkinsRow, &Panel);
+	CUIRect SliderRow;
+	if(ShowSlider)
+	{
+		Panel.HSplitTop(2.0f, nullptr, &Panel);
+		Panel.HSplitTop(minimum(16.0f, Panel.h), &SliderRow, &Panel);
+	}
 	m_EscPlayersCarouselScroll = std::clamp(m_EscPlayersCarouselScroll, 0.0f, 1.0f);
 	if(MaxScrollPx <= 0.0f)
 		m_EscPlayersCarouselScroll = 0.0f;
@@ -454,7 +460,7 @@ void CMenus::RenderEscPlayersCarousel(CUIRect MainView)
 
 		CUIRect ItemRect = {ItemX, SkinsRow.y, ItemWidth, SkinsRow.h};
 		CUIRect TeeRect = ItemRect;
-		const float TeeSize = minimum(42.0f, ItemRect.h);
+		const float TeeSize = minimum(50.0f, ItemRect.h);
 		TeeRect.w = TeeSize;
 		TeeRect.h = TeeSize;
 		TeeRect.x = ItemRect.x + (ItemRect.w - TeeSize) / 2.0f;
@@ -464,11 +470,16 @@ void CMenus::RenderEscPlayersCarousel(CUIRect MainView)
 			GameClient()->m_aLocalIds[0] == ClientId ||
 			(Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == ClientId);
 
-		const int ButtonResult = Ui()->DoButtonLogic(&m_aEscPlayersCarouselButtons[ClientId], 0, &ItemRect, BUTTONFLAG_LEFT | BUTTONFLAG_RIGHT);
+		CUIRect HoverRect = TeeRect;
+		HoverRect.x -= 2.0f;
+		HoverRect.y -= 2.0f;
+		HoverRect.w += 4.0f;
+		HoverRect.h += 4.0f;
+		const int ButtonResult = Ui()->DoButtonLogic(&m_aEscPlayersCarouselButtons[ClientId], 0, &HoverRect, BUTTONFLAG_LEFT | BUTTONFLAG_RIGHT);
 		const bool Hot = Ui()->HotItem() == &m_aEscPlayersCarouselButtons[ClientId];
 		if(IsLocal || Hot)
 		{
-			ItemRect.Draw(IsLocal ? ColorRGBA(0.30f, 0.55f, 0.30f, 0.22f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.10f), IGraphics::CORNER_ALL, 3.0f);
+			HoverRect.Draw(IsLocal ? ColorRGBA(0.30f, 0.55f, 0.30f, 0.22f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.10f), IGraphics::CORNER_ALL, HoverRect.h / 2.0f);
 		}
 
 		CTeeRenderInfo TeeInfo = GameClient()->m_aClients[ClientId].m_RenderInfo;
@@ -490,14 +501,10 @@ void CMenus::RenderEscPlayersCarousel(CUIRect MainView)
 	}
 	Ui()->ClipDisable();
 
-	if(MaxScrollPx > 0.0f)
+	if(ShowSlider)
 	{
 		const float NewRel = Ui()->DoScrollbarH(&m_EscPlayersCarouselSlider, &SliderRow, m_EscPlayersCarouselScroll);
 		m_EscPlayersCarouselScroll = std::clamp(NewRel, 0.0f, 1.0f);
-	}
-	else
-	{
-		SliderRow.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.2f), IGraphics::CORNER_ALL, SliderRow.h / 2.0f);
 	}
 }
 
