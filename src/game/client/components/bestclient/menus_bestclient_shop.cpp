@@ -201,7 +201,7 @@ static void BestClientShopCancelInstall()
 {
 	BestClientShopAbortTask(gs_BestClientShopState.m_pInstallTask);
 	BestClientShopResetInstallState();
-	BestClientShopSetStatus(BCLocalize("Download canceled"));
+	BestClientShopSetStatus(TCLocalize("Download canceled"));
 }
 
 static void BestClientShopInitState()
@@ -1195,7 +1195,7 @@ static void BestClientShopStartFetch(CMenus *pMenus)
 	gs_BestClientShopState.m_FetchTab = gs_BestClientShopState.m_Tab;
 	gs_BestClientShopState.m_FetchPage = BestClientShopHasActiveSearch() ? 1 : gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab];
 	str_copy(gs_BestClientShopState.m_aFetchSearch, gs_BestClientShopState.m_aAppliedSearch, sizeof(gs_BestClientShopState.m_aFetchSearch));
-	BestClientShopSetStatus(BCLocalize("Loading shop..."));
+	BestClientShopSetStatus(TCLocalize("Loading shop..."));
 	pMenus->MenuHttp()->Run(gs_BestClientShopState.m_pFetchTask);
 }
 
@@ -1336,14 +1336,14 @@ static void BestClientShopFinishFetch(CMenus *pMenus)
 		BestClientShopClearItems(pMenus);
 		gs_BestClientShopState.m_TotalPages = 1;
 		gs_BestClientShopState.m_TotalItems = 0;
-		BestClientShopSetStatus(BCLocalize("Shop request failed"));
+		BestClientShopSetStatus(TCLocalize("Shop request failed"));
 		return;
 	}
 
 	const int FetchStatusCode = gs_BestClientShopState.m_pFetchTask->StatusCode();
 	if(FetchStatusCode >= 400)
 	{
-		str_format(gs_BestClientShopState.m_aStatus, sizeof(gs_BestClientShopState.m_aStatus), "%s (%d)", BCLocalize("Shop request failed"), FetchStatusCode);
+		str_format(gs_BestClientShopState.m_aStatus, sizeof(gs_BestClientShopState.m_aStatus), "%s (%d)", TCLocalize("Shop request failed"), FetchStatusCode);
 		return;
 	}
 
@@ -1354,7 +1354,7 @@ static void BestClientShopFinishFetch(CMenus *pMenus)
 		{
 			json_value_free(pJson);
 		}
-		BestClientShopSetStatus(BCLocalize("Shop response is invalid"));
+		BestClientShopSetStatus(TCLocalize("Shop response is invalid"));
 		return;
 	}
 
@@ -1445,7 +1445,7 @@ static void BestClientShopFinishFetch(CMenus *pMenus)
 
 	if(gs_BestClientShopState.m_vItems.empty())
 	{
-		BestClientShopSetStatus(BCLocalize("No assets found on this page"));
+		BestClientShopSetStatus(TCLocalize("No assets found on this page"));
 	}
 	else
 	{
@@ -1495,7 +1495,7 @@ static void BestClientShopStartInstallRequest(CMenus *pMenus)
 {
 	if(gs_BestClientShopState.m_InstallUrlIndex < 0 || gs_BestClientShopState.m_InstallUrlIndex >= (int)gs_BestClientShopState.m_vInstallUrls.size())
 	{
-		BestClientShopSetStatus(BCLocalize("Failed to build a download URL"));
+		BestClientShopSetStatus(TCLocalize("Failed to build a download URL"));
 		return;
 	}
 
@@ -1511,7 +1511,7 @@ static void BestClientShopStartInstallRequest(CMenus *pMenus)
 	gs_BestClientShopState.m_pInstallTask->FailOnErrorStatus(false);
 
 	char aMessage[256];
-	str_format(aMessage, sizeof(aMessage), "%s: %s", BCLocalize("Downloading"), gs_BestClientShopState.m_aInstallAssetName);
+	str_format(aMessage, sizeof(aMessage), "%s: %s", TCLocalize("Downloading"), gs_BestClientShopState.m_aInstallAssetName);
 	BestClientShopSetStatus(aMessage);
 	pMenus->MenuHttp()->Run(gs_BestClientShopState.m_pInstallTask);
 }
@@ -1534,7 +1534,7 @@ static void BestClientShopRetryInstall(CMenus *pMenus)
 	if(gs_BestClientShopState.m_InstallUrlIndex >= (int)gs_BestClientShopState.m_vInstallUrls.size())
 	{
 		char aMessage[256];
-		str_format(aMessage, sizeof(aMessage), "%s: %s", BCLocalize("Unable to install asset"), gs_BestClientShopState.m_aInstallAssetName);
+		str_format(aMessage, sizeof(aMessage), "%s: %s", TCLocalize("Unable to install asset"), gs_BestClientShopState.m_aInstallAssetName);
 		BestClientShopSetStatus(aMessage);
 		BestClientShopResetInstallState();
 		return;
@@ -1575,12 +1575,12 @@ static void BestClientShopFinishInstall(CMenus *pMenus)
 	if(g_Config.m_BcShopAutoSet)
 	{
 		BestClientShopApplyAsset(pMenus, gs_BestClientShopState.m_InstallTab, gs_BestClientShopState.m_aInstallAssetName, true);
-		str_format(aMessage, sizeof(aMessage), "%s: %s", BCLocalize("Installed and applied"), gs_BestClientShopState.m_aInstallAssetName);
+		str_format(aMessage, sizeof(aMessage), "%s: %s", TCLocalize("Installed and applied"), gs_BestClientShopState.m_aInstallAssetName);
 	}
 	else
 	{
 		pMenus->RefreshCustomAssetsTab(gs_aBestClientShopTypeInfos[gs_BestClientShopState.m_InstallTab].m_AssetsTab);
-		str_format(aMessage, sizeof(aMessage), "%s: %s", BCLocalize("Installed"), gs_BestClientShopState.m_aInstallAssetName);
+		str_format(aMessage, sizeof(aMessage), "%s: %s", TCLocalize("Installed"), gs_BestClientShopState.m_aInstallAssetName);
 	}
 	BestClientShopSetStatus(aMessage);
 
@@ -1616,7 +1616,7 @@ static void BestClientShopRenderPreview(CMenus *pMenus, const CUIRect &MainView)
 	CUIRect Title, CloseButton;
 	Header.VSplitRight(100.0f, &Title, &CloseButton);
 	pMenus->MenuUi()->DoLabel(&Title, pItem->m_aName, BESTCLIENT_SHOP_HEADLINE_FONT_SIZE, TEXTALIGN_ML);
-	if(pMenus->DoButton_Menu(&gs_BestClientShopState.m_PreviewCloseButton, BCLocalize("Close"), 0, &CloseButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 6.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.30f)))
+	if(pMenus->DoButton_Menu(&gs_BestClientShopState.m_PreviewCloseButton, TCLocalize("Close"), 0, &CloseButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 6.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.30f)))
 	{
 		BestClientShopClosePreview();
 		return;
@@ -1716,7 +1716,7 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 	static CButtonContainer s_NextButton;
 
 	const bool SearchHotkey = gs_BestClientShopSearchInput.IsActive() && Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER);
-	if(DoButton_Menu(&s_SearchButton, BCLocalize("Search"), 0, &SearchButton) || SearchHotkey)
+	if(DoButton_Menu(&s_SearchButton, TCLocalize("Search"), 0, &SearchButton) || SearchHotkey)
 	{
 		BestClientShopSetSearch(this, gs_BestClientShopSearchInput.GetString());
 	}
@@ -1726,12 +1726,12 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 		BestClientShopInvalidatePage(this);
 	}
 
-	if(DoButton_Menu(&s_OpenFolderButton, BCLocalize("Assets directory"), 0, &FolderButton))
+	if(DoButton_Menu(&s_OpenFolderButton, TCLocalize("Assets directory"), 0, &FolderButton))
 	{
 		BestClientShopOpenAssetDirectory(this, gs_BestClientShopState.m_Tab);
 	}
 
-	if(DoButton_CheckBox(&s_AutoSetButton, BCLocalize("Auto set"), g_Config.m_BcShopAutoSet, &AutoSetButton))
+	if(DoButton_CheckBox(&s_AutoSetButton, TCLocalize("Auto set"), g_Config.m_BcShopAutoSet, &AutoSetButton))
 	{
 		g_Config.m_BcShopAutoSet = !g_Config.m_BcShopAutoSet;
 	}
@@ -1772,11 +1772,11 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 	}
 	else if(SearchMode)
 	{
-		str_format(aStatusText, sizeof(aStatusText), "%s: %d", BCLocalize("Search results"), gs_BestClientShopState.m_TotalItems);
+		str_format(aStatusText, sizeof(aStatusText), "%s: %d", TCLocalize("Search results"), gs_BestClientShopState.m_TotalItems);
 	}
 	else
 	{
-		str_format(aStatusText, sizeof(aStatusText), "%s: %d", BCLocalize("Items"), gs_BestClientShopState.m_TotalItems);
+		str_format(aStatusText, sizeof(aStatusText), "%s: %d", TCLocalize("Items"), gs_BestClientShopState.m_TotalItems);
 	}
 	static constexpr const char *s_pCreditPrefix = "\xc2\xa9 powered by ";
 	static constexpr const char *s_pCreditLink = "CatData";
@@ -1810,7 +1810,7 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 		Underline.Draw(ColorRGBA(0.60f, 0.85f, 1.0f, 0.8f), IGraphics::CORNER_NONE, 0.0f);
 	}
 	static CButtonContainer s_CancelInstallButton;
-	if(gs_BestClientShopState.m_pInstallTask != nullptr && DoButton_Menu(&s_CancelInstallButton, BCLocalize("Cancel"), 0, &CancelButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.25f, 0.10f, 0.10f, 0.35f)))
+	if(gs_BestClientShopState.m_pInstallTask != nullptr && DoButton_Menu(&s_CancelInstallButton, TCLocalize("Cancel"), 0, &CancelButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.25f, 0.10f, 0.10f, 0.35f)))
 	{
 		BestClientShopCancelInstall();
 	}
@@ -1850,7 +1850,7 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 			}
 			else
 			{
-				BestClientShopSetStatus(Item.m_PreviewFailed ? BCLocalize("Preview unavailable") : BCLocalize("Preview is still loading"));
+				BestClientShopSetStatus(Item.m_PreviewFailed ? TCLocalize("Preview unavailable") : TCLocalize("Preview is still loading"));
 			}
 		}
 
@@ -1873,20 +1873,20 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 		const bool Selected = BestClientShopAssetSelected(gs_BestClientShopState.m_Tab, aAssetName);
 		const bool InstallingThisItem = gs_BestClientShopState.m_pInstallTask != nullptr && str_comp(gs_BestClientShopState.m_aInstallItemId, Item.m_aId) == 0;
 
-		const char *pActionLabel = BCLocalize("Download");
+		const char *pActionLabel = TCLocalize("Download");
 		int ActionState = 0;
 		if(InstallingThisItem)
 		{
-			pActionLabel = BCLocalize("Cancel");
+			pActionLabel = TCLocalize("Cancel");
 		}
 		else if(Selected)
 		{
-			pActionLabel = BCLocalize("Applied");
+			pActionLabel = TCLocalize("Applied");
 			ActionState = 1;
 		}
 		else if(Installed)
 		{
-			pActionLabel = BCLocalize("Apply");
+			pActionLabel = TCLocalize("Apply");
 		}
 
 		CUIRect InfoRect, ButtonsRect;
@@ -1902,16 +1902,16 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 		char aAuthorLabel[160];
 		if(Item.m_aUsername[0] != '\0')
 		{
-			str_format(aAuthorLabel, sizeof(aAuthorLabel), "%s: %s", BCLocalize("Author"), Item.m_aUsername);
+			str_format(aAuthorLabel, sizeof(aAuthorLabel), "%s: %s", TCLocalize("Author"), Item.m_aUsername);
 		}
 		else
 		{
-			str_copy(aAuthorLabel, BCLocalize("Unknown author"), sizeof(aAuthorLabel));
+			str_copy(aAuthorLabel, TCLocalize("Unknown author"), sizeof(aAuthorLabel));
 		}
 		Ui()->DoLabel(&AuthorLabel, aAuthorLabel, BESTCLIENT_SHOP_SMALL_FONT_SIZE, TEXTALIGN_ML);
 
 		char aFileLabel[160];
-		str_format(aFileLabel, sizeof(aFileLabel), "%s: %s", BCLocalize("Saved as"), aAssetName);
+		str_format(aFileLabel, sizeof(aFileLabel), "%s: %s", TCLocalize("Saved as"), aAssetName);
 		Ui()->DoLabel(&FileLabel, aFileLabel, BESTCLIENT_SHOP_SMALL_FONT_SIZE, TEXTALIGN_ML);
 
 		CUIRect ActionButton, DeleteButton;
@@ -1932,7 +1932,7 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 				{
 					BestClientShopApplyAsset(this, gs_BestClientShopState.m_Tab, aAssetName, false);
 					char aMessage[256];
-					str_format(aMessage, sizeof(aMessage), "%s: %s", BCLocalize("Applied"), aAssetName);
+					str_format(aMessage, sizeof(aMessage), "%s: %s", TCLocalize("Applied"), aAssetName);
 					BestClientShopSetStatus(aMessage);
 				}
 				else
@@ -1944,18 +1944,18 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 
 		if(Installed)
 		{
-			if(BestClientShopDoSilentMenuButton(this, &Item.m_DeleteButton, BCLocalize("Delete"), 0, &DeleteButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.25f, 0.05f, 0.05f, 0.35f)))
+			if(BestClientShopDoSilentMenuButton(this, &Item.m_DeleteButton, TCLocalize("Delete"), 0, &DeleteButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.25f, 0.05f, 0.05f, 0.35f)))
 			{
 				if(BestClientShopDeleteAsset(this, gs_BestClientShopState.m_Tab, aAssetName))
 				{
 					char aMessage[256];
-					str_format(aMessage, sizeof(aMessage), "%s: %s", BCLocalize("Deleted"), aAssetName);
+					str_format(aMessage, sizeof(aMessage), "%s: %s", TCLocalize("Deleted"), aAssetName);
 					BestClientShopSetStatus(aMessage);
 				}
 				else
 				{
 					char aMessage[256];
-					str_format(aMessage, sizeof(aMessage), "%s: %s", BCLocalize("Unable to delete asset"), aAssetName);
+					str_format(aMessage, sizeof(aMessage), "%s: %s", TCLocalize("Unable to delete asset"), aAssetName);
 					BestClientShopSetStatus(aMessage);
 				}
 			}
@@ -1979,7 +1979,7 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 		CUIRect Button;
 		Tabs.VSplitLeft(TabWidth, &Button, &Tabs);
 		const int Corners = Tab == 0 ? IGraphics::CORNER_L : (Tab == NUM_BESTCLIENT_SHOP_TABS - 1 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE);
-		if(DoButton_MenuTab(&s_aShopTabs[Tab], BCLocalize(gs_aBestClientShopTypeInfos[Tab].m_pLabel), gs_BestClientShopState.m_Tab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
+		if(DoButton_MenuTab(&s_aShopTabs[Tab], TCLocalize(gs_aBestClientShopTypeInfos[Tab].m_pLabel), gs_BestClientShopState.m_Tab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
 		{
 			BestClientShopSetTab(this, Tab);
 		}

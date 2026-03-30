@@ -153,7 +153,7 @@ Status Bar
 == 
 
 Info
-== Informationen
+== 
 
 Visual
 == 
@@ -216,7 +216,7 @@ Fake CTF flags
 == 
 
 Input
-== Eingabe
+== 
 
 Fast Inputs (-20ms visual delay)
 == 
@@ -234,10 +234,10 @@ Remove prediction & antiping in freeze
 == 
 
 Amount
-== Menge
+== 
 
 Delay
-== Verzoegerung
+== 
 
 Dont predict other players if you are frozen
 == 
@@ -535,7 +535,7 @@ Black
 == 
 
 Random
-== Zufall
+== 
 
 Rainbow speed
 == 
@@ -562,7 +562,7 @@ Tee
 == 
 
 Speed
-== Geschwindigkeit
+== 
 
 Tee trail color
 == 
@@ -580,7 +580,7 @@ Background Draw
 == 
 
 Color
-== Farbe
+== 
 
 Time until strokes disappear
 == 
@@ -607,16 +607,16 @@ Finish Name:
 == 
 
 Name:
-== Name:
+== 
 
 Name
 == 
 
 Command:
-== Befehl:
+== 
 
 Command
-== Befehl
+== 
 
 Override Selected
 == 
@@ -691,10 +691,10 @@ Remove War Group
 == 
 
 Yes
-== Ja
+== 
 
 No
-== Nein
+== 
 
 Override Group
 == 
@@ -772,7 +772,7 @@ _ or ' ' = Space
 == 
 
 Apply
-== Anwenden
+== 
 
 Status Scheme:
 == 
@@ -784,13 +784,13 @@ Remove Item
 == 
 
 BestClient Links
-== BestClient-Links
+== 
 
 Discord
-== Discord
+== 
 
 Website
-== Webseite
+== 
 
 Github
 == 
@@ -799,19 +799,19 @@ Support ♥
 == 
 
 Config Files
-== Konfigurationsdateien
+== 
 
 BestClient Settings
-== BestClient-Einstellungen
+== 
 
 Profiles
 == 
 
 BestClient Developers
-== BestClient-Entwickler
+== 
 
 Hide Settings Tabs
-== Einstellungs-Tabs ausblenden
+== 
 
 Integration
 == 
@@ -856,10 +856,10 @@ Load
 == 
 
 Save
-== Speichern
+== 
 
 Delete
-== Loeschen
+== 
 
 Override
 == 
@@ -922,7 +922,7 @@ Slice
 == Schnitt
 
 Ball
-== Kugel
+== Ball
 
 Smoke
 == Rauch
@@ -957,8 +957,11 @@ Dynamic FOV amount
 Dynamic FOV smoothness
 == Glättung des dynamischen FOV
 
+[[red]] This feature is disabled on this server
+== [[red]] Diese Funktion ist auf diesem Server deaktiviert
+
 Afterimage
-== Nachbild
+== Afterimage
 
 Enable Afterimage
 == Afterimage aktivieren
@@ -1041,8 +1044,14 @@ Mixed
 Size
 == Größe
 
+Speed
+== Geschwindigkeit
+
 Alpha
-== Transparenz
+== Alpha
+
+Color
+== Farbe
 
 Glow
 == Leuchten
@@ -1085,953 +1094,3 @@ Aura Speed
 
 Slot %s is empty
 == Slot %s ist leer
-
-Gameplay
-== Spielablauf
-
-Others
-== Sonstiges
-
-Fun
-== Spiele
-
-Shop
-== Laden
-
-Editors
-== Editoren
-
-Telegram
-== Telegram
-
-Check update
-== Auf Updates prüfen
-
-Preparing update...
-== Update wird vorbereitet...
-
-Downloading
-== Wird heruntergeladen
-
-Update downloaded
-== Update heruntergeladen
-
-Update failed
-== Update fehlgeschlagen
-
-Search
-== Suchen
-
-Assets directory
-== Asset-Verzeichnis
-
-Auto set
-== Automatisch setzen
-
-Search results
-== Suchergebnisse
-
-Items
-== Einträge
-
-Preview unavailable
-== Vorschau nicht verfügbar
-
-Preview is still loading
-== Vorschau wird noch geladen
-
-Unknown author
-== Unbekannter Autor
-
-Saved as
-== Gespeichert als
-
-Unable to delete asset
-== Asset konnte nicht gelöscht werden
-
-Entities
-== Entitäten
-
-Game
-== Spiel
-
-Emoticons
-== Emoticons
-
-Arrows
-== Pfeile
-
-Audio
-== Audio
-
-BestClient %s is available
-== BestClient %s ist verfügbar
-
-0 keeps the image fixed to the screen. 100 fixes it to the map for a full parallax effect.
-== 0 hält das Bild am Bildschirm fest. 100 verankert es an der Map für einen vollen Parallax-Effekt.
-
-1 = Local two players
-== 1 = Lokal für zwei Spieler
-
-2 = Versus bot
-== 2 = Gegen Bot
-
-2 = Versus smart bot
-== 2 = Gegen smarten Bot
-
-2048!
-== 2048!
-
-All Lights Off
-== Alle Lichter aus
-
-All bricks cleared
-== Alle Blöcke zerstört
-
-All pairs connected
-== Alle Paare verbunden
-
-All pairs found
-== Alle Paare gefunden
-
-All staged component changes will be lost.
-== Alle vorgemerkten Komponentenänderungen gehen verloren.
-
-Allowed media domains
-== Erlaubte Mediendomains
-
-Alpha delay
-== Alpha-Verzögerung
-
-Animations
-== Animationen
-
-Applied
-== Angewendet
-
-Assets editor
-== Asset-Editor
-
-Aura alpha
-== Aura-Alpha
-
-Aura radius
-== Aura-Radius
-
-Aura speed
-== Aura-Geschwindigkeit
-
-Author
-== Autor
-
-Auto disable after time end
-== Nach Ablauf automatisch deaktivieren
-
-Auto team lock
-== Automatische Team-Sperre
-
-Available blocks
-== Verfügbare Blöcke
-
-Black Wins
-== Schwarz gewinnt
-
-Black wins
-== Schwarz gewinnt
-
-Board Size
-== Brettgröße
-
-Bot Skill
-== Bot-Stärke
-
-Bot Wins
-== Bot gewinnt
-
-Bot wins
-== Bot gewinnt
-
-Bottom
-== Unten
-
-Brick Rows
-== Ziegelreihen
-
-By zoom
-== Nach Zoom
-
-Calm board
-== Ruhiges Feld
-
-Cancel
-== Abbrechen
-
-Cancel all changes?
-== Alle Änderungen verwerfen?
-
-Cat escaped
-== Katze entkommen
-
-Cat trapped
-== Katze gefangen
-
-Caught by ghost
-== Vom Geist erwischt
-
-Center
-== Mitte
-
-Chance For 4
-== Chance auf 4
-
-Chat Media
-== Chat-Medien
-
-Chat message animation time (ms)
-== Animationszeit für Chatnachrichten (ms)
-
-Chat message animations
-== Chatnachrichten-Animationen
-
-Chat open animation
-== Chat-Öffnungsanimation
-
-Chat open animation time (ms)
-== Chat-Öffnungsanimationszeit (ms)
-
-Chat typing animation
-== Chat-Tippanimation
-
-Chat typing animation time (ms)
-== Chat-Tippanimationszeit (ms)
-
-Classic block blast
-== Klassisches Block Blast
-
-Clear command
-== Befehl leeren
-
-Client Indicator
-== Client-Indikator
-
-Close
-== Schließen
-
-Color mode
-== Farbmodus
-
-Components editor
-== Komponenten-Editor
-
-Content filtering
-== Inhaltsfilterung
-
-Course complete
-== Kurs abgeschlossen
-
-Cover accent color
-== Akzentfarbe des Covers
-
-Crash
-== Absturz
-
-Create mixed assets or jump to the name plate editor.
-== Erstelle gemischte Assets oder springe zum Nameplate-Editor.
-
-Crystal Laser
-== Kristall-Laser
-
-Cull map tiles outside FPS fog
-== Map-Tiles außerhalb des FPS-Nebels ausblenden
-
-Custom
-== Individuell
-
-Custom size
-== Eigene Größe
-
-DDNet priority: High
-== DDNet-Priorität: Hoch
-
-Deleted
-== Gelöscht
-
-Dice Count
-== Anzahl Würfel
-
-Difficulty
-== Schwierigkeit
-
-Disable all particles render
-== Alle Partikel-Render deaktivieren
-
-Disable if you have shotgun, grenade or laser
-== Deaktivieren, wenn du Shotgun, Granate oder Laser hast
-
-Disabled components: %d
-== Deaktivierte Komponenten: %d
-
-Discord priority: Below Normal
-== Discord-Priorität: Unter normal
-
-Dominant cover color
-== Dominante Cover-Farbe
-
-Download
-== Herunterladen
-
-Download canceled
-== Download abgebrochen
-
-Draw
-== Unentschieden
-
-ESC menu animation
-== ESC-Menü-Animation
-
-ESC menu animation time (ms)
-== ESC-Menü-Animationszeit (ms)
-
-Edit HUD positions directly above the live game.
-== Bearbeite HUD-Positionen direkt über dem laufenden Spiel.
-
-Enable
-== Aktivieren
-
-Enable Jelly Tee
-== Wackel-Tee aktivieren
-
-Enable animations
-== Animationen aktivieren
-
-Enable fullscreen media viewer in chat
-== Vollbild-Medienanzeige im Chat aktivieren
-
-Enable gores mode
-== Gores-Modus aktivieren
-
-Enable music player
-== Musikplayer aktivieren
-
-Enable optimizer
-== Optimierer aktivieren
-
-Enable speedrun timer
-== Speedrun-Timer aktivieren
-
-Enable visualizer
-== Visualizer aktivieren
-
-FPS fog (cull outside limit)
-== FPS-Nebel (außerhalb des Limits ausblenden)
-
-FPS fog mode
-== FPS-Nebel-Modus
-
-Failed to build a download URL
-== Download-URL konnte nicht erstellt werden
-
-Fast Actions
-== Schnellaktionen
-
-Fast Actions key
-== Schnellaktionen-Taste
-
-Fast Input
-== Schnelle Eingabe
-
-Fast Input others
-== Schnelle Eingabe für andere
-
-Fast input
-== Schnelle Eingabe
-
-Field Size
-== Feldgröße
-
-Fleet destroyed
-== Flotte zerstört
-
-Focus mode bind
-== Fokusmodus-Bind
-
-Full
-== Voll
-
-Game Over
-== Spiel vorbei
-
-Game only
-== Nur Spiel
-
-Games
-== Spiele
-
-Ghost Skill
-== Geister-Stärke
-
-Glow alpha
-== Leucht-Alpha
-
-Glow offset
-== Leuchtversatz
-
-Gores mode
-== Gores-Modus
-
-Grid Size
-== Rastergröße
-
-HUD editor
-== HUD-Editor
-
-Hard patterns
-== Schwere Muster
-
-Hide hud in settings
-== HUD in den Einstellungen ausblenden
-
-Hide media bind
-== Medien-ausblenden-Bind
-
-High Detail
-== Hohe Details
-
-Hole complete
-== Loch abgeschlossen
-
-Hook combo
-== Haken-Kombo
-
-Hook combo size
-== Hook-Kombo-Größe
-
-Hook combo sound volume
-== Hook-Kombo-Lautstärke
-
-Hours
-== Stunden
-
-In game: hold bind key, press 1..6, release key to execute
-== Im Spiel: Bind-Taste halten, 1..6 drücken, Taste loslassen zum Ausführen
-
-Installed
-== Installiert
-
-Installed and applied
-== Installiert und angewendet
-
-Jelly Others
-== Jelly für andere
-
-Jelly Tee
-== Wackel-Tee
-
-Jelly duration
-== Jelly-Dauer
-
-Jelly strength
-== Jelly-Stärke
-
-Killfeed animation
-== Killfeed-Animation
-
-Killfeed animation time (ms)
-== Killfeed-Animationszeit (ms)
-
-Level Cleared
-== Level geschafft
-
-Lives
-== Leben
-
-Loading shop...
-== Shop wird geladen...
-
-Lock team automatically after joining
-== Team nach dem Beitritt automatisch sperren
-
-Looks like you're on a server where this feature is forbidden
-== Es sieht so aus, als wärst du auf einem Server, auf dem dieses Feature verboten ist
-
-Low delta
-== Niedrige Delta
-
-Manual radius
-== Manueller Radius
-
-Map offset
-== Map-Versatz
-
-Max time between hooks
-== Maximale Zeit zwischen Hooks
-
-Media preview width
-== Breite der Medienvorschau
-
-Milliseconds
-== Millisekunden
-
-Minutes
-== Minuten
-
-Misc
-== Sonstiges
-
-Auto server list refresh
-== Serverliste automatisch aktualisieren
-
-Browser Utils
-== Browser-Werkzeuge
-
-Mode
-== Modus
-
-Module reveal time (ms)
-== Modul-Einblendzeit (ms)
-
-Module settings reveals
-== Modul-Einstellungs-Einblendung
-
-Music Player
-== Musikplayer
-
-Mute headphones
-== Kopfhörer stummschalten
-
-Mute microphone
-== Mikrofon stummschalten
-
-Name (optional)
-== Optionaler Name
-
-Name plate indicator size
-== Größe des Nameplate-Indikators
-
-Next
-== Nächste
-
-No assets found on this page
-== Keine Assets auf dieser Seite gefunden
-
-No media files in backgrounds folder
-== Keine Mediendateien im backgrounds-Ordner
-
-No space for blocks
-== Kein Platz für Blöcke
-
-O wins
-== O gewinnt
-
-Object Balls
-== Objektkugeln
-
-Open a dedicated component toggles page.
-== Eine eigene Seite für Komponenten-Schalter öffnen.
-
-Visuals
-== Optik
-
-Start
-== Starten
-
-Radius
-== Radius
-
-Disabled.
-== Deaktiviert.
-
-Save asset before closing?
-== Asset vor dem Schließen speichern?
-
-You have unsaved changes.
-== Sie haben ungespeicherte Änderungen.
-
-Discard
-== Verwerfen
-
-No preview
-== Keine Vorschau
-
-Reload
-== Neu laden
-
-Export
-== Exportieren
-
-Show Grid
-== Raster anzeigen
-
-Donor (drag parts from left)
-== Spender (Teile von links ziehen)
-
-Frankenstein (drop parts on right)
-== Frankenstein (Teile rechts ablegen)
-
-No assets found.
-== Keine Assets gefunden.
-
-Part reset to main asset.
-== Teil auf das Haupt-Asset zurückgesetzt.
-
-Can only drop onto same-size parts.
-== Ablegen nur auf gleich große Teile möglich.
-
-Applied to %d same-family part(s).
-== Auf %d Teil(e) derselben Familie angewendet.
-
-Selected candidate %d/%d under cursor.
-== Kandidat %d/%d unter dem Cursor ausgewählt.
-
-Part updated.
-== Teil aktualisiert.
-
-Click again to cycle parts (%d options).
-== Nochmals klicken, um Teile zu wechseln (%d Optionen).
-
-Donor Asset
-== Spender-Asset
-
-Main Asset
-== Haupt-Asset
-
-Drop on right canvas to replace one part.
-== Auf die rechte Fläche ziehen, um ein Teil zu ersetzen.
-
-Drag from left to right. Right-click a Frankenstein part to reset it.
-== Von links nach rechts ziehen. Rechtsklick auf ein Frankenstein-Teil setzt es zurück.
-
-Reset All
-== Alles zurücksetzen
-
-Reloaded images.
-== Bilder neu geladen.
-
-Reloaded images. %d slot(s) fell back to main asset.
-== Bilder neu geladen. %d Slot(s) fielen auf das Haupt-Asset zurück.
-
-Added %d missing required slot(s).
-== %d fehlende Pflicht-Slots hinzugefügt.
-
-No assets available for composition.
-== Keine Assets für die Komposition verfügbar.
-
-Failed to load main asset: %s
-== Haupt-Asset konnte nicht geladen werden: %s
-
-Preview built with %d skipped slot(s).
-== Vorschau mit %d übersprungenen Slot(s) erstellt.
-
-Choose export name first.
-== Zuerst einen Exportnamen eingeben.
-
-Export name contains invalid characters.
-== Der Exportname enthält ungültige Zeichen.
-
-Asset with this name already exists.
-== Ein Asset mit diesem Namen existiert bereits.
-
-Failed to write PNG export.
-== PNG-Export konnte nicht geschrieben werden.
-
-Exported to %s
-== Exportiert nach %s
-
-%s from %s
-== %s von %s
-
-Extras
-== Zusätze
-
-Optimizer
-== Optimierer
-
-Particle type
-== Partikeltyp
-
-Particles count
-== Anzahl Partikel
-
-Play same color or same number
-== Gleiche Farbe oder gleiche Zahl spielen
-
-Puzzle Set
-== Rätselpaket
-
-Radius (tiles)
-== Radius (Tiles)
-
-Real hitbox dot color
-== Farbe des echten Hitbox-Punkts
-
-Red wins
-== Rot gewinnt
-
-Render FPS fog rectangle
-== FPS-Nebel-Rechteck anzeigen
-
-Render media previews from chat links
-== Medienvorschauen aus Chat-Links anzeigen
-
-Reset to defaults
-== Standardeinstellung
-
-Restart
-== Neustart
-
-Restart client now so component changes fully apply?
-== Client jetzt neu starten, damit die Komponentenänderungen vollständig greifen?
-
-Roll
-== Würfeln
-
-Sand Shotgun
-== Sand-Schrotflinte
-
-Save unsent messages
-== Nicht gesendete Nachrichten speichern
-
-Scoreboard indicator size
-== Größe des Scoreboard-Indikators
-
-Seconds
-== Sekunden
-
-Selected slot
-== Gewählter Slot
-
-Semicolon-separated allowlist, for example: tenor.com; imgur.com; giphy.com; cdn.discordapp.com
-== Durch Semikolon getrennte Allowlist, zum Beispiel: tenor.com; imgur.com; giphy.com; cdn.discordapp.com
-
-Setup
-== Einstellungen
-
-Shadow of Emotions
-== Schatten der Emotionen
-
-Shop request failed
-== Shop-Anfrage fehlgeschlagen
-
-Shop response is invalid
-== Shop-Antwort ist ungültig
-
-Show ESC players list
-== ESC-Spielerliste anzeigen
-
-Show GIFs in chat media
-== GIFs in Chat-Medien anzeigen
-
-Show above yourself
-== Über dir selbst anzeigen
-
-Show conflicts
-== Konflikte anzeigen
-
-Show indicator in name plates
-== Indikator in Nameplates anzeigen
-
-Show indicator in scoreboard
-== Indikator im Scoreboard anzeigen
-
-Show legal moves
-== Erlaubte Züge anzeigen
-
-Show photos in chat media
-== Fotos in Chat-Medien anzeigen
-
-Show player below indicator
-== Spieler unter dem Indikator anzeigen
-
-Show real hitbox
-== Echte Hitbox anzeigen
-
-Simplified UNO: colors and numbers 0-9
-== Vereinfachtes UNO: Farben und Zahlen 0-9
-
-Snap Tap
-== Einrast-Tap
-
-Solved
-== Gelöst
-
-Speedrun timer
-== Speedrun-Timer
-
-Start Level
-== Startlevel
-
-Start Speed
-== Startgeschwindigkeit
-
-Static color
-== Statische Farbe
-
-Sub-Tick aiming
-== Sub-Tick-Zielen
-
-Sweat Weapon
-== Sweat-Waffe
-
-Table cleared
-== Tisch abgeräumt
-
-Turn: Black
-== Zug: Schwarz
-
-Turn: O
-== Zug: O
-
-Turn: Red
-== Zug: Rot
-
-Turn: White
-== Zug: Weiß
-
-Turn: X
-== Zug: X
-
-Turn: Yellow
-== Zug: Gelb
-
-UI scale
-== UI-Skalierung
-
-Unable to install asset
-== Asset konnte nicht installiert werden
-
-Use new menu layout
-== Neues Menülayout verwenden
-
-Use short KoG server name
-== Kurzen KoG-Servernamen verwenden
-
-Victory
-== Sieg
-
-Viewer max zoom
-== Maximaler Viewer-Zoom
-
-Visible area (%)
-== Sichtbarer Bereich (%)
-
-Visualizer mode
-== Visualizer-Modus
-
-Visualizer sensitivity
-== Visualizer-Empfindlichkeit
-
-Visualizer smoothing
-== Visualizer-Glättung
-
-Voice panel
-== Sprachpanel
-
-White Wins
-== Weiß gewinnt
-
-White wins
-== Weiß gewinnt
-
-Winner: Black
-== Sieger: Schwarz
-
-Winner: White
-== Sieger: Weiß
-
-Wrap Through Walls
-== Durch Wände gehen
-
-X wins
-== X gewinnt
-
-Yellow wins
-== Gelb gewinnt
-
-You Win
-== Du gewinnst
-
-You hit a cactus
-== Du hast einen Kaktus getroffen
-
-You win
-== Du gewinnst
-
-eco-freeze chimera
-== Eco-Freeze-Chimäre
-
-low delta others
-== niedrige Delta für andere
-
-true low delta
-== echte niedrige Delta
-
-##### bestclient final overrides #####
-
-hook
-== Haken
-
-hammer
-== Hammer
-
-hook&hammer
-== Haken und Hammer
-
-Failed to load PNG.
-== PNG konnte nicht geladen werden.
-
-Failed to upload PNG.
-== PNG konnte nicht in den Grafikspeicher geladen werden.
-
-Loaded image.
-== Bild geladen.
-
-Failed to read file.
-== Datei konnte nicht gelesen werden.
-
-Failed to upload image.
-== Bild konnte nicht in den Grafikspeicher geladen werden.
-
-Failed to decode image.
-== Bild konnte nicht dekodiert werden.
-
-Loaded animated image.
-== Animiertes Bild geladen.
-
-Failed to open video.
-== Video konnte nicht geoeffnet werden.
-
-Failed to read video info.
-== Videoinformationen konnten nicht gelesen werden.
-
-No video stream found.
-== Kein Videostream gefunden.
-
-Unsupported video codec.
-== Nicht unterstuetzter Videocodec.
-
-Failed to initialize video decoder.
-== Videodecoder konnte nicht initialisiert werden.
-
-Invalid video dimensions.
-== Ungueltige Videoabmessungen.
-
-Failed to allocate video frames.
-== Videospeicher fuer Frames konnte nicht reserviert werden.
-
-Failed to allocate RGBA frame.
-== RGBA-Frame konnte nicht reserviert werden.
-
-Failed to initialize video scaler.
-== Videoskalierer konnte nicht initialisiert werden.
-
-Failed to decode first video frame.
-== Erster Videoframe konnte nicht dekodiert werden.
-
-Loaded video.
-== Video geladen.
-
-No media selected.
-== Keine Mediendatei ausgewaehlt.
-
-Failed while decoding video.
-== Fehler beim Dekodieren des Videos.

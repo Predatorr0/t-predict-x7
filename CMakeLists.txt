@@ -2724,7 +2724,6 @@ if(CLIENT)
     components/bestclient/voice/protocol.h
     components/bestclient/voice/voice.cpp
     components/bestclient/voice/voice.h
-    components/bestclient/menus_bestclient.cpp
     components/bestclient/menus_bestclient_shop.cpp
     components/bestclient/translate.cpp
     components/bestclient/translate.h

@@ -8,12 +8,12 @@
 #include <engine/gfx/image_loader.h>
 #include <engine/gfx/image_manipulation.h>
 #include <engine/shared/config.h>
+#include <engine/shared/localization.h>
 #include <engine/storage.h>
 #include <engine/textrender.h>
 
 #include <generated/client_data.h>
 
-#include <game/localization.h>
 #include <game/client/components/menus.h>
 #include <game/client/lineinput.h>
 #include <game/client/ui.h>
@@ -566,12 +566,12 @@ void CMenus::AssetsEditorReloadAssetsImagesOnly()
 	if(FixedSlots > 0)
 	{
 		str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage),
-			BCLocalize("Reloaded images. %d slot(s) fell back to main asset."), FixedSlots);
+			"Reloaded images. %d slot(s) fell back to main asset.", FixedSlots);
 		m_AssetsEditorState.m_StatusIsError = false;
 	}
 	else
 	{
-		str_copy(m_AssetsEditorState.m_aStatusMessage, BCLocalize("Reloaded images."));
+		str_copy(m_AssetsEditorState.m_aStatusMessage, "Reloaded images.");
 		m_AssetsEditorState.m_StatusIsError = false;
 	}
 	m_AssetsEditorState.m_DirtyPreview = true;
@@ -823,7 +823,7 @@ void CMenus::AssetsEditorValidateRequiredSlotsForType(int Type)
 
 	if(AddedSlots > 0)
 	{
-		str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), BCLocalize("Added %d missing required slot(s)."), AddedSlots);
+		str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), "Added %d missing required slot(s).", AddedSlots);
 		m_AssetsEditorState.m_StatusIsError = false;
 	}
 }
@@ -921,7 +921,7 @@ bool CMenus::AssetsEditorComposeImage(CImageInfo &OutputImage)
 	const int MainAssetIndex = m_AssetsEditorState.m_aMainAssetIndex[m_AssetsEditorState.m_Type];
 	if(vAssets.empty() || MainAssetIndex < 0 || MainAssetIndex >= (int)vAssets.size())
 	{
-		str_copy(m_AssetsEditorState.m_aStatusMessage, BCLocalize("No assets available for composition."));
+		str_copy(m_AssetsEditorState.m_aStatusMessage, "No assets available for composition.");
 		m_AssetsEditorState.m_StatusIsError = true;
 		return false;
 	}
@@ -930,7 +930,7 @@ bool CMenus::AssetsEditorComposeImage(CImageInfo &OutputImage)
 	const CImageInfo *pBaseImage = AssetsEditorGetCachedImage(m_AssetsEditorState.m_Type, MainAsset.m_aName, vAssets, Graphics());
 	if(pBaseImage == nullptr)
 	{
-		str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), BCLocalize("Failed to load main asset: %s"), MainAsset.m_aName);
+		str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), "Failed to load main asset: %s", MainAsset.m_aName);
 		m_AssetsEditorState.m_StatusIsError = true;
 		return false;
 	}
@@ -1030,7 +1030,7 @@ bool CMenus::AssetsEditorComposeImage(CImageInfo &OutputImage)
 
 	if(SkippedSlots > 0)
 	{
-		str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), BCLocalize("Preview built with %d skipped slot(s)."), SkippedSlots);
+		str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), "Preview built with %d skipped slot(s).", SkippedSlots);
 		m_AssetsEditorState.m_StatusIsError = false;
 	}
 	return true;
@@ -1041,13 +1041,13 @@ bool CMenus::AssetsEditorExport()
 	AssetsEditorCommitExportNameForType();
 	if(m_AssetsEditorState.m_aExportName[0] == '\0')
 	{
-		str_copy(m_AssetsEditorState.m_aStatusMessage, BCLocalize("Choose export name first."));
+		str_copy(m_AssetsEditorState.m_aStatusMessage, "Choose export name first.");
 		m_AssetsEditorState.m_StatusIsError = true;
 		return false;
 	}
 	if(str_find(m_AssetsEditorState.m_aExportName, "/") || str_find(m_AssetsEditorState.m_aExportName, "\\") || str_find(m_AssetsEditorState.m_aExportName, ".."))
 	{
-		str_copy(m_AssetsEditorState.m_aStatusMessage, BCLocalize("Export name contains invalid characters."));
+		str_copy(m_AssetsEditorState.m_aStatusMessage, "Export name contains invalid characters.");
 		m_AssetsEditorState.m_StatusIsError = true;
 		return false;
 	}
@@ -1075,7 +1075,7 @@ bool CMenus::AssetsEditorExport()
 	if(Storage()->FileExists(aPngPath, IStorage::TYPE_SAVE))
 	{
 		OutputImage.Free();
-		str_copy(m_AssetsEditorState.m_aStatusMessage, BCLocalize("Asset with this name already exists."));
+		str_copy(m_AssetsEditorState.m_aStatusMessage, "Asset with this name already exists.");
 		m_AssetsEditorState.m_StatusIsError = true;
 		return false;
 	}
@@ -1084,14 +1084,14 @@ bool CMenus::AssetsEditorExport()
 	if(!File || !CImageLoader::SavePng(File, aPngPath, OutputImage))
 	{
 		OutputImage.Free();
-		str_copy(m_AssetsEditorState.m_aStatusMessage, BCLocalize("Failed to write PNG export."));
+		str_copy(m_AssetsEditorState.m_aStatusMessage, "Failed to write PNG export.");
 		m_AssetsEditorState.m_StatusIsError = true;
 		return false;
 	}
 
 	OutputImage.Free();
 	AssetsEditorReloadAssetsImagesOnly();
-	str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), BCLocalize("Exported to %s"), aPngPath);
+	str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), "Exported to %s", aPngPath);
 	m_AssetsEditorState.m_StatusIsError = false;
 	m_AssetsEditorState.m_HasUnsavedChanges = false;
 	return true;
@@ -1150,8 +1150,8 @@ void CMenus::AssetsEditorRenderExitConfirm(const CUIRect &Rect)
 	Box.HSplitTop(LineSize, &Message, &Box);
 	Box.HSplitBottom(LineSize + 4.0f, &Box, &Buttons);
 
-	Ui()->DoLabel(&Title, BCLocalize("Save asset before closing?"), FontSize * 1.1f, TEXTALIGN_ML);
-	Ui()->DoLabel(&Message, BCLocalize("You have unsaved changes."), FontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&Title, "Save asset before closing?", FontSize * 1.1f, TEXTALIGN_ML);
+	Ui()->DoLabel(&Message, "You have unsaved changes.", FontSize, TEXTALIGN_ML);
 
 	CUIRect SaveButton, DiscardButton, CancelButton;
 	Buttons.VSplitLeft((Buttons.w - MarginSmall * 2.0f) / 3.0f, &SaveButton, &Buttons);
@@ -1163,16 +1163,16 @@ void CMenus::AssetsEditorRenderExitConfirm(const CUIRect &Rect)
 	static CButtonContainer s_SaveButton;
 	static CButtonContainer s_DiscardButton;
 	static CButtonContainer s_CancelButton;
-	if(DoButton_Menu(&s_SaveButton, BCLocalize("Save"), 0, &SaveButton))
+	if(DoButton_Menu(&s_SaveButton, "Save", 0, &SaveButton))
 	{
 		if(AssetsEditorExport())
 			AssetsEditorCloseNow();
 	}
-	if(DoButton_Menu(&s_DiscardButton, BCLocalize("Discard"), 0, &DiscardButton))
+	if(DoButton_Menu(&s_DiscardButton, "Discard", 0, &DiscardButton))
 	{
 		AssetsEditorCloseNow();
 	}
-	if(DoButton_Menu(&s_CancelButton, BCLocalize("Cancel"), 0, &CancelButton) || Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
+	if(DoButton_Menu(&s_CancelButton, "Cancel", 0, &CancelButton) || Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
 	{
 		m_AssetsEditorState.m_ShowExitConfirm = false;
 		m_AssetsEditorState.m_PendingCloseRequest = false;
@@ -1267,7 +1267,7 @@ int CMenus::AssetsEditorResolveHoveredSlotWithCycle(const CUIRect &Rect, int Typ
 	else if(ClickedLmb && vCandidates.size() > 1)
 	{
 		m_AssetsEditorState.m_HoverCycleCandidateCursor = (m_AssetsEditorState.m_HoverCycleCandidateCursor + 1) % (int)vCandidates.size();
-		str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), BCLocalize("Selected candidate %d/%d under cursor."), m_AssetsEditorState.m_HoverCycleCandidateCursor + 1, (int)vCandidates.size());
+		str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), "Selected candidate %d/%d under cursor.", m_AssetsEditorState.m_HoverCycleCandidateCursor + 1, (int)vCandidates.size());
 		m_AssetsEditorState.m_StatusIsError = false;
 	}
 
@@ -1288,7 +1288,7 @@ void CMenus::AssetsEditorApplyDrop(int TargetSlotIndex, const char *pDonorName, 
 	const bool SameSize = AssetsEditorSlotSameNormalizedSize(SourceSlot, TargetSlot);
 	if(ApplyAllSameSize && !SameSize)
 	{
-		str_copy(m_AssetsEditorState.m_aStatusMessage, BCLocalize("Can only drop onto same-size parts."));
+		str_copy(m_AssetsEditorState.m_aStatusMessage, "Can only drop onto same-size parts.");
 		m_AssetsEditorState.m_StatusIsError = true;
 		return;
 	}
@@ -1314,13 +1314,13 @@ void CMenus::AssetsEditorApplyDrop(int TargetSlotIndex, const char *pDonorName, 
 			AssignSlot(Slot);
 			++Changed;
 		}
-		str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), BCLocalize("Applied to %d same-family part(s)."), Changed);
+		str_format(m_AssetsEditorState.m_aStatusMessage, sizeof(m_AssetsEditorState.m_aStatusMessage), "Applied to %d same-family part(s).", Changed);
 		m_AssetsEditorState.m_StatusIsError = false;
 	}
 	else
 	{
 		AssignSlot(m_AssetsEditorState.m_vPartSlots[TargetSlotIndex]);
-		str_copy(m_AssetsEditorState.m_aStatusMessage, BCLocalize("Part updated."));
+		str_copy(m_AssetsEditorState.m_aStatusMessage, "Part updated.");
 		m_AssetsEditorState.m_StatusIsError = false;
 	}
 
@@ -1357,14 +1357,14 @@ void CMenus::AssetsEditorRenderCanvas(const CUIRect &Rect, IGraphics::CTextureHa
 {
 	if(!Texture.IsValid() || W <= 0 || H <= 0)
 	{
-		Ui()->DoLabel(&Rect, BCLocalize("No preview"), FontSize, TEXTALIGN_MC);
+		Ui()->DoLabel(&Rect, "No preview", FontSize, TEXTALIGN_MC);
 		return;
 	}
 
 	CUIRect FittedRect;
 	if(!AssetsEditorDrawTextureFitted(Rect, Texture, W, H, Graphics(), &FittedRect))
 	{
-		Ui()->DoLabel(&Rect, BCLocalize("No preview"), FontSize, TEXTALIGN_MC);
+		Ui()->DoLabel(&Rect, "No preview", FontSize, TEXTALIGN_MC);
 		return;
 	}
 
@@ -1499,10 +1499,10 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 
 	CUIRect ModeLabel, ModeDropDown;
 	SplitLeftSafe(ModeRow, minimum(45.0f, ModeRow.w * 0.55f), &ModeLabel, &ModeDropDown);
-	Ui()->DoLabel(&ModeLabel, BCLocalize("Mode"), FontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&ModeLabel, "Mode", FontSize, TEXTALIGN_ML);
 	const char *apModeNames[ASSETS_EDITOR_TYPE_COUNT];
 	for(int Type = 0; Type < ASSETS_EDITOR_TYPE_COUNT; ++Type)
-		apModeNames[Type] = BCLocalize(AssetsEditorTypeDisplayName(Type));
+		apModeNames[Type] = AssetsEditorTypeDisplayName(Type);
 	static CUi::SDropDownState s_ModeDropDownState;
 	static CScrollRegion s_ModeDropDownScrollRegion;
 	s_ModeDropDownState.m_SelectionPopupContext.m_pScrollRegion = &s_ModeDropDownScrollRegion;
@@ -1531,7 +1531,7 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 	}
 	if(vAssets.empty())
 	{
-		Ui()->DoLabel(&ContentView, BCLocalize("No assets found."), FontSize, TEXTALIGN_MC);
+		Ui()->DoLabel(&ContentView, "No assets found.", FontSize, TEXTALIGN_MC);
 		return;
 	}
 
@@ -1555,18 +1555,18 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 	}
 
 	static CButtonContainer s_ReloadButton;
-	if(DoButton_Menu(&s_ReloadButton, BCLocalize("Reload"), 0, &ReloadButton))
+	if(DoButton_Menu(&s_ReloadButton, "Reload", 0, &ReloadButton))
 	{
 		AssetsEditorCancelDrag();
 		AssetsEditorReloadAssetsImagesOnly();
 	}
 
 	static CButtonContainer s_ExportButton;
-	if(DoButton_Menu(&s_ExportButton, BCLocalize("Export"), 0, &ExportButton))
+	if(DoButton_Menu(&s_ExportButton, "Export", 0, &ExportButton))
 		AssetsEditorExport();
 
 	static CButtonContainer s_ShowGridButton;
-	if(DoButton_CheckBox(&s_ShowGridButton, BCLocalize("Show Grid"), m_AssetsEditorState.m_ShowGrid, &GridToggleButton))
+	if(DoButton_CheckBox(&s_ShowGridButton, "Show Grid", m_AssetsEditorState.m_ShowGrid, &GridToggleButton))
 		m_AssetsEditorState.m_ShowGrid = !m_AssetsEditorState.m_ShowGrid;
 
 	ContentView.HSplitTop(MarginSmall, nullptr, &ContentView);
@@ -1584,13 +1584,13 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 	LeftPanel.HSplitTop(LineSize, &LeftTitle, &LeftPanel);
 	LeftPanel.HSplitTop(MarginExtraSmall, nullptr, &LeftPanel);
 	LeftPanel.HSplitBottom(BottomBarHeight, &LeftCanvas, &LeftBottom);
-	Ui()->DoLabel(&LeftTitle, BCLocalize("Donor (drag parts from left)"), FontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&LeftTitle, "Donor (drag parts from left)", FontSize, TEXTALIGN_ML);
 
 	CUIRect RightTitle, RightCanvas, RightBottom;
 	RightPanel.HSplitTop(LineSize, &RightTitle, &RightPanel);
 	RightPanel.HSplitTop(MarginExtraSmall, nullptr, &RightPanel);
 	RightPanel.HSplitBottom(BottomBarHeight, &RightCanvas, &RightBottom);
-	Ui()->DoLabel(&RightTitle, BCLocalize("Frankenstein (drop parts on right)"), FontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&RightTitle, "Frankenstein (drop parts on right)", FontSize, TEXTALIGN_ML);
 
 	AssetsEditorUpdatePreviewIfDirty();
 
@@ -1628,7 +1628,7 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 		AssetsEditorCancelDrag();
 		m_AssetsEditorState.m_DirtyPreview = true;
 		m_AssetsEditorState.m_HasUnsavedChanges = true;
-		str_copy(m_AssetsEditorState.m_aStatusMessage, BCLocalize("Part reset to main asset."));
+		str_copy(m_AssetsEditorState.m_aStatusMessage, "Part reset to main asset.");
 		m_AssetsEditorState.m_StatusIsError = false;
 	}
 
@@ -1663,7 +1663,7 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 			AssetsEditorApplyDrop(m_AssetsEditorState.m_HoveredTargetSlotIndex, m_AssetsEditorState.m_aDraggedSourceAsset, m_AssetsEditorState.m_ActiveDraggedSlotIndex, m_AssetsEditorState.m_ApplySameSize);
 		else if(m_AssetsEditorState.m_HoveredTargetSlotIndex >= 0 && m_AssetsEditorState.m_ApplySameSize)
 		{
-			str_copy(m_AssetsEditorState.m_aStatusMessage, BCLocalize("Can only drop onto same-size parts."));
+			str_copy(m_AssetsEditorState.m_aStatusMessage, "Can only drop onto same-size parts.");
 			m_AssetsEditorState.m_StatusIsError = true;
 		}
 		AssetsEditorCancelDrag();
@@ -1761,7 +1761,7 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 		DragHint.y = std::clamp(DragHint.y, EditorRect.y, EditorRect.y + EditorRect.h - DragHint.h);
 		DragHint.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.65f), IGraphics::CORNER_ALL, 4.0f);
 		char aDragText[128];
-		str_format(aDragText, sizeof(aDragText), BCLocalize("%s from %s"), pSpriteName, m_AssetsEditorState.m_aDraggedSourceAsset);
+		str_format(aDragText, sizeof(aDragText), "%s from %s", pSpriteName, m_AssetsEditorState.m_aDraggedSourceAsset);
 		Ui()->DoLabel(&DragHint, aDragText, FontSize * 0.9f, TEXTALIGN_MC);
 	}
 
@@ -1772,13 +1772,13 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 	if(!m_AssetsEditorState.m_DragActive && LeftBottomRow1.h > 0.0f && m_AssetsEditorState.m_vHoverCycleCandidates.size() > 1)
 	{
 		char aCycleInfo[96];
-		str_format(aCycleInfo, sizeof(aCycleInfo), BCLocalize("Click again to cycle parts (%d options)."), (int)m_AssetsEditorState.m_vHoverCycleCandidates.size());
+		str_format(aCycleInfo, sizeof(aCycleInfo), "Click again to cycle parts (%d options).", (int)m_AssetsEditorState.m_vHoverCycleCandidates.size());
 		Ui()->DoLabel(&LeftBottomRow1, aCycleInfo, FontSize * 0.9f, TEXTALIGN_ML);
 	}
 
 	CUIRect DonorLabel, DonorDropDown;
 	SplitLeftSafe(LeftBottomRow2, minimum(90.0f, LeftBottomRow2.w * 0.58f), &DonorLabel, &DonorDropDown);
-	Ui()->DoLabel(&DonorLabel, BCLocalize("Donor Asset"), FontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&DonorLabel, "Donor Asset", FontSize, TEXTALIGN_ML);
 	static CUi::SDropDownState s_DonorDropDownState[ASSETS_EDITOR_TYPE_COUNT];
 	static CScrollRegion s_DonorDropDownScrollRegion[ASSETS_EDITOR_TYPE_COUNT];
 	s_DonorDropDownState[m_AssetsEditorState.m_Type].m_SelectionPopupContext.m_pScrollRegion = &s_DonorDropDownScrollRegion[m_AssetsEditorState.m_Type];
@@ -1799,7 +1799,7 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 		SplitRightSafe(BottomMainRow, MarginSmall, &BottomMainRow, nullptr);
 	CUIRect BottomMainLabel, BottomMainDropDown;
 	SplitLeftSafe(BottomMainRow, minimum(90.0f, BottomMainRow.w * 0.58f), &BottomMainLabel, &BottomMainDropDown);
-	Ui()->DoLabel(&BottomMainLabel, BCLocalize("Main Asset"), FontSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&BottomMainLabel, "Main Asset", FontSize, TEXTALIGN_ML);
 	static CUi::SDropDownState s_BottomMainDropDownState[ASSETS_EDITOR_TYPE_COUNT];
 	static CScrollRegion s_BottomMainDropDownScrollRegion[ASSETS_EDITOR_TYPE_COUNT];
 	s_BottomMainDropDownState[m_AssetsEditorState.m_Type].m_SelectionPopupContext.m_pScrollRegion = &s_BottomMainDropDownScrollRegion[m_AssetsEditorState.m_Type];
@@ -1811,9 +1811,9 @@ void CMenus::RenderAssetsEditorScreen(CUIRect MainView)
 		m_AssetsEditorState.m_ShowExitConfirm = false;
 		AssetsEditorResetPartSlots();
 	}
-	const char *pHintMessage = m_AssetsEditorState.m_DragActive ? BCLocalize("Drop on right canvas to replace one part.") : BCLocalize("Drag from left to right. Right-click a Frankenstein part to reset it.");
+	const char *pHintMessage = m_AssetsEditorState.m_DragActive ? "Drop on right canvas to replace one part." : "Drag from left to right. Right-click a Frankenstein part to reset it.";
 	static CButtonContainer s_ResetAllPartsButton;
-	if(DoButton_Menu(&s_ResetAllPartsButton, BCLocalize("Reset All"), 0, &ResetAllButton))
+	if(DoButton_Menu(&s_ResetAllPartsButton, "Reset All", 0, &ResetAllButton))
 	{
 		for(auto &Slot : m_AssetsEditorState.m_vPartSlots)
 		{

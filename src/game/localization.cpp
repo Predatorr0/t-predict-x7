@@ -24,12 +24,6 @@ const char *TCLocalize(const char *pStr, const char *pContext)
 	return Localize(pStr, pContext);
 }
 
-// BestClient
-const char *BCLocalize(const char *pStr, const char *pContext)
-{
-	return Localize(pStr, pContext);
-}
-
 void CLocalizationDatabase::LoadIndexfile(IStorage *pStorage, IConsole *pConsole)
 {
 	m_vLanguages.clear();
