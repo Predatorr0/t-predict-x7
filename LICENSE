@@ -1,0 +1,38 @@
+BestClient Proprietary License
+Copyright (c) 2026 BestProject Team
+
+All rights reserved.
+
+This license applies only to the BestClient fork and to the original code,
+assets, build scripts, configuration, and other materials created or modified
+by BestProject Team for this fork, unless a file or directory states otherwise.
+
+This license does not replace, limit, or revoke the rights granted by any
+upstream or third-party license that already applies to parts of this
+repository. Such materials remain governed by their original license terms,
+including the notices collected in `license.txt` and in third-party files.
+
+Unless you have prior written permission from BestProject Team, you may not:
+
+1. use, copy, reproduce, or modify the BestClient-licensed portions of this
+   repository;
+2. publish, distribute, sublicense, lease, rent, transfer, or sell the
+   BestClient-licensed portions of this repository or derivative works based on
+   them;
+3. remove or alter copyright, attribution, authorship, or license notices; or
+4. present the BestClient fork or its BestProject Team contributions as your
+   own work.
+
+Any permission granted by BestProject Team must be explicit and in writing.
+Any permitted use must preserve proper credit to the original authors:
+BestProject Team.
+
+This software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose, and noninfringement. In no event shall
+BestProject Team or the contributors be liable for any claim, damages, or
+other liability, whether in an action of contract, tort, or otherwise, arising
+from, out of, or in connection with the software or the use of the software.
+
+For permission requests, contact:
+rocer.slesh@gmail.com
