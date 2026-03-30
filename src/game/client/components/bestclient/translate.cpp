@@ -195,6 +195,8 @@ void NormalizeDetectedLanguage(char *pLanguage, size_t Size)
 		{"pt", "pt"},
 		{"portuguese", "pt"},
 		{"brazilian", "pt"},
+		{"tr", "tr"},
+		{"turkish", "tr"},
 	};
 
 	for(const auto &Mapping : aMappings)
@@ -588,6 +590,12 @@ void CTranslate::OnConsoleInit()
 		g_Config.m_TcTranslateAuto = 0;
 	}
 
+	// Migration: target language can no longer be "auto".
+	if(IsAutoLanguage(g_Config.m_TcTranslateTarget))
+		str_copy(g_Config.m_TcTranslateTarget, DefaultConfig::TcTranslateTarget, sizeof(g_Config.m_TcTranslateTarget));
+	if(IsAutoLanguage(g_Config.m_BcTranslateOutgoingTarget))
+		str_copy(g_Config.m_BcTranslateOutgoingTarget, DefaultConfig::BcTranslateOutgoingTarget, sizeof(g_Config.m_BcTranslateOutgoingTarget));
+
 	Console()->Register("translate", "?r[name]", CFGFLAG_CLIENT, ConTranslate, this, "Translate last message (of a given name)");
 	Console()->Register("translate_id", "v[id]", CFGFLAG_CLIENT, ConTranslateId, this, "Translate last message of the person with this id");
 }
@@ -613,6 +621,8 @@ const char *CTranslate::IncomingSourceLanguage() const
 
 const char *CTranslate::IncomingTargetLanguage() const
 {
+	if(IsAutoLanguage(g_Config.m_TcTranslateTarget))
+		return DefaultConfig::TcTranslateTarget;
 	return g_Config.m_TcTranslateTarget;
 }
 
@@ -623,6 +633,8 @@ const char *CTranslate::OutgoingSourceLanguage() const
 
 const char *CTranslate::OutgoingTargetLanguage() const
 {
+	if(IsAutoLanguage(g_Config.m_BcTranslateOutgoingTarget))
+		return DefaultConfig::BcTranslateOutgoingTarget;
 	return g_Config.m_BcTranslateOutgoingTarget;
 }
 

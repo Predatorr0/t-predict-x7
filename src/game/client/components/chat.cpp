@@ -662,15 +662,16 @@ constexpr STranslateLanguageOption gs_aTranslateSourceOptions[] = {
 	{"de", "German"},
 	{"zh", "Chinese"},
 	{"pt", "Brazilian"},
+	{"tr", "Turkish"},
 };
 
 constexpr STranslateLanguageOption gs_aTranslateTargetOptions[] = {
-	{"auto", "Auto"},
 	{"ru", "Russian"},
 	{"en", "English"},
 	{"de", "German"},
 	{"zh", "Chinese"},
 	{"pt", "Brazilian"},
+	{"tr", "Turkish"},
 };
 
 template<size_t N>
@@ -742,9 +743,9 @@ CUi::EPopupMenuFunctionResult CChat::PopupTranslateSettings(void *pContext, CUIR
 	};
 
 	static const char *s_apSourceLabels[] = {
-		"Auto", "Russian", "English", "German", "Chinese", "Brazilian"};
+		"Auto", "Russian", "English", "German", "Chinese", "Brazilian", "Turkish"};
 	static const char *s_apTargetLabels[] = {
-		"Auto", "Russian", "English", "German", "Chinese", "Brazilian"};
+		"Russian", "English", "German", "Chinese", "Brazilian", "Turkish"};
 
 	const int IncomingSourceIndex = TranslateLanguageIndex(g_Config.m_BcTranslateIncomingSource, gs_aTranslateSourceOptions);
 	const int NewIncomingSourceIndex = RenderLanguageField(Localize("Incoming from"), IncomingSourceIndex, s_apSourceLabels, std::size(s_apSourceLabels), s_IncomingSourceDropDown);
