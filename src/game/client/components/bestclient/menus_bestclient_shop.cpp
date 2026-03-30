@@ -1,3 +1,4 @@
+/* Copyright © 2026 BestProject Team */
 #include <base/fs.h>
 #include <base/io.h>
 #include <base/math.h>

@@ -1,3 +1,4 @@
+/* Copyright © 2026 BestProject Team */
 #include <engine/client.h>
 #include <engine/shared/config.h>
 #include <engine/shared/protocol.h>

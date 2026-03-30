@@ -1,3 +1,4 @@
+/* Copyright © 2026 BestProject Team */
 #include "presence_cache.h"
 
 void CPresenceCache::Clear()

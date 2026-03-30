@@ -1,3 +1,4 @@
+/* Copyright © 2026 BestProject Team */
 #ifndef GAME_CLIENT_COMPONENTS_BestClient_TRANSLATE_H
 #define GAME_CLIENT_COMPONENTS_BestClient_TRANSLATE_H
 

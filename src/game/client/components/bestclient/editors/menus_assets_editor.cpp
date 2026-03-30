@@ -1,3 +1,4 @@
+/* Copyright © 2026 BestProject Team */
 #include <base/math.h>
 #include <base/system.h>
 #include <base/types.h>

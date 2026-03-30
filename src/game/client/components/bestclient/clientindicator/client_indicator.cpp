@@ -1,3 +1,4 @@
+/* Copyright © 2026 BestProject Team */
 #include "client_indicator.h"
 
 #include "protocol.h"

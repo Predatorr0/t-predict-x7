@@ -1,4 +1,4 @@
-/* (c) BestClient */
+/* Copyright © 2026 BestProject Team */
 #include "voice.h"
 
 #include "protocol.h"

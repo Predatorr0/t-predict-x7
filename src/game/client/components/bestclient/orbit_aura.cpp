@@ -1,3 +1,4 @@
+/* Copyright © 2026 BestProject Team */
 #include "orbit_aura.h"
 
 #include <base/color.h>

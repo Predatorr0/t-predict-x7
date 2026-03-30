@@ -1,3 +1,4 @@
+/* Copyright © 2026 BestProject Team */
 #include "browser_cache.h"
 
 #include <base/net.h>

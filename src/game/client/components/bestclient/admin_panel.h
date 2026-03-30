@@ -1,5 +1,4 @@
-/* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
-/* If you are missing that file, acquire a complete release at teeworlds.com.                */
+/* Copyright © 2026 BestProject Team */
 #ifndef GAME_CLIENT_COMPONENTS_ADMIN_PANEL_H
 #define GAME_CLIENT_COMPONENTS_ADMIN_PANEL_H
 

@@ -1,3 +1,4 @@
+/* Copyright © 2026 BestProject Team */
 #include "music_player.h"
 
 #include <base/color.h>

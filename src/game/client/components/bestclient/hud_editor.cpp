@@ -1,3 +1,4 @@
+/* Copyright © 2026 BestProject Team */
 #include "hud_editor.h"
 
 #include "music_player.h"

@@ -1,3 +1,4 @@
+/* Copyright © 2026 BestProject Team */
 #include "3d_particles.h"
 
 #include <base/math.h>
