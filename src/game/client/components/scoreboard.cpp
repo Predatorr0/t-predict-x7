@@ -25,7 +25,10 @@
 #include <game/client/ui.h>
 #include <game/localization.h>
 
+#include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <string>
 
 namespace
 {
@@ -69,6 +72,113 @@ float ScoreTextWidthForRenderTime(ITextRender *pTextRender, float FontSize, int 
 
 	return SecondsWidth;
 }
+
+std::string NormalizeVoiceNameKey(const char *pName)
+{
+	if(!pName)
+		return {};
+
+	const char *pBegin = pName;
+	const char *pEnd = pName + str_length(pName);
+	while(pBegin < pEnd && std::isspace((unsigned char)*pBegin))
+		++pBegin;
+	while(pEnd > pBegin && std::isspace((unsigned char)pEnd[-1]))
+		--pEnd;
+
+	std::string Key;
+	Key.reserve((size_t)(pEnd - pBegin));
+	for(const char *p = pBegin; p < pEnd; ++p)
+		Key.push_back((char)std::tolower((unsigned char)*p));
+	return Key;
+}
+
+bool IsVoiceNameMutedByConfig(const char *pName)
+{
+	const std::string Key = NormalizeVoiceNameKey(pName);
+	if(Key.empty())
+		return false;
+
+	const char *p = g_Config.m_BcVoiceChatMutedNames;
+	while(*p)
+	{
+		while(*p == ',' || std::isspace((unsigned char)*p))
+			++p;
+		if(*p == '\0')
+			break;
+
+		const char *pStart = p;
+		while(*p && *p != ',')
+			++p;
+		const char *pEnd = p;
+		while(pEnd > pStart && std::isspace((unsigned char)pEnd[-1]))
+			--pEnd;
+
+		char aName[128];
+		str_truncate(aName, sizeof(aName), pStart, (int)(pEnd - pStart));
+		if(NormalizeVoiceNameKey(aName) == Key)
+			return true;
+	}
+
+	return false;
+}
+
+int GetVoiceNameVolumePercentByConfig(const char *pName)
+{
+	const std::string Key = NormalizeVoiceNameKey(pName);
+	if(Key.empty())
+		return 100;
+
+	int Volume = 100;
+	const char *p = g_Config.m_BcVoiceChatNameVolumes;
+	while(*p)
+	{
+		while(*p == ',' || std::isspace((unsigned char)*p))
+			++p;
+		if(*p == '\0')
+			break;
+
+		const char *pStart = p;
+		while(*p && *p != ',')
+			++p;
+		const char *pEnd = p;
+		while(pEnd > pStart && std::isspace((unsigned char)pEnd[-1]))
+			--pEnd;
+		if(pEnd <= pStart)
+			continue;
+
+		const char *pSep = nullptr;
+		for(const char *q = pStart; q < pEnd; ++q)
+		{
+			if(*q == '=' || *q == ':')
+			{
+				pSep = q;
+				break;
+			}
+		}
+		if(!pSep)
+			continue;
+
+		const char *pNameEnd = pSep;
+		while(pNameEnd > pStart && std::isspace((unsigned char)pNameEnd[-1]))
+			--pNameEnd;
+		const char *pValueStart = pSep + 1;
+		while(pValueStart < pEnd && std::isspace((unsigned char)*pValueStart))
+			++pValueStart;
+		if(pNameEnd <= pStart || pValueStart >= pEnd)
+			continue;
+
+		char aName[128];
+		char aValue[16];
+		str_truncate(aName, sizeof(aName), pStart, (int)(pNameEnd - pStart));
+		if(NormalizeVoiceNameKey(aName) != Key)
+			continue;
+		str_truncate(aValue, sizeof(aValue), pValueStart, (int)(pEnd - pValueStart));
+		Volume = std::clamp(str_toint(aValue), 0, 100);
+	}
+
+	return std::clamp(Volume, 1, 100);
+}
+
 }
 
 CScoreboard::CScoreboard()
@@ -99,6 +209,8 @@ float CScoreboard::GetPopupHeight(int ClientId, bool IsLocal, bool IsSpectating)
 	{
 		// Profile, whisper, vote kick, clip name, swap.
 		Height += (ItemSpacing * 2.0f + ButtonSize) * 5.0f;
+		// Voice mute and voice volume slider.
+		Height += (ItemSpacing * 2.0f + ButtonSize) * 2.0f;
 		// War list quick actions: enemy/team/helper.
 		Height += ItemSpacing * 2.0f + ActionSize;
 
@@ -138,6 +250,8 @@ void CScoreboard::OpenPlayerPopup(int ClientId, bool IsSpectating, float PopupX,
 	m_ScoreboardPopupContext.m_IsLocal = GameClient()->m_aLocalIds[0] == ClientId ||
 					     (Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == ClientId);
 	m_ScoreboardPopupContext.m_IsSpectating = IsSpectating;
+	m_ScoreboardPopupContext.m_VoiceVolumePreview = -1;
+	m_ScoreboardPopupContext.m_VoiceVolumeDirty = false;
 
 	Ui()->DoPopupMenu(&m_ScoreboardPopupContext, PopupX, PopupY, 110.0f,
 		GetPopupHeight(m_ScoreboardPopupContext.m_ClientId, m_ScoreboardPopupContext.m_IsLocal, m_ScoreboardPopupContext.m_IsSpectating),
@@ -1397,6 +1511,51 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 			char aSwapBuf[256];
 			str_format(aSwapBuf, sizeof(aSwapBuf), "say /swap %s", Client.m_aName);
 			pScoreboard->Console()->ExecuteLine(aSwapBuf, IConsole::CLIENT_ID_UNSPECIFIED);
+		}
+
+		View.HSplitTop(ItemSpacing * 2, nullptr, &View);
+		View.HSplitTop(ButtonSize, &Container, &View);
+		const bool VoiceMuted = IsVoiceNameMutedByConfig(Client.m_aName);
+		if(pUi->DoButton_PopupMenu(&pPopupContext->m_VoiceMuteButton, VoiceMuted ? Localize("Voice unmute") : Localize("Voice mute"), &Container, FontSize, TEXTALIGN_MC))
+		{
+			char aEscapedName[2 * MAX_NAME_LENGTH + 2];
+			char *pDst = aEscapedName;
+			str_escape(&pDst, Client.m_aName, aEscapedName + sizeof(aEscapedName));
+			char aCmd[2 * MAX_NAME_LENGTH + 64];
+			str_format(aCmd, sizeof(aCmd), !VoiceMuted ? "!voice mute \"%s\"" : "!voice unmute \"%s\"", aEscapedName);
+			pScoreboard->GameClient()->m_VoiceChat.TryHandleChatCommand(aCmd);
+		}
+
+		View.HSplitTop(ItemSpacing * 2, nullptr, &View);
+		View.HSplitTop(ButtonSize, &Container, &View);
+		const int ConfigVoiceVolume = GetVoiceNameVolumePercentByConfig(Client.m_aName);
+		if(pPopupContext->m_VoiceVolumePreview < 1 || pPopupContext->m_VoiceVolumePreview > 100)
+			pPopupContext->m_VoiceVolumePreview = ConfigVoiceVolume;
+		if(!pUi->CheckActiveItem(&pPopupContext->m_VoiceVolumeSlider) && !pPopupContext->m_VoiceVolumeDirty)
+			pPopupContext->m_VoiceVolumePreview = ConfigVoiceVolume;
+
+		CUIRect VoiceVolumeLabel, VoiceVolumeSlider;
+		Container.VSplitLeft(30.0f, &VoiceVolumeLabel, &VoiceVolumeSlider);
+		char aVoiceVolume[16];
+		str_format(aVoiceVolume, sizeof(aVoiceVolume), "%d%%", std::clamp(pPopupContext->m_VoiceVolumePreview, 1, 100));
+		pUi->DoLabel(&VoiceVolumeLabel, aVoiceVolume, FontSize, TEXTALIGN_ML);
+		const float CurrentVoiceVolumeRel = std::clamp(pPopupContext->m_VoiceVolumePreview / 100.0f, 0.01f, 1.0f);
+		const float NewVoiceVolumeRel = pUi->DoScrollbarH(&pPopupContext->m_VoiceVolumeSlider, &VoiceVolumeSlider, CurrentVoiceVolumeRel);
+		const int NewVoiceVolume = std::clamp((int)std::lround(NewVoiceVolumeRel * 100.0f), 1, 100);
+		if(NewVoiceVolume != pPopupContext->m_VoiceVolumePreview)
+		{
+			pPopupContext->m_VoiceVolumePreview = NewVoiceVolume;
+			pPopupContext->m_VoiceVolumeDirty = true;
+		}
+		if(pPopupContext->m_VoiceVolumeDirty && !pUi->CheckActiveItem(&pPopupContext->m_VoiceVolumeSlider))
+		{
+			char aEscapedName[2 * MAX_NAME_LENGTH + 2];
+			char *pDst = aEscapedName;
+			str_escape(&pDst, Client.m_aName, aEscapedName + sizeof(aEscapedName));
+			char aCmd[2 * MAX_NAME_LENGTH + 64];
+			str_format(aCmd, sizeof(aCmd), "!voice volume \"%s\" %d", aEscapedName, std::clamp(pPopupContext->m_VoiceVolumePreview, 1, 100));
+			pScoreboard->GameClient()->m_VoiceChat.TryHandleChatCommand(aCmd);
+			pPopupContext->m_VoiceVolumeDirty = false;
 		}
 
 		const float ActionSize = 25.0f;

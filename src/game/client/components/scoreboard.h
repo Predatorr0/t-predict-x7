@@ -60,6 +60,8 @@ class CScoreboard : public CComponent
 		CButtonContainer m_VoteKickButton;
 		CButtonContainer m_ClipNameButton;
 		CButtonContainer m_SwapButton;
+		CButtonContainer m_VoiceMuteButton;
+		CButtonContainer m_VoiceVolumeSlider;
 		CButtonContainer m_WarListWarButton;
 		CButtonContainer m_WarListTeamButton;
 		CButtonContainer m_WarListHelperButton;
@@ -73,6 +75,8 @@ class CScoreboard : public CComponent
 		int m_ClientId;
 		bool m_IsLocal;
 		bool m_IsSpectating;
+		int m_VoiceVolumePreview = -1;
+		bool m_VoiceVolumeDirty = false;
 
 		static CUi::EPopupMenuFunctionResult Render(void *pContext, CUIRect View, bool Active);
 	} m_ScoreboardPopupContext;
