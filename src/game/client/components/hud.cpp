@@ -5,7 +5,6 @@
 #include "binds.h"
 #include "camera.h"
 #include "controls.h"
-#include "hud_layout.h"
 #include "voting.h"
 
 #include <base/color.h>
@@ -169,12 +168,8 @@ void CHud::RenderGameTimer()
 		static float s_TextWidth00D = TextRender()->TextWidth(FontSize, "00d 00:00:00", -1, -1.0f);
 		static float s_TextWidth000D = TextRender()->TextWidth(FontSize, "000d 00:00:00", -1, -1.0f);
 		float w = Time >= 3600 * 24 * 100 ? s_TextWidth000D : (Time >= 3600 * 24 * 10 ? s_TextWidth00D : (Time >= 3600 * 24 ? s_TextWidth0D : (Time >= 3600 ? s_TextWidthH : s_TextWidthM)));
-		float Half = m_Width / 2.0f;
-		float TextY = 2.0f;
-		const auto MusicLayout = HudLayout::Get(HudLayout::MODULE_MUSIC_PLAYER, m_Width, m_Height);
-		const float TextX = std::clamp(MusicLayout.m_X, 0.0f, maximum(0.0f, m_Width - w));
-		Half = TextX + w * 0.5f;
-		TextY = std::clamp(MusicLayout.m_Y, 0.0f, maximum(0.0f, m_Height - FontSize));
+		const float Half = m_Width / 2.0f;
+		const float TextY = 2.0f;
 		// last 60 sec red, last 10 sec blink
 		if(GameClient()->m_Snap.m_pGameInfoObj->m_TimeLimit && Time <= 60 && (GameClient()->m_Snap.m_pGameInfoObj->m_WarmupTimer <= 0))
 		{
@@ -2142,9 +2137,24 @@ void CHud::RenderLocalTime(float x)
 	char aTimeStr[16];
 	str_timestamp_format(aTimeStr, sizeof(aTimeStr), Seconds ? "%H:%M.%S" : "%H:%M");
 	const float Width = std::round(TextRender()->TextBoundingBox(5.0f, aTimeStr).m_W);
+	const float RectWidth = Width + 10.0f;
+	const float RectHeight = 12.5f;
+	float RectX = x - (Width + 15.0f);
+	float TextX = x - (Width + 10.0f);
+	const bool MusicPlayerComponentDisabled = GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER);
+	const CMusicPlayer::SHudReservation MusicReservation = GameClient()->m_MusicPlayer.HudReservation();
+	const bool MusicPlayerHudActive = !MusicPlayerComponentDisabled && g_Config.m_BcMusicPlayer != 0 && MusicReservation.m_Visible && MusicReservation.m_Active;
+	if(MusicPlayerHudActive)
+	{
+		CUIRect LocalTimeRect = {RectX, 0.0f, RectWidth, RectHeight};
+		const float Offset = GameClient()->m_MusicPlayer.GetHudPushOffsetForRect(LocalTimeRect, m_Width, 2.0f);
+		RectX += Offset;
+		RectX = std::clamp(RectX, 0.0f, maximum(0.0f, m_Width - RectWidth));
+		TextX = RectX + 5.0f;
+	}
 
-	Graphics()->DrawRect(x - (Width + 15.0f), 0.0f, Width + 10.0f, 12.5f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_B, 3.75f);
-	TextRender()->Text(x - (Width + 10.0f), (12.5f - 5.f) / 2.f, 5.0f, aTimeStr, -1.0f);
+	Graphics()->DrawRect(RectX, 0.0f, RectWidth, RectHeight, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_B, 3.75f);
+	TextRender()->Text(TextX, (RectHeight - 5.f) / 2.f, 5.0f, aTimeStr, -1.0f);
 
 	// Graphics()->DrawRect(x - 30.0f, 0.0f, 25.0f, 12.5f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_B, 3.75f);
 	// TextRender()->Text(x - 25.0f, (12.5f - 5.f) / 2.f, 5.0f, aTimeStr, -1.0f);
