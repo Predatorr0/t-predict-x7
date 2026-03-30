@@ -2,7 +2,7 @@
   <img src="docs/assets/bestclient-logo.png" alt="BestClient" width="680" />
 
   <h1>BestClient</h1>
-  <p>Custom DDNet client with a cleaner feel, extra utilities, visual tweaks and competitive quality-of-life features.</p>
+  <p>Custom DDNet client forked from Tater, with a cleaner feel, extra utilities, visual tweaks, and competitive quality-of-life features.</p>
 
   <p>
     <a href="https://bestclient.fun">Website</a>
