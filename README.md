@@ -1,15 +1,11 @@
 <div align="center">
-  <img src="docs/assets/bestclient-logo.png" alt="BestClient" width="680" />
-
-  <h1>BestClient</h1>
+  <img src="https://badges4noxy.vercel.app/badges/bestclient/bc_logo.webp" alt="BestClient" width="640" />
   <p>Custom DDNet client forked from Tater, with a cleaner feel, extra utilities, visual tweaks, and competitive quality-of-life features.</p>
 
   <p>
-    <a href="https://bestclient.fun">Website</a>
-    ·
-    <a href="https://t.me/bestddnet">Telegram</a>
-    ·
-    <a href="https://discord.gg/bestclient">Discord</a>
+    <a href="https://bestclient.fun"><img src="https://badges4noxy.vercel.app/badges/bestclient/website.svg" alt="Website"/></a>
+    <a href="https://t.me/bestddnet"><img src="https://badges4noxy.vercel.app/badges/bestclient/telegram.svg" alt="Telegram"/></a>
+    <a href="https://discord.gg/bestclient"><img src="https://badges4noxy.vercel.app/badges/bestclient/discord.svg" alt="Discord"/></a>
   </p>
 </div>
 
