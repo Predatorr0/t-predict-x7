@@ -22,6 +22,7 @@ enum
 
 constexpr float MAX_DELTA = 0.1f;
 constexpr float PROJ_DIST = 600.0f;
+constexpr float ZOOM_CHANGE_THRESHOLD = 0.02f;
 constexpr int PARTICLE_MAX_RENDERED = 200;
 
 const std::array<vec3, 8> g_aCubeVertices = { {
@@ -149,7 +150,13 @@ void C3DParticles::ResetParticles()
 	m_vParticles.clear();
 	m_Time = 0.0f;
 	m_HasLastLocalPos = false;
+	m_HasLastSpawnBounds = false;
+	m_HasLastScreenSize = false;
 	m_LastLocalPos = vec2(0.0f, 0.0f);
+	m_LastSpawnMin = vec2(0.0f, 0.0f);
+	m_LastSpawnMax = vec2(0.0f, 0.0f);
+	m_LastScreenWidth = 0.0f;
+	m_LastScreenHeight = 0.0f;
 }
 
 bool C3DParticles::ShouldRender() const
@@ -275,6 +282,8 @@ void C3DParticles::OnRender()
 
 	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+	const float CurScreenWidth = maximum(1.0f, std::abs(ScreenX1 - ScreenX0));
+	const float CurScreenHeight = maximum(1.0f, std::abs(ScreenY1 - ScreenY0));
 
 	const float MapMinX = 0.0f;
 	const float MapMinY = 0.0f;
@@ -297,6 +306,33 @@ void C3DParticles::OnRender()
 		std::swap(SpawnMinX, SpawnMaxX);
 	if(SpawnMinY > SpawnMaxY)
 		std::swap(SpawnMinY, SpawnMaxY);
+
+	bool ZoomChanged = false;
+	if(m_HasLastScreenSize)
+	{
+		const float ScaleX = CurScreenWidth / maximum(1.0f, m_LastScreenWidth);
+		const float ScaleY = CurScreenHeight / maximum(1.0f, m_LastScreenHeight);
+		const float DeltaScale = maximum(std::abs(1.0f - ScaleX), std::abs(1.0f - ScaleY));
+		ZoomChanged = DeltaScale > ZOOM_CHANGE_THRESHOLD;
+	}
+
+	if(ZoomChanged && m_HasLastSpawnBounds && !m_vParticles.empty())
+	{
+		const float OldW = maximum(1.0f, m_LastSpawnMax.x - m_LastSpawnMin.x);
+		const float OldH = maximum(1.0f, m_LastSpawnMax.y - m_LastSpawnMin.y);
+		for(auto &Part : m_vParticles)
+		{
+			const float U = std::clamp((Part.m_Pos.x - m_LastSpawnMin.x) / OldW, 0.0f, 1.0f);
+			const float V = std::clamp((Part.m_Pos.y - m_LastSpawnMin.y) / OldH, 0.0f, 1.0f);
+			Part.m_Pos.x = mix(SpawnMinX, SpawnMaxX, U);
+			Part.m_Pos.y = mix(SpawnMinY, SpawnMaxY, V);
+			if(Part.m_FadingOut)
+			{
+				Part.m_FadingOut = false;
+				Part.m_FadeOutStart = 0.0f;
+			}
+		}
+	}
 
 	int TargetCount = std::clamp(g_Config.m_Bc3dParticlesCount, 0, PARTICLE_MAX_RENDERED);
 	if(GameClient()->OptimizerDisableParticles())
@@ -483,6 +519,13 @@ void C3DParticles::OnRender()
 
 		m_vParticles.push_back(P);
 	}
+
+	m_LastSpawnMin = vec2(SpawnMinX, SpawnMinY);
+	m_LastSpawnMax = vec2(SpawnMaxX, SpawnMaxY);
+	m_HasLastSpawnBounds = true;
+	m_LastScreenWidth = CurScreenWidth;
+	m_LastScreenHeight = CurScreenHeight;
+	m_HasLastScreenSize = true;
 
 	RenderParticles(ViewMinX, ViewMaxX, ViewMinY, ViewMaxY, BaseAlpha, FadeIn, FadeOut);
 }
