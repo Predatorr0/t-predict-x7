@@ -189,6 +189,7 @@ CScoreboard::CScoreboard()
 float CScoreboard::GetPopupHeight(int ClientId, bool IsLocal, bool IsSpectating) const
 {
 	constexpr float Margin = 5.0f;
+	constexpr float BottomPadding = 6.0f;
 	constexpr float FontSize = 12.0f;
 	constexpr float ItemSpacing = 2.0f;
 	constexpr float ActionSize = 25.0f;
@@ -237,7 +238,7 @@ float CScoreboard::GetPopupHeight(int ClientId, bool IsLocal, bool IsSpectating)
 			Height += ItemSpacing * 2.0f + TeamButtonCount * (ItemSpacing * 2.0f + ButtonSize);
 	}
 
-	return Height;
+	return Height + BottomPadding;
 }
 
 void CScoreboard::OpenPlayerPopup(int ClientId, bool IsSpectating, float PopupX, float PopupY)
