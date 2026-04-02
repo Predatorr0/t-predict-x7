@@ -1680,8 +1680,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const bool FastInputExpanded = g_Config.m_TcFastInput != 0;
 			UpdateRevealPhase(s_FastInputPhase, FastInputExpanded);
 
-			const float FastInputExtraTargetHeight = MarginSmall * (g_Config.m_BcFastInputMode == 1 ? 4.0f : 3.0f) +
-				LineSize * (g_Config.m_BcFastInputMode == 1 ? 4.0f : 3.0f);
+			const float FastInputExtraTargetHeight = MarginSmall * 3.0f + LineSize * 3.0f;
 			const float ContentHeight = LineSize + MarginSmall + LineSize * 2.0f +
 				FastInputExtraTargetHeight * s_FastInputPhase;
 
@@ -1752,7 +1751,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 						Value = std::clamp(Value - Increment, Min, Max);
 
 					char aBuf[256];
-					str_format(aBuf, sizeof(aBuf), "%s: %.2ft", BCLocalize("Amount"), Value / 100.0f);
+					str_format(aBuf, sizeof(aBuf), "%s: %.2fA", BCLocalize("Amount"), Value / 100.0f);
 
 					CUIRect AmountLabel, ScrollBar;
 					Button.VSplitMid(&AmountLabel, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
@@ -1763,33 +1762,6 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 					const float NewRel = Ui()->DoScrollbarH(&g_Config.m_BcFastInputLowDelta, &ScrollBar, Rel);
 					Value = (int)(Min + NewRel * (Max - Min) + 0.5f);
 					g_Config.m_BcFastInputLowDelta = std::clamp(Value, Min, Max);
-
-					Expand.HSplitTop(MarginSmall, nullptr, &Expand);
-					static CButtonContainer s_EcoFreezeChimera;
-					static CButtonContainer s_TrueLowDelta;
-					const int EcoFreezeChimeraValue = 80;
-					const int TrueLowDeltaValue = 130;
-
-					Expand.HSplitTop(LineSize, &Button, &Expand);
-					{
-						CUIRect Left, Right;
-						Button.VSplitMid(&Left, &Right, 2.0f);
-						Left.HMargin(2.0f, &Left);
-						Right.HMargin(2.0f, &Right);
-
-						if(DoButton_Menu(&s_EcoFreezeChimera, BCLocalize("eco-freeze chimera"), g_Config.m_BcFastInputLowDelta == EcoFreezeChimeraValue, &Left, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
-						{
-							char aCmd[64];
-							str_format(aCmd, sizeof(aCmd), "bc_fast_input_low_delta \"%d\"", EcoFreezeChimeraValue);
-							Console()->ExecuteLine(aCmd, IConsole::CLIENT_ID_UNSPECIFIED);
-						}
-						if(DoButton_Menu(&s_TrueLowDelta, BCLocalize("true low delta"), g_Config.m_BcFastInputLowDelta == TrueLowDeltaValue, &Right, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
-						{
-							char aCmd[64];
-							str_format(aCmd, sizeof(aCmd), "bc_fast_input_low_delta \"%d\"", TrueLowDeltaValue);
-							Console()->ExecuteLine(aCmd, IConsole::CLIENT_ID_UNSPECIFIED);
-						}
-					}
 				}
 
 				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
