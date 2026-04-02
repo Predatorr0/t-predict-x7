@@ -193,6 +193,138 @@ void ConfigureVoiceOpusEncoder(OpusEncoder *pEncoder, int BitrateKbps)
 	opus_encoder_ctl(pEncoder, OPUS_SET_PACKET_LOSS_PERC(0));
 }
 
+float SanitizeAudioValue(float Value)
+{
+	if(!std::isfinite(Value))
+		return 0.0f;
+	if(Value > 1000000.0f)
+		return 1000000.0f;
+	if(Value < -1000000.0f)
+		return -1000000.0f;
+	return Value;
+}
+
+float VoiceFrameRms(const int16_t *pSamples, int Count)
+{
+	if(!pSamples || Count <= 0)
+		return 0.0f;
+	double Sum = 0.0;
+	for(int i = 0; i < Count; ++i)
+	{
+		const float X = pSamples[i] / 32768.0f;
+		Sum += X * X;
+	}
+	return (float)std::sqrt(Sum / (double)Count);
+}
+
+void ApplyAutoNoiseSuppressorSimple(int16_t *pSamples, int Count, float Strength, float &NoiseFloor, float &Gate)
+{
+	if(!pSamples || Count <= 0)
+		return;
+
+	Strength = std::clamp(Strength, 0.0f, 1.0f);
+	if(Strength <= 0.0f)
+		return;
+
+	const float Rms = VoiceFrameRms(pSamples, Count);
+	if(!std::isfinite(Rms))
+		return;
+
+	if(NoiseFloor <= 0.0f)
+		NoiseFloor = Rms;
+
+	const float UpdateFast = 0.2f;
+	const float UpdateSlow = 0.05f;
+	if(Rms < NoiseFloor * 1.2f)
+		NoiseFloor += (Rms - NoiseFloor) * UpdateFast;
+	else if(Rms < NoiseFloor * 1.5f)
+		NoiseFloor += (Rms - NoiseFloor) * UpdateSlow;
+
+	NoiseFloor = std::clamp(NoiseFloor, 1.0f / 32768.0f, 0.5f);
+
+	const float MinGain = 1.0f - Strength * 0.9f;
+	const float LowSnr = 1.2f;
+	const float HighSnr = 2.5f;
+	const float Snr = Rms / (NoiseFloor + 1e-6f);
+
+	float Target = 1.0f;
+	if(Snr <= LowSnr)
+		Target = MinGain;
+	else if(Snr >= HighSnr)
+		Target = 1.0f;
+	else
+	{
+		const float T = (Snr - LowSnr) / (HighSnr - LowSnr);
+		Target = MinGain + (1.0f - MinGain) * T;
+	}
+
+	const float Dt = Count / (float)BestClientVoice::SAMPLE_RATE;
+	const float AttackSec = 0.01f;
+	const float ReleaseSec = 0.08f;
+	const float AttackCoeff = 1.0f - std::exp(-Dt / AttackSec);
+	const float ReleaseCoeff = 1.0f - std::exp(-Dt / ReleaseSec);
+	if(Target > Gate)
+		Gate += (Target - Gate) * AttackCoeff;
+	else
+		Gate += (Target - Gate) * ReleaseCoeff;
+
+	Gate = std::clamp(Gate, MinGain, 1.0f);
+	if(Gate >= 0.999f)
+		return;
+
+	for(int i = 0; i < Count; ++i)
+	{
+		const float Out = pSamples[i] * Gate;
+		pSamples[i] = (int16_t)std::clamp(Out, -32768.0f, 32767.0f);
+	}
+}
+
+void ApplyAutoHpfCompressor(int16_t *pSamples, int Count, float &PrevIn, float &PrevOut, float &Env)
+{
+	if(!pSamples || Count <= 0)
+		return;
+
+	const float CutoffHz = 120.0f;
+	const float Rc = 1.0f / (2.0f * 3.14159265f * CutoffHz);
+	const float Dt = 1.0f / BestClientVoice::SAMPLE_RATE;
+	const float Alpha = Rc / (Rc + Dt);
+
+	// Rushie defaults.
+	const float Threshold = 0.20f;
+	const float Ratio = 2.5f;
+	const float AttackSec = 0.02f;
+	const float ReleaseSec = 0.20f;
+	const float MakeupGain = 1.6f;
+	const float NoiseFloor = 0.02f;
+	const float Limiter = 0.50f;
+	const float AttackCoeff = 1.0f - std::exp(-1.0f / (AttackSec * BestClientVoice::SAMPLE_RATE));
+	const float ReleaseCoeff = 1.0f - std::exp(-1.0f / (ReleaseSec * BestClientVoice::SAMPLE_RATE));
+
+	for(int i = 0; i < Count; ++i)
+	{
+		const float X = pSamples[i] / 32768.0f;
+		const float Y = Alpha * (PrevOut + X - PrevIn);
+		PrevIn = X;
+		PrevOut = SanitizeAudioValue(Y);
+
+		const float AbsY = std::fabs(PrevOut);
+		if(AbsY > Env)
+			Env += (AbsY - Env) * AttackCoeff;
+		else
+			Env += (AbsY - Env) * ReleaseCoeff;
+
+		float Gain = 1.0f;
+		if(Env > Threshold)
+			Gain = (Threshold + (Env - Threshold) / Ratio) / Env;
+		if(Env > NoiseFloor)
+			Gain *= MakeupGain;
+
+		const float Out = std::clamp(PrevOut * Gain, -Limiter, Limiter);
+		const int Sample = (int)std::clamp(Out * 32767.0f, -32768.0f, 32767.0f);
+		pSamples[i] = (int16_t)Sample;
+	}
+}
+
 std::string NormalizeVoiceNameKey(const char *pName)
 {
 	if(!pName)
@@ -420,6 +552,11 @@ void CVoiceChat::OnReset()
 	m_SendSequence = 0;
 	m_MicLevel = 0.0f;
 	m_MicLimiterGain = 1.0f;
+	m_AutoNsNoiseFloor = 0.0f;
+	m_AutoNsGate = 1.0f;
+	m_AutoHpfPrevIn = 0.0f;
+	m_AutoHpfPrevOut = 0.0f;
+	m_AutoCompEnv = 0.0f;
 	m_VadNoiseFloor = 0.0f;
 	m_VadSpeechScore = 0.0f;
 	m_VadLastActivationLevel = 0.0f;
@@ -781,7 +918,7 @@ constexpr float kVoiceMenuEnableRowHeight = 22.0f;
 constexpr float kVoiceMenuServerRowHeight = 22.0f;
 constexpr float kVoiceMenuServerRowGap = 3.0f;
 
-float VoiceMenuExpandedHeightForServerCount(int ServerCount, bool RadiusFilterEnabled)
+float VoiceMenuExpandedHeightForServerCount(int ServerCount, bool RadiusFilterEnabled, bool AutomaticMode)
 {
 	const int VisibleRows = std::clamp(ServerCount > 0 ? ServerCount : 1, 1, 2);
 	const float ServerListHeight = 2.0f + VisibleRows * kVoiceMenuServerRowHeight + maximum(0, VisibleRows - 1) * kVoiceMenuServerRowGap;
@@ -791,6 +928,7 @@ float VoiceMenuExpandedHeightForServerCount(int ServerCount, bool RadiusFilterEn
 		(RadiusFilterEnabled ? (3.0f + 20.0f) : 0.0f) + // Radius slider row.
 		4.0f + 18.0f + // Activation mode label.
 		3.0f + 22.0f + // Activation mode segmented control.
+		(AutomaticMode ? (3.0f + 20.0f + 3.0f + 20.0f) : 0.0f) + // VAD threshold + release delay rows.
 		5.0f + 20.0f + 2.0f + 24.0f + // Microphone.
 		5.0f + 20.0f + 2.0f + 24.0f + // Headphones.
 		6.0f + 16.0f + // Status.
@@ -810,7 +948,8 @@ float CVoiceChat::GetMenuSettingsBlockHeight(float RevealPhase) const
 		kVoiceMenuEnableRowHeight;
 	const int ServerCount = (int)m_vServerEntries.size();
 	const bool RadiusFilterEnabled = g_Config.m_BcVoiceChatRadiusEnabled != 0;
-	const float ExpandedHeight = VoiceMenuExpandedHeightForServerCount(ServerCount, RadiusFilterEnabled);
+	const bool AutomaticMode = g_Config.m_BcVoiceChatActivationMode == 0;
+	const float ExpandedHeight = VoiceMenuExpandedHeightForServerCount(ServerCount, RadiusFilterEnabled, AutomaticMode);
 	return HeaderHeight + ExpandedHeight * RevealPhase + kVoiceMenuOuterMargin * 2.0f;
 }
 
@@ -934,7 +1073,8 @@ void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View, float RevealPhase)
 
 	const int InitialServerCount = (int)m_vServerEntries.size();
 	const bool RadiusFilterEnabled = g_Config.m_BcVoiceChatRadiusEnabled != 0;
-	const float ExpandedTargetHeight = VoiceMenuExpandedHeightForServerCount(InitialServerCount, RadiusFilterEnabled);
+	const bool AutomaticMode = g_Config.m_BcVoiceChatActivationMode == 0;
+	const float ExpandedTargetHeight = VoiceMenuExpandedHeightForServerCount(InitialServerCount, RadiusFilterEnabled, AutomaticMode);
 	const float ExpandedVisibleHeight = ExpandedTargetHeight * RevealPhase;
 
 	CUIRect ExpandedVisible;
@@ -995,6 +1135,16 @@ void CVoiceChat::RenderMenuSettingsBlock(const CUIRect &View, float RevealPhase)
 			g_Config.m_BcVoiceChatActivationMode = 0;
 		if(GameClient()->m_Menus.DoButton_Menu(&s_ModePttButton, Localize("Push-to-talk"), Ptt, &Right, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
 			g_Config.m_BcVoiceChatActivationMode = 1;
+	}
+	if(g_Config.m_BcVoiceChatActivationMode == 0)
+	{
+		AddExpandedSpacing(3.0f);
+		if(AddExpandedRow(20.0f, Row))
+			Ui()->DoScrollbarOption(&g_Config.m_BcVoiceChatVadThreshold, &g_Config.m_BcVoiceChatVadThreshold, &Row, Localize("VAD threshold (%)"), 0, 100);
+
+		AddExpandedSpacing(3.0f);
+		if(AddExpandedRow(20.0f, Row))
+			Ui()->DoScrollbarOption(&g_Config.m_BcVoiceChatVadReleaseDelayMs, &g_Config.m_BcVoiceChatVadReleaseDelayMs, &Row, Localize("VAD release delay (ms)"), 0, 1000);
 	}
 
 	AddExpandedSpacing(5.0f);
@@ -2812,6 +2962,11 @@ void CVoiceChat::ProcessCapture()
 		m_AutoActivationUntilTick = 0;
 		m_VadSpeechScore = 0.0f;
 		m_VadLastActivationLevel = 0.0f;
+		m_AutoNsNoiseFloor = 0.0f;
+		m_AutoNsGate = 1.0f;
+		m_AutoHpfPrevIn = 0.0f;
+		m_AutoHpfPrevOut = 0.0f;
+		m_AutoCompEnv = 0.0f;
 		m_MicLevel = mix(m_MicLevel, 0.0f, 0.25f);
 		m_CapturePcm.Clear();
 		m_MicMonitorPcm.Clear();
@@ -2825,6 +2980,11 @@ void CVoiceChat::ProcessCapture()
 		m_WasTransmitActive = false;
 		m_AutoActivationUntilTick = 0;
 		m_VadSpeechScore = 0.0f;
+		m_AutoNsNoiseFloor = 0.0f;
+		m_AutoNsGate = 1.0f;
+		m_AutoHpfPrevIn = 0.0f;
+		m_AutoHpfPrevOut = 0.0f;
+		m_AutoCompEnv = 0.0f;
 		m_MicLevel = mix(m_MicLevel, 0.0f, 0.25f);
 		if(SDL_GetQueuedAudioSize(m_CaptureDevice) > 0)
 			SDL_ClearQueuedAudio(m_CaptureDevice);
@@ -2917,6 +3077,26 @@ void CVoiceChat::ProcessCapture()
 			Peak = maximum(Peak, absolute(Out));
 		}
 
+		const bool AutoMode = g_Config.m_BcVoiceChatActivationMode == 0;
+		if(AutoMode)
+		{
+			// Rushie auto chain before VAD decision: noise suppressor + HPF/compressor.
+			ApplyAutoNoiseSuppressorSimple(aFrame, BestClientVoice::FRAME_SIZE, 0.50f, m_AutoNsNoiseFloor, m_AutoNsGate);
+			ApplyAutoHpfCompressor(aFrame, BestClientVoice::FRAME_SIZE, m_AutoHpfPrevIn, m_AutoHpfPrevOut, m_AutoCompEnv);
+
+			Peak = 0;
+			for(int i = 0; i < BestClientVoice::FRAME_SIZE; ++i)
+				Peak = maximum(Peak, absolute((int)aFrame[i]));
+		}
+		else
+		{
+			m_AutoNsNoiseFloor = 0.0f;
+			m_AutoNsGate = 1.0f;
+			m_AutoHpfPrevIn = 0.0f;
+			m_AutoHpfPrevOut = 0.0f;
+			m_AutoCompEnv = 0.0f;
+		}
+
 		int64_t AvgLevel = 0;
 		for(int i = 0; i < BestClientVoice::FRAME_SIZE; ++i)
 			AvgLevel += absolute(aFrame[i]);
@@ -2925,7 +3105,6 @@ void CVoiceChat::ProcessCapture()
 		const float PeakLinear = std::clamp((float)Peak / 32767.0f, 0.0f, 1.0f);
 		const float MicLevelScale = 2.0f;
 		const float LevelLinearScaled = std::clamp(LevelLinear * MicLevelScale, 0.0f, 1.0f);
-		const float ActivationLevel = maximum(LevelLinearScaled, PeakLinear * 0.85f);
 		m_MicLevel = mix(m_MicLevel, LevelLinearScaled, 0.2f);
 
 		if(g_Config.m_BcVoiceChatMicCheck)
@@ -2936,6 +3115,11 @@ void CVoiceChat::ProcessCapture()
 			m_WasTransmitActive = false;
 			m_AutoActivationUntilTick = 0;
 			m_VadSpeechScore = 0.0f;
+			m_AutoNsNoiseFloor = 0.0f;
+			m_AutoNsGate = 1.0f;
+			m_AutoHpfPrevIn = 0.0f;
+			m_AutoHpfPrevOut = 0.0f;
+			m_AutoCompEnv = 0.0f;
 			continue;
 		}
 
@@ -2948,95 +3132,27 @@ void CVoiceChat::ProcessCapture()
 		}
 		else
 		{
-			// Automatic activation (VAD): activate only on speech-like frames, not just loud sounds.
-			if(m_AutoActivationUntilTick <= 0 || NowTick > m_AutoActivationUntilTick)
+			// Rushie-style VAD: simple peak threshold + release delay.
+			const float VadThreshold = std::clamp(g_Config.m_BcVoiceChatVadThreshold / 100.0f, 0.0f, 1.0f);
+			const int VadReleaseMs = std::clamp(g_Config.m_BcVoiceChatVadReleaseDelayMs, 0, 1000);
+			const int64_t VadReleaseTicks = (int64_t)time_freq() * VadReleaseMs / 1000;
+			const bool Trigger = VadThreshold <= 0.0f || PeakLinear >= VadThreshold;
+
+			m_VadLastActivationLevel = PeakLinear;
+			if(Trigger)
 			{
-				if(m_VadNoiseFloor <= 0.0001f)
-					m_VadNoiseFloor = ActivationLevel;
-				else
-					m_VadNoiseFloor = mix(m_VadNoiseFloor, ActivationLevel, 0.03f);
+				Active = true;
+				m_AutoActivationUntilTick = VadReleaseTicks > 0 ? NowTick + VadReleaseTicks : 0;
+			}
+			else if(VadReleaseTicks > 0 && m_AutoActivationUntilTick > 0 && NowTick <= m_AutoActivationUntilTick)
+			{
+				Active = true;
 			}
 			else
 			{
-				m_VadNoiseFloor = mix(m_VadNoiseFloor, ActivationLevel, 0.002f);
+				Active = false;
+				m_AutoActivationUntilTick = 0;
 			}
-
-			const float NoiseThreshold = std::clamp(m_VadNoiseFloor * 2.2f, 0.0f, 0.12f);
-			const float StartThreshold = maximum(0.030f, NoiseThreshold);
-			const float TriggerLevel = StartThreshold * 0.9f;
-			if(ActivationLevel < StartThreshold * 0.75f)
-			{
-				m_VadLastActivationLevel = ActivationLevel;
-				m_VadSpeechScore = mix(m_VadSpeechScore, 0.0f, 0.20f);
-				Active = m_AutoActivationUntilTick > 0 && NowTick <= m_AutoActivationUntilTick;
-				if(!Active)
-					m_WasTransmitActive = false;
-				if(!Active)
-					continue;
-			}
-
-			// Feature 1: zero-crossing rate (reject very tonal hum and harsh impulsive noise).
-			int Crossings = 0;
-			const int ZcrDeadZone = 120;
-			int PrevSign = 0;
-			for(int i = 0; i < BestClientVoice::FRAME_SIZE; ++i)
-			{
-				const int Sample = (int)aFrame[i];
-				int Sign = 0;
-				if(Sample > ZcrDeadZone)
-					Sign = 1;
-				else if(Sample < -ZcrDeadZone)
-					Sign = -1;
-				if(Sign != 0 && PrevSign != 0 && Sign != PrevSign)
-					++Crossings;
-				if(Sign != 0)
-					PrevSign = Sign;
-			}
-			const float Zcr = Crossings / (float)maximum(1, BestClientVoice::FRAME_SIZE - 1);
-
-			// Feature 2: pitch-like autocorrelation in human speech range.
-			const int MinLag = BestClientVoice::SAMPLE_RATE / 330; // ~145 samples
-			const int MaxLag = BestClientVoice::SAMPLE_RATE / 85;  // ~564 samples
-			float MaxCorr = 0.0f;
-			for(int Lag = MinLag; Lag <= MaxLag; Lag += 2)
-			{
-				double Dot = 0.0;
-				double E1 = 0.0;
-				double E2 = 0.0;
-				for(int i = Lag; i < BestClientVoice::FRAME_SIZE; ++i)
-				{
-					const double A = (double)aFrame[i];
-					const double B = (double)aFrame[i - Lag];
-					Dot += A * B;
-					E1 += A * A;
-					E2 += B * B;
-				}
-				if(E1 <= 1.0 || E2 <= 1.0)
-					continue;
-				const float Corr = (float)(Dot / std::sqrt(E1 * E2));
-				if(Corr > MaxCorr)
-					MaxCorr = Corr;
-			}
-
-			const float AttackDelta = ActivationLevel - m_VadLastActivationLevel;
-			m_VadLastActivationLevel = ActivationLevel;
-			const bool LikelyTransientBurst = AttackDelta > 0.12f && MaxCorr < 0.22f;
-
-			const bool InVoiceZcrRange = Zcr >= 0.015f && Zcr <= 0.26f;
-			const bool VoiceLikeByPitch = MaxCorr >= 0.30f && InVoiceZcrRange;
-			const bool VoiceLikeFallback = MaxCorr >= 0.24f && Zcr >= 0.02f && Zcr <= 0.30f && ActivationLevel >= StartThreshold * 1.35f;
-			const bool SpeechFrame = ActivationLevel >= TriggerLevel && (VoiceLikeByPitch || VoiceLikeFallback) && !LikelyTransientBurst;
-
-			if(SpeechFrame)
-				m_VadSpeechScore = mix(m_VadSpeechScore, 1.0f, 0.38f);
-			else
-				m_VadSpeechScore = mix(m_VadSpeechScore, 0.0f, 0.16f);
-
-			const bool VoiceDetected = m_VadSpeechScore >= 0.48f;
-			const int64_t HangoverTicks = (time_freq() * 500) / 1000;
-			if(VoiceDetected)
-				m_AutoActivationUntilTick = NowTick + HangoverTicks;
-			Active = m_AutoActivationUntilTick > 0 && NowTick <= m_AutoActivationUntilTick;
 		}
 		if(!Active)
 		{
@@ -3848,12 +3964,14 @@ void CVoiceChat::RenderSettingsSection(CUIRect View)
 	{
 		CUIRect OptionsCard;
 		const bool RadiusFilterEnabled = g_Config.m_BcVoiceChatRadiusEnabled != 0;
+		const bool AutomaticMode = g_Config.m_BcVoiceChatActivationMode == 0;
 		const float OptionsInnerHeight =
 			28.0f + 4.0f + // Voice on/off.
 			24.0f + 4.0f + // In-Game Only.
 			24.0f + // Radius checkbox.
 			(RadiusFilterEnabled ? (4.0f + 20.0f) : 0.0f) + // Radius slider.
 			4.0f + 28.0f + // Mode.
+			(AutomaticMode ? (4.0f + 20.0f + 4.0f + 20.0f) : 0.0f) + // VAD threshold + release delay.
 			4.0f + 24.0f + // Microphone.
 			4.0f + 24.0f; // Headphones.
 		const float OptionsHeight = OptionsInnerHeight + 20.0f;
@@ -3941,6 +4059,17 @@ void CVoiceChat::RenderSettingsSection(CUIRect View)
 		Options.HSplitTop(28.0f, &Row, &Options);
 		if(GameClient()->m_Menus.DoButton_Menu(&m_ActivationModeButton, g_Config.m_BcVoiceChatActivationMode == 1 ? Localize("Mode: Push-to-talk") : Localize("Mode: Automatic activation"), 0, &Row))
 			g_Config.m_BcVoiceChatActivationMode = g_Config.m_BcVoiceChatActivationMode == 1 ? 0 : 1;
+
+		if(g_Config.m_BcVoiceChatActivationMode == 0)
+		{
+			AddSpacing(4.0f);
+			Options.HSplitTop(20.0f, &Row, &Options);
+			Ui()->DoScrollbarOption(&g_Config.m_BcVoiceChatVadThreshold, &g_Config.m_BcVoiceChatVadThreshold, &Row, Localize("VAD threshold (%)"), 0, 100);
+
+			AddSpacing(4.0f);
+			Options.HSplitTop(20.0f, &Row, &Options);
+			Ui()->DoScrollbarOption(&g_Config.m_BcVoiceChatVadReleaseDelayMs, &g_Config.m_BcVoiceChatVadReleaseDelayMs, &Row, Localize("VAD release delay (ms)"), 0, 1000);
+		}
 
 		AddSpacing(4.0f);
 		Options.HSplitTop(24.0f, &Row, &Options);

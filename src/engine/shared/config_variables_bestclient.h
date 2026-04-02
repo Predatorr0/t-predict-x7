@@ -146,6 +146,8 @@ MACRO_CONFIG_INT(BcDisabledComponentsMaskHi, bc_disabled_components_mask_hi, 0, 
 // Voice chat
 MACRO_CONFIG_INT(BcVoiceChatEnable, bc_voice_chat_enable, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable integrated voice chat")
 MACRO_CONFIG_INT(BcVoiceChatActivationMode, bc_voice_chat_activation_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice activation mode (0 = automatic activation, 1 = push-to-talk)")
+MACRO_CONFIG_INT(BcVoiceChatVadThreshold, bc_voice_chat_vad_threshold, 5, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice activation threshold in automatic mode (percent)")
+MACRO_CONFIG_INT(BcVoiceChatVadReleaseDelayMs, bc_voice_chat_vad_release_delay_ms, 150, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Delay before automatic voice activation turns off (ms)")
 MACRO_CONFIG_INT(BcVoiceChatVolume, bc_voice_chat_volume, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice playback volume in percent")
 MACRO_CONFIG_INT(BcVoiceChatMicGain, bc_voice_chat_mic_gain, 100, 0, 300, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Microphone gain in percent")
 MACRO_CONFIG_INT(BcVoiceChatBitrate, bc_voice_chat_bitrate, 96, 6, 128, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice Opus bitrate in kbps")
