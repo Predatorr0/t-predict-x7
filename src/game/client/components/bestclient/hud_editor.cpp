@@ -21,6 +21,10 @@
 namespace
 {
 constexpr float SNAP_THRESHOLD = 6.0f;
+constexpr float RESIZE_HANDLE_SIZE_MIN = 5.5f;
+constexpr float RESIZE_HANDLE_SIZE_MAX = 9.0f;
+constexpr float RESIZE_HANDLE_HIT_PADDING = 2.5f;
+constexpr float RESIZE_MIN_SIDE = 8.0f;
 
 bool IsMusicPlayerEnabled(const CGameClient *pGameClient)
 {
@@ -78,9 +82,12 @@ void CHudEditor::Activate()
 	m_MouseDownLast = false;
 	m_RightMouseDownLast = false;
 	m_Dragging = false;
+	m_Resizing = false;
 	m_PressedModule = HudLayout::MODULE_COUNT;
 	m_HoveredModule = HudLayout::MODULE_COUNT;
 	m_SelectedModule = HudLayout::MODULE_COUNT;
+	m_HoveredResizeHandle = RESIZE_NONE;
+	m_PressedResizeHandle = RESIZE_NONE;
 	m_PressedOnReset = false;
 	Ui()->ClosePopupMenus();
 }
@@ -91,9 +98,12 @@ void CHudEditor::Deactivate()
 	m_MouseDownLast = false;
 	m_RightMouseDownLast = false;
 	m_Dragging = false;
+	m_Resizing = false;
 	m_PressedModule = HudLayout::MODULE_COUNT;
 	m_HoveredModule = HudLayout::MODULE_COUNT;
 	m_SelectedModule = HudLayout::MODULE_COUNT;
+	m_HoveredResizeHandle = RESIZE_NONE;
+	m_PressedResizeHandle = RESIZE_NONE;
 	m_PressedOnReset = false;
 	Ui()->ClosePopupMenus();
 }
@@ -318,6 +328,196 @@ HudLayout::EModule CHudEditor::HitTestModule(vec2 MousePos) const
 	return HudLayout::MODULE_COUNT;
 }
 
+CUIRect CHudEditor::GetResizeHandleRect(const CUIRect &Rect, EResizeHandle Handle) const
+{
+	const float HandleSize = std::clamp(minimum(Rect.w, Rect.h) * 0.17f, RESIZE_HANDLE_SIZE_MIN, RESIZE_HANDLE_SIZE_MAX);
+	CUIRect HandleRect = {Rect.x - HandleSize * 0.5f, Rect.y - HandleSize * 0.5f, HandleSize, HandleSize};
+
+	switch(Handle)
+	{
+	case RESIZE_TOP_LEFT:
+		HandleRect.x = Rect.x - HandleSize * 0.5f;
+		HandleRect.y = Rect.y - HandleSize * 0.5f;
+		break;
+	case RESIZE_TOP_RIGHT:
+		HandleRect.x = Rect.x + Rect.w - HandleSize * 0.5f;
+		HandleRect.y = Rect.y - HandleSize * 0.5f;
+		break;
+	case RESIZE_BOTTOM_LEFT:
+		HandleRect.x = Rect.x - HandleSize * 0.5f;
+		HandleRect.y = Rect.y + Rect.h - HandleSize * 0.5f;
+		break;
+	case RESIZE_BOTTOM_RIGHT:
+		HandleRect.x = Rect.x + Rect.w - HandleSize * 0.5f;
+		HandleRect.y = Rect.y + Rect.h - HandleSize * 0.5f;
+		break;
+	case RESIZE_NONE:
+	default:
+		break;
+	}
+
+	return HandleRect;
+}
+
+CHudEditor::EResizeHandle CHudEditor::HitTestResizeHandle(vec2 MousePos, HudLayout::EModule &OutModule) const
+{
+	OutModule = HudLayout::MODULE_COUNT;
+
+	SModuleVisual aVisuals[MAX_MODULE_VISUALS];
+	int Count = 0;
+	CollectModuleVisuals(aVisuals, Count);
+
+	const EResizeHandle aHandles[] = {RESIZE_TOP_LEFT, RESIZE_TOP_RIGHT, RESIZE_BOTTOM_LEFT, RESIZE_BOTTOM_RIGHT};
+	auto TryVisual = [&](const SModuleVisual &Visual) -> EResizeHandle {
+		if(!Visual.m_Editable)
+			return RESIZE_NONE;
+		for(const EResizeHandle Handle : aHandles)
+		{
+			CUIRect HitRect = GetResizeHandleRect(Visual.m_Rect, Handle);
+			HitRect.x -= RESIZE_HANDLE_HIT_PADDING;
+			HitRect.y -= RESIZE_HANDLE_HIT_PADDING;
+			HitRect.w += RESIZE_HANDLE_HIT_PADDING * 2.0f;
+			HitRect.h += RESIZE_HANDLE_HIT_PADDING * 2.0f;
+			if(PointInRect(MousePos, HitRect))
+				return Handle;
+		}
+		return RESIZE_NONE;
+	};
+
+	if(m_SelectedModule != HudLayout::MODULE_COUNT)
+	{
+		for(int i = Count - 1; i >= 0; --i)
+		{
+			if(aVisuals[i].m_Module != m_SelectedModule)
+				continue;
+			const EResizeHandle Handle = TryVisual(aVisuals[i]);
+			if(Handle != RESIZE_NONE)
+			{
+				OutModule = aVisuals[i].m_Module;
+				return Handle;
+			}
+		}
+	}
+
+	for(int i = Count - 1; i >= 0; --i)
+	{
+		if(aVisuals[i].m_Module == m_SelectedModule)
+			continue;
+		const EResizeHandle Handle = TryVisual(aVisuals[i]);
+		if(Handle != RESIZE_NONE)
+		{
+			OutModule = aVisuals[i].m_Module;
+			return Handle;
+		}
+	}
+
+	return RESIZE_NONE;
+}
+
+void CHudEditor::BeginResize(HudLayout::EModule Module, EResizeHandle Handle)
+{
+	if(!IsEditableModule(Module) || Handle == RESIZE_NONE)
+		return;
+
+	m_Resizing = true;
+	m_Dragging = false;
+	m_PressedModule = Module;
+	m_PressedResizeHandle = Handle;
+	m_SelectedModule = Module;
+
+	const SModuleVisual Visual = GetModuleVisual(Module);
+	m_ResizeStartRect = Visual.m_Rect;
+	m_ResizeStartScale = HudLayout::Get(Module, HudWidth(), HudHeight()).m_Scale;
+
+	switch(Handle)
+	{
+	case RESIZE_TOP_LEFT:
+		m_ResizeFixedAnchor = vec2(m_ResizeStartRect.x + m_ResizeStartRect.w, m_ResizeStartRect.y + m_ResizeStartRect.h);
+		break;
+	case RESIZE_TOP_RIGHT:
+		m_ResizeFixedAnchor = vec2(m_ResizeStartRect.x, m_ResizeStartRect.y + m_ResizeStartRect.h);
+		break;
+	case RESIZE_BOTTOM_LEFT:
+		m_ResizeFixedAnchor = vec2(m_ResizeStartRect.x + m_ResizeStartRect.w, m_ResizeStartRect.y);
+		break;
+	case RESIZE_BOTTOM_RIGHT:
+		m_ResizeFixedAnchor = vec2(m_ResizeStartRect.x, m_ResizeStartRect.y);
+		break;
+	case RESIZE_NONE:
+	default:
+		m_ResizeFixedAnchor = vec2(m_ResizeStartRect.x, m_ResizeStartRect.y);
+		break;
+	}
+}
+
+void CHudEditor::UpdateResizing(vec2 MousePos)
+{
+	if(!m_Resizing || m_PressedModule == HudLayout::MODULE_COUNT || m_PressedResizeHandle == RESIZE_NONE || !IsEditableModule(m_PressedModule))
+		return;
+
+	float DesiredWidth = m_ResizeStartRect.w;
+	float DesiredHeight = m_ResizeStartRect.h;
+	switch(m_PressedResizeHandle)
+	{
+	case RESIZE_TOP_LEFT:
+		DesiredWidth = m_ResizeFixedAnchor.x - MousePos.x;
+		DesiredHeight = m_ResizeFixedAnchor.y - MousePos.y;
+		break;
+	case RESIZE_TOP_RIGHT:
+		DesiredWidth = MousePos.x - m_ResizeFixedAnchor.x;
+		DesiredHeight = m_ResizeFixedAnchor.y - MousePos.y;
+		break;
+	case RESIZE_BOTTOM_LEFT:
+		DesiredWidth = m_ResizeFixedAnchor.x - MousePos.x;
+		DesiredHeight = MousePos.y - m_ResizeFixedAnchor.y;
+		break;
+	case RESIZE_BOTTOM_RIGHT:
+		DesiredWidth = MousePos.x - m_ResizeFixedAnchor.x;
+		DesiredHeight = MousePos.y - m_ResizeFixedAnchor.y;
+		break;
+	case RESIZE_NONE:
+	default:
+		return;
+	}
+
+	DesiredWidth = maximum(RESIZE_MIN_SIDE, DesiredWidth);
+	DesiredHeight = maximum(RESIZE_MIN_SIDE, DesiredHeight);
+	const float BaseDiag = length(vec2(maximum(1.0f, m_ResizeStartRect.w), maximum(1.0f, m_ResizeStartRect.h)));
+	const float DesiredDiag = length(vec2(DesiredWidth, DesiredHeight));
+	const float ScaleFactor = BaseDiag > 0.0f ? DesiredDiag / BaseDiag : 1.0f;
+	const int NewScale = std::clamp(round_to_int(m_ResizeStartScale * ScaleFactor), 25, 300);
+	HudLayout::SetScale(m_PressedModule, NewScale);
+
+	const SModuleVisual UpdatedVisual = GetModuleVisual(m_PressedModule);
+	CUIRect NewRect = UpdatedVisual.m_Rect;
+
+	switch(m_PressedResizeHandle)
+	{
+	case RESIZE_TOP_LEFT:
+		NewRect.x = m_ResizeFixedAnchor.x - NewRect.w;
+		NewRect.y = m_ResizeFixedAnchor.y - NewRect.h;
+		break;
+	case RESIZE_TOP_RIGHT:
+		NewRect.x = m_ResizeFixedAnchor.x;
+		NewRect.y = m_ResizeFixedAnchor.y - NewRect.h;
+		break;
+	case RESIZE_BOTTOM_LEFT:
+		NewRect.x = m_ResizeFixedAnchor.x - NewRect.w;
+		NewRect.y = m_ResizeFixedAnchor.y;
+		break;
+	case RESIZE_BOTTOM_RIGHT:
+		NewRect.x = m_ResizeFixedAnchor.x;
+		NewRect.y = m_ResizeFixedAnchor.y;
+		break;
+	case RESIZE_NONE:
+	default:
+		break;
+	}
+
+	NewRect = SnapRect(NewRect, m_PressedModule);
+	ApplyDraggedPosition(m_PressedModule, NewRect);
+}
+
 void CHudEditor::ApplyDraggedPosition(HudLayout::EModule Module, const CUIRect &Rect)
 {
 	if(!IsEditableModule(Module))
@@ -452,6 +652,25 @@ void CHudEditor::RenderModuleOutline(const SModuleVisual &Visual, bool Hovered, 
 	Graphics()->DrawRect(Rect.x, Rect.y + Rect.h - Thickness, Rect.w, Thickness, Color, IGraphics::CORNER_NONE, 0.0f);
 	Graphics()->DrawRect(Rect.x, Rect.y, Thickness, Rect.h, Color, IGraphics::CORNER_NONE, 0.0f);
 	Graphics()->DrawRect(Rect.x + Rect.w - Thickness, Rect.y, Thickness, Rect.h, Color, IGraphics::CORNER_NONE, 0.0f);
+
+	if(!Visual.m_Editable || (!Selected && !Hovered))
+		return;
+
+	const EResizeHandle aHandles[] = {RESIZE_TOP_LEFT, RESIZE_TOP_RIGHT, RESIZE_BOTTOM_LEFT, RESIZE_BOTTOM_RIGHT};
+	for(const EResizeHandle Handle : aHandles)
+	{
+		CUIRect HandleRect = GetResizeHandleRect(Rect, Handle);
+		const bool HoveredHandle = m_HoveredResizeHandle == Handle && m_HoveredModule == Visual.m_Module;
+		const bool ActiveHandle = m_Resizing && m_PressedModule == Visual.m_Module && m_PressedResizeHandle == Handle;
+		const float Expand = ActiveHandle ? 1.5f : (HoveredHandle ? 1.0f : 0.0f);
+		HandleRect.x -= Expand;
+		HandleRect.y -= Expand;
+		HandleRect.w += Expand * 2.0f;
+		HandleRect.h += Expand * 2.0f;
+		const ColorRGBA Fill = ActiveHandle ? ColorRGBA(0.20f, 0.70f, 1.00f, 0.95f) :
+			(HoveredHandle ? ColorRGBA(0.95f, 0.95f, 1.0f, 0.95f) : ColorRGBA(0.88f, 0.88f, 0.92f, 0.82f));
+		Graphics()->DrawRect(HandleRect.x, HandleRect.y, HandleRect.w, HandleRect.h, Fill, IGraphics::CORNER_ALL, 1.6f);
+	}
 }
 
 void CHudEditor::RenderModuleLabel(const SModuleVisual &Visual) const
@@ -735,6 +954,10 @@ void CHudEditor::OnRender()
 	const bool RightClicked = RightDown && !m_RightMouseDownLast;
 
 	m_HoveredModule = HitTestModule(MousePos);
+	HudLayout::EModule HoveredResizeModule = HudLayout::MODULE_COUNT;
+	m_HoveredResizeHandle = HitTestResizeHandle(MousePos, HoveredResizeModule);
+	if(m_HoveredResizeHandle != RESIZE_NONE && HoveredResizeModule != HudLayout::MODULE_COUNT)
+		m_HoveredModule = HoveredResizeModule;
 
 	CUIRect ResetRect = {8.0f, 8.0f, 66.0f, 16.0f};
 	const bool ResetHovered = PointInRect(MousePos, ResetRect);
@@ -757,7 +980,9 @@ void CHudEditor::OnRender()
 				HudLayout::Reset(aVisuals[i].m_Module);
 		}
 		m_Dragging = false;
+		m_Resizing = false;
 		m_PressedModule = HudLayout::MODULE_COUNT;
+		m_PressedResizeHandle = RESIZE_NONE;
 		m_SelectedModule = HudLayout::MODULE_COUNT;
 		m_PressedOnReset = true;
 		Ui()->ClosePopupMenus();
@@ -767,12 +992,25 @@ void CHudEditor::OnRender()
 		m_PressedOnReset = false;
 		m_PressMousePos = MousePos;
 		m_SelectedModule = m_HoveredModule;
-		m_PressedModule = (m_HoveredModule != HudLayout::MODULE_COUNT && IsEditableModule(m_HoveredModule)) ? m_HoveredModule : HudLayout::MODULE_COUNT;
-		if(m_PressedModule != HudLayout::MODULE_COUNT)
+		if(m_HoveredResizeHandle != RESIZE_NONE && HoveredResizeModule != HudLayout::MODULE_COUNT && IsEditableModule(HoveredResizeModule))
 		{
-			const SModuleVisual Visual = GetModuleVisual(m_PressedModule);
-			m_DragMouseOffset = MousePos - vec2(Visual.m_Rect.x, Visual.m_Rect.y);
+			BeginResize(HoveredResizeModule, m_HoveredResizeHandle);
 		}
+		else
+		{
+			m_Resizing = false;
+			m_PressedResizeHandle = RESIZE_NONE;
+			m_PressedModule = (m_HoveredModule != HudLayout::MODULE_COUNT && IsEditableModule(m_HoveredModule)) ? m_HoveredModule : HudLayout::MODULE_COUNT;
+			if(m_PressedModule != HudLayout::MODULE_COUNT)
+			{
+				const SModuleVisual Visual = GetModuleVisual(m_PressedModule);
+				m_DragMouseOffset = MousePos - vec2(Visual.m_Rect.x, Visual.m_Rect.y);
+			}
+		}
+	}
+	else if(LeftDown && m_MouseDownLast && m_Resizing)
+	{
+		UpdateResizing(MousePos);
 	}
 	else if(LeftDown && m_MouseDownLast && m_PressedModule != HudLayout::MODULE_COUNT)
 	{
@@ -783,6 +1021,8 @@ void CHudEditor::OnRender()
 	else if(!LeftDown && m_MouseDownLast)
 	{
 		m_Dragging = false;
+		m_Resizing = false;
+		m_PressedResizeHandle = RESIZE_NONE;
 		m_PressedModule = HudLayout::MODULE_COUNT;
 		m_PressedOnReset = false;
 	}
