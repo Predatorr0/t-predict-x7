@@ -13,6 +13,23 @@
 #include <game/mapitems.h>
 
 // Character, "physical" player's part
+namespace
+{
+bool IsValidWeaponIndex(int Weapon)
+{
+	return Weapon >= WEAPON_HAMMER && Weapon < NUM_WEAPONS;
+}
+
+int FindFirstOwnedWeapon(const CCharacterCore &Core)
+{
+	for(int Weapon = WEAPON_HAMMER; Weapon < NUM_WEAPONS; ++Weapon)
+	{
+		if(Core.m_aWeapons[Weapon].m_Got)
+			return Weapon;
+	}
+	return -1;
+}
+} // namespace
 
 void CCharacter::SetWeapon(int Weapon)
 {
@@ -53,6 +70,8 @@ bool CCharacter::IsGrounded()
 void CCharacter::HandleJetpack()
 {
 	if(m_NumInputs < 2)
+		return;
+	if(!IsValidWeaponIndex(m_Core.m_ActiveWeapon))
 		return;
 
 	vec2 Direction = normalize(vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY));
@@ -263,6 +282,8 @@ void CCharacter::FireWeapon()
 		return;
 
 	DoWeaponSwitch();
+	if(!IsValidWeaponIndex(m_Core.m_ActiveWeapon))
+		return;
 	vec2 Direction = normalize(vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY));
 
 	bool FullAuto = false;
@@ -1272,8 +1293,8 @@ bool CCharacter::Unfreeze()
 {
 	if(m_FreezeTime > 0)
 	{
-		if(!m_Core.m_aWeapons[m_Core.m_ActiveWeapon].m_Got)
-			m_Core.m_ActiveWeapon = WEAPON_GUN;
+		if(!IsValidWeaponIndex(m_Core.m_ActiveWeapon) || !m_Core.m_aWeapons[m_Core.m_ActiveWeapon].m_Got)
+			m_Core.m_ActiveWeapon = FindFirstOwnedWeapon(m_Core);
 		m_FreezeTime = 0;
 		m_Core.m_FreezeStart = 0;
 		m_Core.m_FreezeEnd = m_Core.m_DeepFrozen ? -1 : 0;
@@ -1465,7 +1486,7 @@ void CCharacter::Read(CNetObj_Character *pChar, CNetObj_DDNetCharacter *pExtende
 		// remove weapons that are unavailable. if the current weapon is ninja just set ammo to zero in case the player is frozen
 		if(pChar->m_Weapon != m_Core.m_ActiveWeapon)
 		{
-			if(pChar->m_Weapon == WEAPON_NINJA)
+			if(pChar->m_Weapon == WEAPON_NINJA && IsValidWeaponIndex(m_Core.m_ActiveWeapon))
 				m_Core.m_aWeapons[m_Core.m_ActiveWeapon].m_Ammo = 0;
 			else
 			{
@@ -1475,7 +1496,7 @@ void CCharacter::Read(CNetObj_Character *pChar, CNetObj_DDNetCharacter *pExtende
 					SetNinjaActivationTick(-500);
 					SetNinjaCurrentMoveTime(0);
 				}
-				if(pChar->m_Weapon == m_LastSnapWeapon)
+				if(pChar->m_Weapon == m_LastSnapWeapon && IsValidWeaponIndex(m_Core.m_ActiveWeapon))
 					m_Core.m_aWeapons[m_Core.m_ActiveWeapon].m_Got = false;
 			}
 		}
@@ -1584,7 +1605,7 @@ void CCharacter::Read(CNetObj_Character *pChar, CNetObj_DDNetCharacter *pExtende
 
 	// in most cases the reload timer can be determined from the last attack tick
 	// (this is only needed for autofire weapons to prevent the predicted reload timer from desyncing)
-	if(IsLocal && m_Core.m_ActiveWeapon != WEAPON_HAMMER && !m_Core.m_aWeapons[WEAPON_NINJA].m_Got)
+	if(IsLocal && IsValidWeaponIndex(m_Core.m_ActiveWeapon) && m_Core.m_ActiveWeapon != WEAPON_HAMMER && !m_Core.m_aWeapons[WEAPON_NINJA].m_Got)
 	{
 		if(maximum(m_LastTuneZoneTick, m_LastWeaponSwitchTick) + GameWorld()->GameTickSpeed() < GameWorld()->GameTick())
 		{
