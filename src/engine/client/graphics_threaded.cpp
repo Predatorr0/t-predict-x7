@@ -2250,6 +2250,11 @@ static int GetEffectiveCustomAspect(bool ApplyCustomAspect)
 	return g_Config.m_BcCustomAspectRatio >= 100 ? g_Config.m_BcCustomAspectRatio : 0;
 }
 
+void CGraphics_Threaded::SetScreenAspectOverrideEnabled(bool Enabled)
+{
+	m_ScreenAspectOverrideEnabled = Enabled;
+}
+
 void CGraphics_Threaded::SetForcedAspect(bool Force, bool ApplyCustomAspect)
 {
 	if(!IsBackendInitialized())

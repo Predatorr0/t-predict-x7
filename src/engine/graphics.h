@@ -193,6 +193,7 @@ protected:
 	int m_ScreenRefreshRate;
 	float m_ScreenHiDPIScale;
 	float m_ScreenAspectOverride = 0.0f;
+	bool m_ScreenAspectOverrideEnabled = true;
 
 public:
 	enum
@@ -221,7 +222,7 @@ public:
 
 	int ScreenWidth() const { return m_ScreenWidth; }
 	int ScreenHeight() const { return m_ScreenHeight; }
-	float ScreenAspect() const { return m_ScreenAspectOverride > 0.0f ? m_ScreenAspectOverride : (float)ScreenWidth() / (float)ScreenHeight(); }
+	float ScreenAspect() const { return m_ScreenAspectOverrideEnabled && m_ScreenAspectOverride > 0.0f ? m_ScreenAspectOverride : (float)ScreenWidth() / (float)ScreenHeight(); }
 	float ScreenHiDPIScale() const { return m_ScreenHiDPIScale; }
 	int WindowWidth() const { return m_ScreenWidth / m_ScreenHiDPIScale; }
 	int WindowHeight() const { return m_ScreenHeight / m_ScreenHiDPIScale; }
@@ -614,6 +615,7 @@ protected:
 
 public:
 	// TClient
+	virtual void SetScreenAspectOverrideEnabled(bool Enabled) = 0;
 	virtual void SetForcedAspect(bool Force, bool ApplyCustomAspect = true) = 0;
 };
 

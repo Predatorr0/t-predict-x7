@@ -1273,6 +1273,7 @@ public:
 	TGLBackendReadPresentedImageData &GetReadPresentedImageDataFuncUnsafe() override;
 
 	// TClient
+	void SetScreenAspectOverrideEnabled(bool Enabled) override;
 	void SetForcedAspect(bool Force, bool ApplyCustomAspect = true) override;
 };
 

@@ -1438,9 +1438,10 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			CUIRect ApplyLabel, ApplyDropDown;
 			SplitRowLabelControl(Row, ApplyLabel, ApplyDropDown);
 			Ui()->DoLabel(&ApplyLabel, BCLocalize("Apply"), 14.0f, TEXTALIGN_ML);
-			const char *apAspectApplyNames[2] = {
+			const char *apAspectApplyNames[3] = {
 				BCLocalize("Game only"),
 				BCLocalize("Full"),
+				BCLocalize("Game no HUD"),
 			};
 			static CUi::SDropDownState s_AspectApplyState;
 			static CScrollRegion s_AspectApplyScrollRegion;
