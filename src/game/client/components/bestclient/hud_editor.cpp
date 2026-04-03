@@ -56,6 +56,12 @@ CUIRect ClampToBounds(CUIRect Rect, float Width, float Height)
 	Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, Height - Rect.h));
 	return Rect;
 }
+
+float ChatInputBottomExtra(const CChat &Chat)
+{
+	const float ScaledFontSize = Chat.FontSize() * (8.0f / 6.0f);
+	return maximum(2.25f * ScaledFontSize, maximum(ScaledFontSize + 4.0f, 16.0f));
+}
 } // namespace
 
 void CHudEditor::OnConsoleInit()
@@ -319,7 +325,10 @@ void CHudEditor::ApplyDraggedPosition(HudLayout::EModule Module, const CUIRect &
 
 	const float CanvasX = Rect.x * (HudLayout::CANVAS_WIDTH / maximum(HudWidth(), 1.0f));
 	if(Module == HudLayout::MODULE_CHAT)
-		HudLayout::SetPosition(Module, CanvasX, Rect.y + Rect.h);
+	{
+		const float BottomAnchor = Rect.y + Rect.h - ChatInputBottomExtra(GameClient()->m_Chat);
+		HudLayout::SetPosition(Module, CanvasX, BottomAnchor);
+	}
 	else
 		HudLayout::SetPosition(Module, CanvasX, Rect.y);
 }

@@ -5552,7 +5552,32 @@ CUIRect CChat::GetHudRect(float HudWidth, float HudHeight, bool ForcePreview) co
 	const bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f);
 	const bool ShowLargeArea = ForcePreview || m_Show || (m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) || g_Config.m_ClShowChat == 2;
 	const float VisibleHeight = IsScoreBoardOpen ? 93.0f * Scale : (ShowLargeArea ? 223.0f * Scale : 73.0f * Scale);
-	CUIRect Rect = {Layout.m_X, Layout.m_Y - VisibleHeight, ChatWidth(), VisibleHeight};
+	float ExtraTop = 0.0f;
+	float ExtraBottom = 0.0f;
+	float VisibleWidth = ChatWidth();
+
+	// In HUD editor preview and while chat input is open, include the input row and
+	// translate settings button in the hitbox/outline area.
+	if(ForcePreview || m_Mode != MODE_NONE)
+	{
+		const float ScaledFontSize = FontSize() * (8.0f / 6.0f);
+		const float TranslateButtonSize = maximum(16.0f, ScaledFontSize * 1.35f);
+		const float TranslateButtonGap = 4.0f;
+		const float InputLineWidth = maximum(ChatWidth() - 190.0f * Scale, 190.0f * Scale);
+		const float ModeSuffixWidth = TextRender()->TextWidth(ScaledFontSize, ": ");
+		const float PrefixWidth = maximum(
+			TextRender()->TextWidth(ScaledFontSize, Localize("All")) + ModeSuffixWidth,
+			maximum(
+				TextRender()->TextWidth(ScaledFontSize, Localize("Team")) + ModeSuffixWidth,
+				TextRender()->TextWidth(ScaledFontSize, Localize("Chat")) + ModeSuffixWidth));
+		const float InputAndTranslateWidth = maximum(InputLineWidth, PrefixWidth + 40.0f + TranslateButtonGap + TranslateButtonSize);
+
+		VisibleWidth = maximum(VisibleWidth, InputAndTranslateWidth);
+		ExtraTop = ScaledFontSize;
+		ExtraBottom = maximum(2.25f * ScaledFontSize, maximum(ScaledFontSize + 4.0f, 16.0f));
+	}
+
+	CUIRect Rect = {Layout.m_X, Layout.m_Y - VisibleHeight - ExtraTop, VisibleWidth, VisibleHeight + ExtraTop + ExtraBottom};
 	Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, HudWidth - Rect.w));
 	Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, HudHeight - Rect.h));
 	return Rect;
