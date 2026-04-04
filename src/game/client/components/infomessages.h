@@ -7,6 +7,7 @@
 #include <engine/textrender.h>
 
 #include <game/client/component.h>
+#include <game/client/ui_rect.h>
 #include <game/client/render.h>
 class CInfoMessages : public CComponent
 {
@@ -79,6 +80,8 @@ public:
 	void OnRender() override;
 	void OnMessage(int MsgType, void *pRawMsg) override;
 	void OnInit() override;
+	CUIRect GetHudRect(float HudWidth, float HudHeight, bool ForcePreview = false) const;
+	void RenderHud(bool ForcePreview = false);
 };
 
 #endif

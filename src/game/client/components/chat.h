@@ -149,6 +149,10 @@ class CChat : public CComponent
 	bool m_PrevShowChat;
 	bool m_PrevModeActive;
 	bool m_PrevChatSelectionActive;
+	float m_PrevHudLayoutX;
+	float m_PrevHudLayoutY;
+	int m_PrevHudLayoutScale;
+	bool m_PrevHudLayoutEnabled;
 
 	CLine m_aLines[MAX_LINES];
 	int m_CurrentLine;
@@ -378,7 +382,7 @@ public:
 	float MessagePaddingX() const { return FontSize() * (5 / 6.f); }
 	float MessagePaddingY() const { return FontSize() * (1 / 6.f); }
 	float MessageTeeSize() const { return FontSize() * (7 / 6.f); }
-	float MessageRounding() const { return FontSize() * (1 / 2.f); }
+	float MessageRounding() const { return FontSize() * 0.38f; }
 
 	// ----- send functions -----
 

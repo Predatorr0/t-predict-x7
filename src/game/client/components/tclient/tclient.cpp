@@ -767,7 +767,8 @@ void CTClient::RenderMiniVoteHud()
 	CUIRect Outer = {Layout.m_X, Layout.m_Y, 70.0f * Scale, 35.0f * Scale};
 	Outer.x = std::clamp(Outer.x, 0.0f, maximum(0.0f, HudWidth - Outer.w));
 	Outer.y = std::clamp(Outer.y, 0.0f, maximum(0.0f, HudHeight - Outer.h));
-	Outer.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_R, 3.0f * Scale);
+	const int Corners = HudLayout::BackgroundCorners(IGraphics::CORNER_ALL, Outer.x, Outer.y, Outer.w, Outer.h, HudWidth, HudHeight);
+	Outer.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.34f), Corners, 2.35f * Scale);
 
 	CUIRect View = Outer;
 	View.Margin(3.0f * Scale, &View);

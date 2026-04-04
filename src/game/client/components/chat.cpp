@@ -251,6 +251,10 @@ CChat::CChat()
 	m_MouseRelease = vec2(0.0f, 0.0f);
 	m_HasSelection = false;
 	m_WantsSelectionCopy = false;
+	m_PrevHudLayoutX = -10000.0f;
+	m_PrevHudLayoutY = -10000.0f;
+	m_PrevHudLayoutScale = -1;
+	m_PrevHudLayoutEnabled = true;
 	m_PrevModeActive = false;
 	m_PrevChatSelectionActive = false;
 	m_TranslateButtonPressed = false;
@@ -342,6 +346,10 @@ void CChat::ClearLines()
 	m_PrevShowChat = false;
 	m_PrevModeActive = false;
 	m_PrevChatSelectionActive = false;
+	m_PrevHudLayoutX = -10000.0f;
+	m_PrevHudLayoutY = -10000.0f;
+	m_PrevHudLayoutScale = -1;
+	m_PrevHudLayoutEnabled = true;
 }
 
 void CChat::OnWindowResize()
@@ -4255,6 +4263,7 @@ void CChat::OnPrepareLines(float y, int StartLine, int HoveredTranslateLineIndex
 	const float Height = HudLayout::CANVAS_HEIGHT;
 	const float Width = Height * Graphics()->ScreenAspect();
 	const auto Layout = HudLayout::Get(HudLayout::MODULE_CHAT, Width, Height);
+	const bool LayoutEnabled = HudLayout::IsEnabled(HudLayout::MODULE_CHAT);
 	const float LayoutScale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
 	float x = Layout.m_X;
 	float FontSize = this->FontSize();
@@ -4265,12 +4274,17 @@ void CChat::OnPrepareLines(float y, int StartLine, int HoveredTranslateLineIndex
 	const bool ModeActive = m_Mode != MODE_NONE;
 	const bool ChatSelectionActive = m_HasSelection && !m_MouseIsPress && !m_WantsSelectionCopy && !m_Input.HasSelection();
 	const bool ForceSelectionRefresh = m_MouseIsPress || m_WantsSelectionCopy || ChatSelectionActive != m_PrevChatSelectionActive;
-	const bool ForceRecreate = IsScoreBoardOpen != m_PrevScoreBoardShowed || ShowLargeArea != m_PrevShowChat || ModeActive != m_PrevModeActive || ForceSelectionRefresh || HoveredTranslateLineIndex != m_HoveredTranslateLineIndex;
+	const bool LayoutChanged = Layout.m_X != m_PrevHudLayoutX || Layout.m_Y != m_PrevHudLayoutY || Layout.m_Scale != m_PrevHudLayoutScale || LayoutEnabled != m_PrevHudLayoutEnabled;
+	const bool ForceRecreate = IsScoreBoardOpen != m_PrevScoreBoardShowed || ShowLargeArea != m_PrevShowChat || ModeActive != m_PrevModeActive || ForceSelectionRefresh || HoveredTranslateLineIndex != m_HoveredTranslateLineIndex || LayoutChanged;
 	const bool KeepLinesAlive = m_MediaViewerOpen && ValidateMediaViewerLine();
 	m_PrevScoreBoardShowed = IsScoreBoardOpen;
 	m_PrevShowChat = ShowLargeArea;
 	m_PrevModeActive = ModeActive;
 	m_PrevChatSelectionActive = ChatSelectionActive;
+	m_PrevHudLayoutX = Layout.m_X;
+	m_PrevHudLayoutY = Layout.m_Y;
+	m_PrevHudLayoutScale = Layout.m_Scale;
+	m_PrevHudLayoutEnabled = LayoutEnabled;
 	m_HoveredTranslateLineIndex = HoveredTranslateLineIndex;
 
 	const int TeeSize = MessageTeeSize();
@@ -4723,6 +4737,8 @@ void CChat::OnRender()
 
 	const bool BcChatMessageAnimEnabled = BCUiAnimations::Enabled() && g_Config.m_BcChatAnimation != 0;
 	const auto Layout = HudLayout::Get(HudLayout::MODULE_CHAT, Width, Height);
+	if(!HudLayout::IsEnabled(HudLayout::MODULE_CHAT))
+		return;
 	const float LayoutScale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
 	float x = Layout.m_X;
 	const vec2 WindowSize(maximum(1.0f, (float)Graphics()->WindowWidth()), maximum(1.0f, (float)Graphics()->WindowHeight()));
@@ -5549,6 +5565,9 @@ void CChat::EnsureCoherentWidth() const
 
 CUIRect CChat::GetHudRect(float HudWidth, float HudHeight, bool ForcePreview) const
 {
+	if(!ForcePreview && !HudLayout::IsEnabled(HudLayout::MODULE_CHAT))
+		return CUIRect{0.0f, 0.0f, 0.0f, 0.0f};
+
 	const auto Layout = HudLayout::Get(HudLayout::MODULE_CHAT, HudWidth, HudHeight);
 	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
 	const bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f);
@@ -5587,6 +5606,9 @@ CUIRect CChat::GetHudRect(float HudWidth, float HudHeight, bool ForcePreview) co
 
 void CChat::RenderHud(bool ForcePreview)
 {
+	if(!ForcePreview && !HudLayout::IsEnabled(HudLayout::MODULE_CHAT))
+		return;
+
 	if(ForcePreview && !m_aLines[m_CurrentLine].m_Initialized && m_Mode == MODE_NONE && !m_Show)
 	{
 		const float Height = HudLayout::CANVAS_HEIGHT;

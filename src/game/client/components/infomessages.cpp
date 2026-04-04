@@ -15,6 +15,7 @@
 
 #include <game/client/animstate.h>
 #include <game/client/bc_ui_animations.h>
+#include <game/client/components/hud_layout.h>
 #include <game/client/gameclient.h>
 #include <game/client/prediction/entities/character.h>
 #include <game/client/prediction/gameworld.h>
@@ -445,25 +446,77 @@ void CInfoMessages::RenderFinishMsg(const CInfoMsg &InfoMsg, float x, float y)
 	RenderTools()->RenderTee(CAnimState::GetIdle(), &InfoMsg.m_apVictimManagedTeeRenderInfos[0]->TeeRenderInfo(), Emote, vec2(-1, 0), TeeRenderPos);
 }
 
-void CInfoMessages::OnRender()
+CUIRect CInfoMessages::GetHudRect(float HudWidth, float HudHeight, bool ForcePreview) const
 {
+	(void)HudHeight;
+	if(!ForcePreview && !HudLayout::IsEnabled(HudLayout::MODULE_KILLFEED))
+		return CUIRect{};
+
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_KILLFEED, HudWidth, HudLayout::CANVAS_HEIGHT);
+	const float Scale = (1.5f * 400.0f * 3.0f) / HudLayout::CANVAS_HEIGHT;
+	const float Width = 155.0f;
+	const float Height = ForcePreview ? (3.0f * ROW_HEIGHT) / Scale : ROW_HEIGHT / Scale;
+	CUIRect Rect = {Layout.m_X, Layout.m_Y, Width, Height};
+	Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, HudWidth - Rect.w));
+	Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, HudLayout::CANVAS_HEIGHT - Rect.h));
+	return Rect;
+}
+
+void CInfoMessages::RenderHud(bool ForcePreview)
+{
+	if(!ForcePreview && !HudLayout::IsEnabled(HudLayout::MODULE_KILLFEED))
+		return;
+
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
 	const float Height = 1.5f * 400.0f * 3.0f;
 	const float Width = Height * Graphics()->ScreenAspect();
+	const float RenderScale = Height / HudLayout::CANVAS_HEIGHT;
 
 	Graphics()->MapScreen(0, 0, Width, Height);
 	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-	int Showfps = g_Config.m_ClShowfps;
-#if defined(CONF_VIDEORECORDER)
-	if(IVideo::Current())
-		Showfps = 0;
-#endif
-	const float StartX = Width - 10.0f;
-	const float StartY = 30.0f + (Showfps ? 100.0f : 0.0f) + (g_Config.m_ClShowpred && Client()->State() != IClient::STATE_DEMOPLAYBACK ? 100.0f : 0.0f);
+	const CUIRect LayoutRect = GetHudRect(Width / RenderScale, HudLayout::CANVAS_HEIGHT, ForcePreview);
+	const float StartX = (LayoutRect.x + LayoutRect.w) * RenderScale;
+	const float StartY = LayoutRect.y * RenderScale;
 	const int64_t Now = time_get();
+
+	if(ForcePreview)
+	{
+		CInfoMsg Preview = CreateInfoMsg(TYPE_KILL);
+		str_copy(Preview.m_aVictimName, "Enemy");
+		str_copy(Preview.m_aKillerName, "Player");
+		Preview.m_TeamSize = 1;
+		Preview.m_Weapon = WEAPON_HAMMER;
+		const int VictimId = GameClient()->m_Snap.m_LocalClientId >= 0 ? GameClient()->m_Snap.m_LocalClientId : -1;
+		int KillerId = -1;
+		for(int i = 0; i < MAX_CLIENTS; ++i)
+		{
+			if(i != VictimId && GameClient()->m_aClients[i].m_Active)
+			{
+				KillerId = i;
+				break;
+			}
+		}
+		Preview.m_aVictimIds[0] = VictimId;
+		Preview.m_KillerId = KillerId;
+		if(VictimId >= 0 && VictimId < MAX_CLIENTS && GameClient()->m_aClients[VictimId].m_Active)
+		{
+			str_copy(Preview.m_aVictimName, GameClient()->m_aClients[VictimId].m_aName);
+			Preview.m_apVictimManagedTeeRenderInfos[0] = GameClient()->CreateManagedTeeRenderInfo(GameClient()->m_aClients[VictimId]);
+		}
+		if(KillerId >= 0 && KillerId < MAX_CLIENTS && GameClient()->m_aClients[KillerId].m_Active)
+		{
+			str_copy(Preview.m_aKillerName, GameClient()->m_aClients[KillerId].m_aName);
+			Preview.m_pKillerManagedTeeRenderInfo = GameClient()->CreateManagedTeeRenderInfo(GameClient()->m_aClients[KillerId]);
+		}
+		CreateTextContainersIfNotCreated(Preview);
+		for(int Row = 0; Row < 3; ++Row)
+			RenderKillMsg(Preview, StartX, StartY + Row * ROW_HEIGHT);
+		DeleteTextContainers(Preview);
+		return;
+	}
 
 	float y = StartY;
 	for(int i = 1; i <= MAX_INFOMSGS; i++)
@@ -518,4 +571,9 @@ void CInfoMessages::OnRender()
 			y += ROW_HEIGHT;
 		}
 	}
+}
+
+void CInfoMessages::OnRender()
+{
+	RenderHud(false);
 }

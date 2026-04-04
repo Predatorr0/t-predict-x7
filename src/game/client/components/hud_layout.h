@@ -38,6 +38,7 @@ struct SModuleLayout
 	float m_Y;
 	int m_Scale;
 	int m_Mode;
+	bool m_Enabled;
 	bool m_BackgroundEnabled;
 	unsigned m_BackgroundColor;
 };
@@ -59,6 +60,10 @@ const char *Name(EModule Module);
 SModuleLayout Get(EModule Module, float HudWidth, float HudHeight);
 void SetPosition(EModule Module, float X, float Y);
 void SetScale(EModule Module, int Scale);
+void SetEnabled(EModule Module, bool Enabled);
+bool IsEnabled(EModule Module);
+void ResetPosition(EModule Module);
+void ResetSettings(EModule Module);
 void Reset(EModule Module);
 void ResetEditableModules();
 SModuleRect ClampRectToScreen(const SModuleRect &Rect, float HudWidth, float HudHeight);
