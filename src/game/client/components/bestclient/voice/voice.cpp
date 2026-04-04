@@ -1665,7 +1665,7 @@ void CVoiceChat::RenderHudMuteStatusIndicator(float HudWidth, float HudHeight, b
 {
 	const bool ShowMicMuted = g_Config.m_BcVoiceChatMicMuted != 0;
 	const bool ShowHeadphonesMuted = g_Config.m_BcVoiceChatHeadphonesMuted != 0;
-	if(!ForcePreview && !ShowMicMuted && !ShowHeadphonesMuted)
+	if(!ForcePreview && (!HudLayout::IsEnabled(HudLayout::MODULE_VOICE_STATUS) || (!ShowMicMuted && !ShowHeadphonesMuted)))
 		return;
 	const CUIRect Rect = GetHudMuteStatusIndicatorRect(HudWidth, HudHeight, ForcePreview);
 	const auto Layout = HudLayout::Get(HudLayout::MODULE_VOICE_STATUS, HudWidth, HudHeight);
@@ -1678,9 +1678,9 @@ void CVoiceChat::RenderHudMuteStatusIndicator(float HudWidth, float HudHeight, b
 	const float DrawX = Rect.x;
 	const float DrawY = Rect.y;
 
-	const ColorRGBA BackgroundColor = ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f));
+	const ColorRGBA BackgroundColor = ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.0f, 0.0f, 0.0f, 0.32f));
 	const int Corners = VoiceHudBackgroundCorners(GameClient(), HudLayout::MODULE_VOICE_STATUS, IGraphics::CORNER_ALL, DrawX, DrawY, BoxWidth, BoxHeight, HudWidth, HudHeight);
-	Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, BackgroundColor, Corners, 3.0f * Scale);
+	Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, BackgroundColor, Corners, 2.3f * Scale);
 
 	struct SVoiceStatusIcon
 	{
@@ -1720,7 +1720,7 @@ CUIRect CVoiceChat::GetHudMuteStatusIndicatorRect(float HudWidth, float HudHeigh
 {
 	const bool ShowMicMuted = g_Config.m_BcVoiceChatMicMuted != 0;
 	const bool ShowHeadphonesMuted = g_Config.m_BcVoiceChatHeadphonesMuted != 0;
-	if(!ForcePreview && !ShowMicMuted && !ShowHeadphonesMuted)
+	if(!ForcePreview && (!HudLayout::IsEnabled(HudLayout::MODULE_VOICE_STATUS) || (!ShowMicMuted && !ShowHeadphonesMuted)))
 		return CUIRect{0.0f, 0.0f, 0.0f, 0.0f};
 
 	const auto Layout = HudLayout::Get(HudLayout::MODULE_VOICE_STATUS, HudWidth, HudHeight);
@@ -1735,7 +1735,7 @@ CUIRect CVoiceChat::GetHudMuteStatusIndicatorRect(float HudWidth, float HudHeigh
 
 void CVoiceChat::RenderHudTalkingIndicator(float HudWidth, float HudHeight, bool ForcePreview)
 {
-	if(!ForcePreview && g_Config.m_BcVoiceChatEnable == 0)
+	if(!ForcePreview && (!HudLayout::IsEnabled(HudLayout::MODULE_VOICE_TALKERS) || g_Config.m_BcVoiceChatEnable == 0))
 		return;
 
 	const std::vector<STalkingEntry> &vEntries = m_vTalkingEntries;
@@ -1793,7 +1793,7 @@ void CVoiceChat::RenderHudTalkingIndicator(float HudWidth, float HudHeight, bool
 		if(BackgroundEnabled)
 		{
 			const int Corners = VoiceHudBackgroundCorners(GameClient(), HudLayout::MODULE_VOICE_TALKERS, IGraphics::CORNER_ALL, DrawX, DrawY, BoxWidth, BoxHeight, HudWidth, HudHeight);
-			Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, ApplyVoiceHudAlpha(GameClient(), BackgroundColor), Corners, 4.0f * Scale);
+			Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, ApplyVoiceHudAlpha(GameClient(), BackgroundColor.WithMultipliedAlpha(0.88f)), Corners, 3.1f * Scale);
 		}
 
 		for(int Index = 0; Index < RenderCount; ++Index)
@@ -1801,7 +1801,7 @@ void CVoiceChat::RenderHudTalkingIndicator(float HudWidth, float HudHeight, bool
 			const STalkingEntry &Entry = vPreviewEntries[Index];
 			const float RowY = DrawY + Index * (RowHeight + RowGap);
 			const int RowCorners = VoiceHudBackgroundCorners(GameClient(), HudLayout::MODULE_VOICE_TALKERS, IGraphics::CORNER_ALL, DrawX, RowY, BoxWidth, RowHeight, HudWidth, HudHeight);
-			Graphics()->DrawRect(DrawX, RowY, BoxWidth, RowHeight, ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.06f, 0.07f, 0.09f, 0.72f)), RowCorners, 4.0f * Scale);
+			Graphics()->DrawRect(DrawX, RowY, BoxWidth, RowHeight, ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.06f, 0.07f, 0.09f, 0.60f)), RowCorners, 3.1f * Scale);
 
 			const float AvatarX = DrawX + RowPadding;
 			const float AvatarY = RowY + (RowHeight - AvatarSize) * 0.5f;
@@ -1884,7 +1884,7 @@ void CVoiceChat::RenderHudTalkingIndicator(float HudWidth, float HudHeight, bool
 	if(BackgroundEnabled)
 	{
 		const int Corners = VoiceHudBackgroundCorners(GameClient(), HudLayout::MODULE_VOICE_TALKERS, IGraphics::CORNER_ALL, DrawX, DrawY, BoxWidth, BoxHeight, HudWidth, HudHeight);
-		Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, ApplyVoiceHudAlpha(GameClient(), BackgroundColor), Corners, 4.0f * Scale);
+		Graphics()->DrawRect(DrawX, DrawY, BoxWidth, BoxHeight, ApplyVoiceHudAlpha(GameClient(), BackgroundColor.WithMultipliedAlpha(0.88f)), Corners, 3.1f * Scale);
 	}
 
 	for(int Index = 0; Index < RenderCount; ++Index)
@@ -1892,7 +1892,7 @@ void CVoiceChat::RenderHudTalkingIndicator(float HudWidth, float HudHeight, bool
 		const STalkingEntry &Entry = vEntries[Index];
 		const float RowY = DrawY + Index * (RowHeight + RowGap);
 		const int RowCorners = VoiceHudBackgroundCorners(GameClient(), HudLayout::MODULE_VOICE_TALKERS, IGraphics::CORNER_ALL, DrawX, RowY, BoxWidth, RowHeight, HudWidth, HudHeight);
-		Graphics()->DrawRect(DrawX, RowY, BoxWidth, RowHeight, ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.06f, 0.07f, 0.09f, 0.72f)), RowCorners, 4.0f * Scale);
+		Graphics()->DrawRect(DrawX, RowY, BoxWidth, RowHeight, ApplyVoiceHudAlpha(GameClient(), ColorRGBA(0.06f, 0.07f, 0.09f, 0.60f)), RowCorners, 3.1f * Scale);
 
 		const float AvatarX = DrawX + RowPadding;
 		const float AvatarY = RowY + (RowHeight - AvatarSize) * 0.5f;
@@ -1953,6 +1953,9 @@ void CVoiceChat::RenderHudTalkingIndicator(float HudWidth, float HudHeight, bool
 
 CUIRect CVoiceChat::GetHudTalkingIndicatorRect(float HudWidth, float HudHeight, bool ForcePreview) const
 {
+	if(!ForcePreview && !HudLayout::IsEnabled(HudLayout::MODULE_VOICE_TALKERS))
+		return CUIRect{0.0f, 0.0f, 0.0f, 0.0f};
+
 	const std::vector<STalkingEntry> &vEntries = m_vTalkingEntries;
 	const int EntryCount = ForcePreview ? 2 : minimum((int)vEntries.size(), 5);
 	if(!ForcePreview && EntryCount <= 0)

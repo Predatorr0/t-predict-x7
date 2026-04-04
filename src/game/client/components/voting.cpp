@@ -343,6 +343,9 @@ void CVoting::Render()
 CUIRect CVoting::GetHudRect(float HudWidth, float HudHeight, bool ForcePreview) const
 {
 	(void)HudHeight;
+	if(!ForcePreview && !HudLayout::IsEnabled(HudLayout::MODULE_VOTES))
+		return CUIRect{0.0f, 0.0f, 0.0f, 0.0f};
+
 	if(g_Config.m_TcMiniVoteHud > 0)
 	{
 		const auto Layout = HudLayout::Get(HudLayout::MODULE_VOTES, HudWidth, HudLayout::CANVAS_HEIGHT);
@@ -367,6 +370,9 @@ CUIRect CVoting::GetHudRect(float HudWidth, float HudHeight, bool ForcePreview) 
 
 void CVoting::RenderHud(bool ForcePreview)
 {
+	if(!ForcePreview && !HudLayout::IsEnabled(HudLayout::MODULE_VOTES))
+		return;
+
 	if(!ForcePreview && ((!g_Config.m_ClShowVotesAfterVoting && !GameClient()->m_Scoreboard.IsActive() && TakenChoice()) || !IsVoting()))
 		return;
 	const int Seconds = ForcePreview ? 12 : SecondsLeft();
@@ -388,7 +394,8 @@ void CVoting::RenderHud(bool ForcePreview)
 	const auto Layout = HudLayout::Get(HudLayout::MODULE_VOTES, HudWidth, HudHeight);
 	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
 	CUIRect Outer = GetHudRect(HudWidth, HudHeight, true);
-	Outer.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_R, 3.0f * Scale);
+	const int Corners = HudLayout::BackgroundCorners(IGraphics::CORNER_ALL, Outer.x, Outer.y, Outer.w, Outer.h, HudWidth, HudHeight);
+	Outer.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.34f), Corners, 2.35f * Scale);
 	CUIRect View = Outer;
 	View.Margin(3.0f * Scale, &View);
 
