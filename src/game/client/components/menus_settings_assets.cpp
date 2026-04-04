@@ -1,5 +1,6 @@
 #include "menus.h"
 
+#include <base/log.h>
 #include <base/system.h>
 
 #include <engine/font_icons.h>
@@ -13,6 +14,7 @@
 #include <game/client/ui_listbox.h>
 #include <game/localization.h>
 
+#include <algorithm>
 #include <chrono>
 
 using namespace std::chrono_literals;
@@ -39,6 +41,56 @@ enum
 	ASSETS_TAB_AUDIO = 8,
 	NUMBER_OF_ASSETS_TABS = 9,
 };
+
+static int FavoriteAssetTabFromString(const char *pTab)
+{
+	if(str_comp_nocase(pTab, "entities") == 0)
+		return ASSETS_TAB_ENTITIES;
+	if(str_comp_nocase(pTab, "game") == 0)
+		return ASSETS_TAB_GAME;
+	if(str_comp_nocase(pTab, "emoticons") == 0)
+		return ASSETS_TAB_EMOTICONS;
+	if(str_comp_nocase(pTab, "particles") == 0)
+		return ASSETS_TAB_PARTICLES;
+	if(str_comp_nocase(pTab, "hud") == 0)
+		return ASSETS_TAB_HUD;
+	if(str_comp_nocase(pTab, "extras") == 0)
+		return ASSETS_TAB_EXTRAS;
+	if(str_comp_nocase(pTab, "cursor") == 0)
+		return ASSETS_TAB_CURSOR;
+	if(str_comp_nocase(pTab, "arrow") == 0)
+		return ASSETS_TAB_ARROW;
+	if(str_comp_nocase(pTab, "audio") == 0)
+		return ASSETS_TAB_AUDIO;
+	return -1;
+}
+
+static const char *FavoriteAssetTabToString(int Tab)
+{
+	switch(Tab)
+	{
+	case ASSETS_TAB_ENTITIES:
+		return "entities";
+	case ASSETS_TAB_GAME:
+		return "game";
+	case ASSETS_TAB_EMOTICONS:
+		return "emoticons";
+	case ASSETS_TAB_PARTICLES:
+		return "particles";
+	case ASSETS_TAB_HUD:
+		return "hud";
+	case ASSETS_TAB_EXTRAS:
+		return "extras";
+	case ASSETS_TAB_CURSOR:
+		return "cursor";
+	case ASSETS_TAB_ARROW:
+		return "arrow";
+	case ASSETS_TAB_AUDIO:
+		return "audio";
+	default:
+		return "";
+	}
+}
 
 void CMenus::LoadEntities(SCustomEntities *pEntitiesItem, void *pUser)
 {
@@ -453,6 +505,97 @@ static void ClearAssetList(std::vector<TName> &vList, IGraphics *pGraphics)
 	vList.clear();
 }
 
+void CMenus::ConAddFavoriteAsset(IConsole::IResult *pResult, void *pUserData)
+{
+	auto *pSelf = static_cast<CMenus *>(pUserData);
+	pSelf->AddFavoriteAsset(pResult->GetString(0), pResult->GetString(1));
+}
+
+void CMenus::ConRemoveFavoriteAsset(IConsole::IResult *pResult, void *pUserData)
+{
+	auto *pSelf = static_cast<CMenus *>(pUserData);
+	pSelf->RemoveFavoriteAsset(pResult->GetString(0), pResult->GetString(1));
+}
+
+void CMenus::ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData)
+{
+	auto *pSelf = static_cast<CMenus *>(pUserData);
+	pSelf->OnConfigSave(pConfigManager);
+}
+
+void CMenus::OnConfigSave(IConfigManager *pConfigManager)
+{
+	for(int Tab = 0; Tab < NUMBER_OF_ASSETS_TABS; ++Tab)
+	{
+		const char *pTabName = FavoriteAssetTabToString(Tab);
+		for(const auto &Favorite : m_aAssetFavorites[Tab])
+		{
+			char aBuffer[IO_MAX_PATH_LENGTH + 64];
+			const char *pEnd = aBuffer + sizeof(aBuffer) - 2;
+
+			str_copy(aBuffer, "add_favorite_asset \"");
+			char *pDst = aBuffer + str_length(aBuffer);
+			str_escape(&pDst, pTabName, pEnd);
+			str_append(aBuffer, "\" \"");
+			pDst = aBuffer + str_length(aBuffer);
+			str_escape(&pDst, Favorite.c_str(), pEnd);
+			str_append(aBuffer, "\"");
+
+			pConfigManager->WriteLine(aBuffer, ConfigDomain::BESTCLIENT);
+		}
+	}
+}
+
+void CMenus::AddFavoriteAsset(const char *pTab, const char *pName)
+{
+	AddFavoriteAsset(FavoriteAssetTabFromString(pTab), pName);
+}
+
+void CMenus::RemoveFavoriteAsset(const char *pTab, const char *pName)
+{
+	RemoveFavoriteAsset(FavoriteAssetTabFromString(pTab), pName);
+}
+
+void CMenus::AddFavoriteAsset(int Tab, const char *pName)
+{
+	if(Tab < 0 || Tab >= NUMBER_OF_ASSETS_TABS)
+	{
+		log_error("menus", "Invalid favorite asset tab '%d'", Tab);
+		return;
+	}
+	if(pName[0] == '\0')
+	{
+		return;
+	}
+
+	const auto &[_, Inserted] = m_aAssetFavorites[Tab].emplace(pName);
+	if(Inserted)
+	{
+		gs_aInitCustomList[Tab] = true;
+	}
+}
+
+void CMenus::RemoveFavoriteAsset(int Tab, const char *pName)
+{
+	if(Tab < 0 || Tab >= NUMBER_OF_ASSETS_TABS)
+	{
+		log_error("menus", "Invalid favorite asset tab '%d'", Tab);
+		return;
+	}
+
+	const auto FavoriteIt = m_aAssetFavorites[Tab].find(pName);
+	if(FavoriteIt != m_aAssetFavorites[Tab].end())
+	{
+		m_aAssetFavorites[Tab].erase(FavoriteIt);
+		gs_aInitCustomList[Tab] = true;
+	}
+}
+
+bool CMenus::IsFavoriteAsset(int Tab, const char *pName) const
+{
+	return Tab >= 0 && Tab < NUMBER_OF_ASSETS_TABS && m_aAssetFavorites[Tab].contains(pName);
+}
+
 void CMenus::ClearCustomItems(int CurTab)
 {
 	if(CurTab == ASSETS_TAB_ENTITIES)
@@ -561,6 +704,17 @@ static int InitSearchList(std::vector<const TName *> &vpSearchList, std::vector<
 void CMenus::RenderSettingsCustom(CUIRect MainView)
 {
 	CUIRect TabBar, CustomList, QuickSearch, DirectoryButton, ReloadButton;
+	auto SortSearchList = [this](auto &vpSearchList) {
+		std::sort(vpSearchList.begin(), vpSearchList.end(), [this](const auto *pLeft, const auto *pRight) {
+			const bool LeftFavorite = IsFavoriteAsset(s_CurCustomTab, pLeft->m_aName);
+			const bool RightFavorite = IsFavoriteAsset(s_CurCustomTab, pRight->m_aName);
+			if(LeftFavorite != RightFavorite)
+			{
+				return LeftFavorite;
+			}
+			return str_comp(pLeft->m_aName, pRight->m_aName) < 0;
+		});
+	};
 
 	MainView.HSplitTop(20.0f, &TabBar, &MainView);
 	const float TabWidth = TabBar.w / NUMBER_OF_ASSETS_TABS;
@@ -687,38 +841,47 @@ void CMenus::RenderSettingsCustom(CUIRect MainView)
 
 				gs_vpSearchEntitiesList.push_back(pEntity);
 			}
+			SortSearchList(gs_vpSearchEntitiesList);
 		}
 		else if(s_CurCustomTab == ASSETS_TAB_GAME)
 		{
 			ListSize = InitSearchList(gs_vpSearchGamesList, m_vGameList);
+			SortSearchList(gs_vpSearchGamesList);
 		}
 		else if(s_CurCustomTab == ASSETS_TAB_EMOTICONS)
 		{
 			ListSize = InitSearchList(gs_vpSearchEmoticonsList, m_vEmoticonList);
+			SortSearchList(gs_vpSearchEmoticonsList);
 		}
 		else if(s_CurCustomTab == ASSETS_TAB_PARTICLES)
 		{
 			ListSize = InitSearchList(gs_vpSearchParticlesList, m_vParticlesList);
+			SortSearchList(gs_vpSearchParticlesList);
 		}
 		else if(s_CurCustomTab == ASSETS_TAB_HUD)
 		{
 			ListSize = InitSearchList(gs_vpSearchHudList, m_vHudList);
+			SortSearchList(gs_vpSearchHudList);
 		}
 		else if(s_CurCustomTab == ASSETS_TAB_EXTRAS)
 		{
 			ListSize = InitSearchList(gs_vpSearchExtrasList, m_vExtrasList);
+			SortSearchList(gs_vpSearchExtrasList);
 		}
 		else if(s_CurCustomTab == ASSETS_TAB_CURSOR)
 		{
 			ListSize = InitSearchList(gs_vpSearchCursorList, m_vCursorList);
+			SortSearchList(gs_vpSearchCursorList);
 		}
 		else if(s_CurCustomTab == ASSETS_TAB_ARROW)
 		{
 			ListSize = InitSearchList(gs_vpSearchArrowList, m_vArrowList);
+			SortSearchList(gs_vpSearchArrowList);
 		}
 		else if(s_CurCustomTab == ASSETS_TAB_AUDIO)
 		{
 			ListSize = InitSearchList(gs_vpSearchAudioPackList, m_vAudioPackList);
+			SortSearchList(gs_vpSearchAudioPackList);
 		}
 		gs_aInitCustomList[s_CurCustomTab] = false;
 		gs_aCustomListSize[s_CurCustomTab] = ListSize;
@@ -784,6 +947,7 @@ void CMenus::RenderSettingsCustom(CUIRect MainView)
 		const SCustomItem *pItem = GetCustomItem(s_CurCustomTab, i);
 		if(pItem == nullptr)
 			continue;
+		const bool Favorite = IsFavoriteAsset(s_CurCustomTab, pItem->m_aName);
 
 		if(s_CurCustomTab == ASSETS_TAB_ENTITIES)
 		{
@@ -837,9 +1001,15 @@ void CMenus::RenderSettingsCustom(CUIRect MainView)
 		if(!Item.m_Visible)
 			continue;
 
+		CUIRect FavoriteButton;
+		ItemRect.HSplitTop(20.0f, &FavoriteButton, nullptr);
+		FavoriteButton.VSplitRight(20.0f, nullptr, &FavoriteButton);
+
 		if(s_CurCustomTab == ASSETS_TAB_AUDIO)
 		{
-			Ui()->DoLabel(&ItemRect, pItem->m_aName, 14.0f, TEXTALIGN_ML);
+			CUIRect LabelRect = ItemRect;
+			LabelRect.VSplitRight(24.0f, &LabelRect, nullptr);
+			Ui()->DoLabel(&LabelRect, pItem->m_aName, 14.0f, TEXTALIGN_ML);
 		}
 		else
 		{
@@ -859,59 +1029,74 @@ void CMenus::RenderSettingsCustom(CUIRect MainView)
 				Graphics()->WrapNormal();
 			}
 		}
+
+		if(DoButton_Favorite(&pItem->m_FavoriteButtonId, pItem, Favorite, &FavoriteButton))
+		{
+			if(Favorite)
+			{
+				RemoveFavoriteAsset(s_CurCustomTab, pItem->m_aName);
+			}
+			else
+			{
+				AddFavoriteAsset(s_CurCustomTab, pItem->m_aName);
+			}
+		}
+		GameClient()->m_Tooltips.DoToolTip(&pItem->m_FavoriteButtonId, &FavoriteButton,
+			Favorite ? Localize("Click to remove this item from your favorites.") : Localize("Click to add this item to your favorites."));
 	}
 
 	const int NewSelected = s_ListBox.DoEnd();
-	if(OldSelected != NewSelected)
+	if(OldSelected != NewSelected && NewSelected >= 0)
 	{
-		if(GetCustomItem(s_CurCustomTab, NewSelected)->m_aName[0] != '\0')
+		const SCustomItem *pSelectedItem = GetCustomItem(s_CurCustomTab, NewSelected);
+		if(pSelectedItem != nullptr && pSelectedItem->m_aName[0] != '\0')
 		{
 			if(s_CurCustomTab == ASSETS_TAB_ENTITIES)
 			{
-				str_copy(g_Config.m_ClAssetsEntities, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
-				GameClient()->m_MapImages.ChangeEntitiesPath(GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
+				str_copy(g_Config.m_ClAssetsEntities, pSelectedItem->m_aName);
+				GameClient()->m_MapImages.ChangeEntitiesPath(pSelectedItem->m_aName);
 			}
 			else if(s_CurCustomTab == ASSETS_TAB_GAME)
 			{
-				str_copy(g_Config.m_ClAssetGame, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
+				str_copy(g_Config.m_ClAssetGame, pSelectedItem->m_aName);
 				GameClient()->LoadGameSkin(g_Config.m_ClAssetGame);
 			}
 			else if(s_CurCustomTab == ASSETS_TAB_EMOTICONS)
 			{
-				str_copy(g_Config.m_ClAssetEmoticons, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
+				str_copy(g_Config.m_ClAssetEmoticons, pSelectedItem->m_aName);
 				GameClient()->LoadEmoticonsSkin(g_Config.m_ClAssetEmoticons);
 			}
 			else if(s_CurCustomTab == ASSETS_TAB_PARTICLES)
 			{
-				str_copy(g_Config.m_ClAssetParticles, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
+				str_copy(g_Config.m_ClAssetParticles, pSelectedItem->m_aName);
 				GameClient()->LoadParticlesSkin(g_Config.m_ClAssetParticles);
 			}
 			else if(s_CurCustomTab == ASSETS_TAB_HUD)
 			{
-				str_copy(g_Config.m_ClAssetHud, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
+				str_copy(g_Config.m_ClAssetHud, pSelectedItem->m_aName);
 				GameClient()->LoadHudSkin(g_Config.m_ClAssetHud);
 			}
-		else if(s_CurCustomTab == ASSETS_TAB_EXTRAS)
-		{
-			str_copy(g_Config.m_ClAssetExtras, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
-			GameClient()->LoadExtrasSkin(g_Config.m_ClAssetExtras);
+			else if(s_CurCustomTab == ASSETS_TAB_EXTRAS)
+			{
+				str_copy(g_Config.m_ClAssetExtras, pSelectedItem->m_aName);
+				GameClient()->LoadExtrasSkin(g_Config.m_ClAssetExtras);
+			}
+			else if(s_CurCustomTab == ASSETS_TAB_CURSOR)
+			{
+				str_copy(g_Config.m_ClAssetCursor, pSelectedItem->m_aName);
+				GameClient()->LoadCursorAsset(g_Config.m_ClAssetCursor);
+			}
+			else if(s_CurCustomTab == ASSETS_TAB_ARROW)
+			{
+				str_copy(g_Config.m_ClAssetArrow, pSelectedItem->m_aName);
+				GameClient()->LoadArrowAsset(g_Config.m_ClAssetArrow);
+			}
+			else if(s_CurCustomTab == ASSETS_TAB_AUDIO)
+			{
+				str_copy(g_Config.m_SndPack, pSelectedItem->m_aName);
+				GameClient()->m_Sounds.Clear();
+			}
 		}
-		else if(s_CurCustomTab == ASSETS_TAB_CURSOR)
-		{
-			str_copy(g_Config.m_ClAssetCursor, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
-			GameClient()->LoadCursorAsset(g_Config.m_ClAssetCursor);
-		}
-		else if(s_CurCustomTab == ASSETS_TAB_ARROW)
-		{
-			str_copy(g_Config.m_ClAssetArrow, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
-			GameClient()->LoadArrowAsset(g_Config.m_ClAssetArrow);
-		}
-		else if(s_CurCustomTab == ASSETS_TAB_AUDIO)
-		{
-			str_copy(g_Config.m_SndPack, GetCustomItem(s_CurCustomTab, NewSelected)->m_aName);
-			GameClient()->m_Sounds.Clear();
-		}
-	}
 	}
 
 	// Quick search

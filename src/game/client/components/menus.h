@@ -27,9 +27,12 @@
 #include <game/client/ui.h>
 #include <game/voting.h>
 
+#include <array>
 #include <chrono>
 #include <deque>
 #include <optional>
+#include <set>
+#include <string>
 #include <vector>
 
 class CImageInfo;
@@ -89,6 +92,11 @@ private:
 	CMenuMediaBackground m_MenuMediaBackground;
 
 public:
+	enum
+	{
+		NUM_ASSET_FAVORITE_TABS = 9,
+	};
+
 	enum
 	{
 		ASSETS_EDITOR_TYPE_GAME = 0,
@@ -219,6 +227,7 @@ public:
 		IGraphics::CTextureHandle m_RenderTexture;
 
 		char m_aName[50];
+		char m_FavoriteButtonId = 0;
 
 		bool operator<(const SCustomItem &Other) const { return str_comp(m_aName, Other.m_aName) < 0; }
 	};
@@ -298,8 +307,17 @@ protected:
 	static void ConchainAssetCursor(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainAssetArrow(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainSndPack(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
+	static void ConAddFavoriteAsset(IConsole::IResult *pResult, void *pUserData);
+	static void ConRemoveFavoriteAsset(IConsole::IResult *pResult, void *pUserData);
+	static void ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData);
 
 	void ClearCustomItems(int CurTab);
+	void OnConfigSave(IConfigManager *pConfigManager);
+	void AddFavoriteAsset(const char *pTab, const char *pName);
+	void RemoveFavoriteAsset(const char *pTab, const char *pName);
+	void AddFavoriteAsset(int Tab, const char *pName);
+	void RemoveFavoriteAsset(int Tab, const char *pName);
+	bool IsFavoriteAsset(int Tab, const char *pName) const;
 
 	int m_MenuPage;
 	int m_GamePage;
@@ -822,6 +840,7 @@ protected:
 
 	IGraphics::CTextureHandle m_TextureBlob;
 	IGraphics::CTextureHandle m_MainMenuLogoTexture;
+	std::array<std::set<std::string>, NUM_ASSET_FAVORITE_TABS> m_aAssetFavorites;
 
 public:
 	void RenderBackground();
@@ -846,6 +865,7 @@ public:
 	}
 
 	void OnInterfacesInit(CGameClient *pClient) override;
+	void OnConsoleInit() override;
 	void OnInit() override;
 
 	void OnStateChange(int NewState, int OldState) override;

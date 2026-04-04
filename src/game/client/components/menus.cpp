@@ -925,6 +925,13 @@ void CMenus::OnInterfacesInit(CGameClient *pClient)
 	m_CommunityIcons.OnInterfacesInit(pClient);
 }
 
+void CMenus::OnConsoleInit()
+{
+	ConfigManager()->RegisterCallback(CMenus::ConfigSaveCallback, this, ConfigDomain::BESTCLIENT);
+	Console()->Register("add_favorite_asset", "s[tab] s[asset_name]", CFGFLAG_CLIENT, ConAddFavoriteAsset, this, "Add an asset item as a favorite");
+	Console()->Register("remove_favorite_asset", "s[tab] s[asset_name]", CFGFLAG_CLIENT, ConRemoveFavoriteAsset, this, "Remove an asset item from the favorites");
+}
+
 void CMenus::OnInit()
 {
 	if(g_Config.m_ClShowWelcome)
