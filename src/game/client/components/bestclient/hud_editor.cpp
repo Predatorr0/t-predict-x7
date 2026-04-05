@@ -9,12 +9,10 @@
 #include <base/str.h>
 
 #include <engine/graphics.h>
-#include <engine/font_icons.h>
 #include <engine/keys.h>
 #include <engine/storage.h>
 #include <engine/shared/config.h>
 
-#include <game/client/bc_ui_animations.h>
 #include <game/client/components/chat.h>
 #include <game/client/components/voting.h>
 #include <game/client/gameclient.h>
@@ -24,7 +22,7 @@ namespace
 {
 constexpr float SNAP_THRESHOLD = 6.0f;
 constexpr float SETTINGS_POPUP_WIDTH = 210.0f;
-constexpr float SETTINGS_POPUP_HEIGHT = 164.0f;
+constexpr float SETTINGS_POPUP_HEIGHT = 132.0f;
 
 bool IsMusicPlayerEnabled(const CGameClient *pGameClient)
 {
@@ -34,32 +32,18 @@ bool IsMusicPlayerEnabled(const CGameClient *pGameClient)
 
 bool IsEditorModule(HudLayout::EModule Module)
 {
-	return Module == HudLayout::MODULE_MUSIC_PLAYER ||
-	       Module == HudLayout::MODULE_CHAT ||
+	return Module == HudLayout::MODULE_CHAT ||
 	       Module == HudLayout::MODULE_VOICE_TALKERS ||
 	       Module == HudLayout::MODULE_VOICE_STATUS ||
-	       Module == HudLayout::MODULE_VOTES ||
-	       Module == HudLayout::MODULE_GAME_TIMER ||
-	       Module == HudLayout::MODULE_LOCAL_TIME ||
-	       Module == HudLayout::MODULE_KILLFEED ||
-	       Module == HudLayout::MODULE_MOVEMENT_INFO ||
-	       Module == HudLayout::MODULE_SPECTATOR_COUNT ||
-	       Module == HudLayout::MODULE_SCORE;
+	       Module == HudLayout::MODULE_VOTES;
 }
 
 bool IsLivePreviewModule(HudLayout::EModule Module)
 {
-	return Module == HudLayout::MODULE_MUSIC_PLAYER ||
-		Module == HudLayout::MODULE_CHAT ||
+	return Module == HudLayout::MODULE_CHAT ||
 		Module == HudLayout::MODULE_VOTES ||
 		Module == HudLayout::MODULE_VOICE_TALKERS ||
-		Module == HudLayout::MODULE_VOICE_STATUS ||
-		Module == HudLayout::MODULE_GAME_TIMER ||
-		Module == HudLayout::MODULE_LOCAL_TIME ||
-		Module == HudLayout::MODULE_KILLFEED ||
-		Module == HudLayout::MODULE_MOVEMENT_INFO ||
-		Module == HudLayout::MODULE_SPECTATOR_COUNT ||
-		Module == HudLayout::MODULE_SCORE;
+		Module == HudLayout::MODULE_VOICE_STATUS;
 }
 
 bool PointInRect(vec2 Point, const CUIRect &Rect)
@@ -113,10 +97,6 @@ void CHudEditor::Activate()
 	m_HoveredModule = HudLayout::MODULE_COUNT;
 	m_SelectedModule = HudLayout::MODULE_COUNT;
 	m_PressedOnReset = false;
-	m_DrawerOpen = false;
-	m_SettingsPanelOpen = false;
-	m_DrawerPhase = 0.0f;
-	m_SettingsPanelPhase = 0.0f;
 	Ui()->ClosePopupMenus();
 }
 
@@ -130,10 +110,6 @@ void CHudEditor::Deactivate()
 	m_HoveredModule = HudLayout::MODULE_COUNT;
 	m_SelectedModule = HudLayout::MODULE_COUNT;
 	m_PressedOnReset = false;
-	m_DrawerOpen = false;
-	m_SettingsPanelOpen = false;
-	m_DrawerPhase = 0.0f;
-	m_SettingsPanelPhase = 0.0f;
 	Ui()->ClosePopupMenus();
 }
 
@@ -184,47 +160,6 @@ bool CHudEditor::IsEditableModule(HudLayout::EModule Module) const
 bool CHudEditor::IsModuleEnabled(HudLayout::EModule Module) const
 {
 	return HudLayout::IsEnabled(Module);
-}
-
-bool CHudEditor::IsLiveRenderedModule(HudLayout::EModule Module) const
-{
-	return IsLivePreviewModule(Module);
-}
-
-void CHudEditor::ResetEditorSettings()
-{
-	g_Config.m_BcHudEditorOverlayColor = DefaultConfig::BcHudEditorOverlayColor;
-	g_Config.m_BcHudEditorOutlineColor = DefaultConfig::BcHudEditorOutlineColor;
-	g_Config.m_BcHudEditorHoverColor = DefaultConfig::BcHudEditorHoverColor;
-	g_Config.m_BcHudEditorAutoCorner = DefaultConfig::BcHudEditorAutoCorner;
-	g_Config.m_BcHudEditorAutoSnap = DefaultConfig::BcHudEditorAutoSnap;
-}
-
-void CHudEditor::ResetModuleExtraSettings(HudLayout::EModule Module)
-{
-	if(Module == HudLayout::MODULE_VOTES)
-		g_Config.m_TcMiniVoteHud = DefaultConfig::TcMiniVoteHud;
-	else if(Module == HudLayout::MODULE_GAME_TIMER)
-		g_Config.m_BcMusicPlayer = DefaultConfig::BcMusicPlayer;
-}
-
-CUIRect CHudEditor::GetDrawerToggleRect() const
-{
-	return {8.0f, 8.0f, 18.0f, 18.0f};
-}
-
-CUIRect CHudEditor::GetDrawerRect(float Phase) const
-{
-	const float DrawerWidth = 122.0f;
-	const float DrawerHeight = 58.0f;
-	const float ToggleWidth = GetDrawerToggleRect().w;
-	const float Ease = BCUiAnimations::EaseInOutCubic(Phase);
-	return {8.0f - (DrawerWidth - ToggleWidth) * (1.0f - Ease), 8.0f, DrawerWidth, DrawerHeight};
-}
-
-CUIRect CHudEditor::GetSettingsPanelRect() const
-{
-	return {12.0f, 34.0f, 214.0f, 142.0f};
 }
 
 CUIRect CHudEditor::GetFallbackModuleRect(HudLayout::EModule Module) const
@@ -344,18 +279,6 @@ CHudEditor::SModuleVisual CHudEditor::GetModuleVisual(HudLayout::EModule Module)
 		Visual.m_Rect = GameClient()->m_Voting.GetHudRect(Width, Height, true);
 		Visual.m_Rounding = 3.0f;
 		break;
-	case HudLayout::MODULE_GAME_TIMER:
-	case HudLayout::MODULE_LOCAL_TIME:
-	case HudLayout::MODULE_MOVEMENT_INFO:
-	case HudLayout::MODULE_SPECTATOR_COUNT:
-	case HudLayout::MODULE_SCORE:
-		Visual.m_Rect = GameClient()->m_Hud.GetHudEditorRect(Module, true);
-		Visual.m_Rounding = 5.0f;
-		break;
-	case HudLayout::MODULE_KILLFEED:
-		Visual.m_Rect = GameClient()->m_InfoMessages.GetHudRect(Width, Height, true);
-		Visual.m_Rounding = 4.0f;
-		break;
 	default:
 		Visual.m_Rect = GetFallbackModuleRect(Module);
 		Visual.m_Rounding = 4.0f;
@@ -385,17 +308,10 @@ void CHudEditor::CollectModuleVisuals(SModuleVisual *pOut, int &Count) const
 		pOut[Count++] = GetModuleVisual(Module);
 	};
 
-	AddModule(HudLayout::MODULE_MUSIC_PLAYER);
 	AddModule(HudLayout::MODULE_CHAT);
 	AddModule(HudLayout::MODULE_VOTES);
 	AddModule(HudLayout::MODULE_VOICE_TALKERS);
 	AddModule(HudLayout::MODULE_VOICE_STATUS);
-	AddModule(HudLayout::MODULE_GAME_TIMER);
-	AddModule(HudLayout::MODULE_LOCAL_TIME);
-	AddModule(HudLayout::MODULE_KILLFEED);
-	AddModule(HudLayout::MODULE_MOVEMENT_INFO);
-	AddModule(HudLayout::MODULE_SPECTATOR_COUNT);
-	AddModule(HudLayout::MODULE_SCORE);
 }
 
 HudLayout::EModule CHudEditor::HitTestModule(vec2 MousePos) const
@@ -440,9 +356,6 @@ void CHudEditor::ApplyDraggedPosition(HudLayout::EModule Module, const CUIRect &
 
 CUIRect CHudEditor::SnapRect(const CUIRect &Rect, HudLayout::EModule DraggedModule) const
 {
-	if(g_Config.m_BcHudEditorAutoSnap == 0)
-		return ClampToBounds(Rect, HudWidth(), HudHeight());
-
 	CUIRect Result = Rect;
 	SModuleVisual aVisuals[MAX_MODULE_VISUALS];
 	int Count = 0;
@@ -511,7 +424,7 @@ CUi::EPopupMenuFunctionResult CHudEditor::PopupModuleSettings(void *pContext, CU
 		return CUi::POPUP_CLOSE_CURRENT;
 
 	const bool Enabled = HudLayout::IsEnabled(pThis->m_SelectedModule);
-	CUIRect Title, ToggleButton, ScaleLabel, ScaleSlider, ExtraToggleButton, ResetPositionButton, ResetSettingsButton;
+	CUIRect Title, ToggleButton, ScaleLabel, ScaleSlider, ResetPositionButton, ResetSettingsButton;
 	View.HSplitTop(16.0f, &Title, &View);
 	pThis->Ui()->DoLabel(&Title, HudLayout::Name(pThis->m_SelectedModule), 10.0f, TEXTALIGN_MC);
 	View.HSplitTop(8.0f, nullptr, &View);
@@ -539,16 +452,6 @@ CUi::EPopupMenuFunctionResult CHudEditor::PopupModuleSettings(void *pContext, CU
 		View.HSplitTop(14.0f, nullptr, &View);
 	}
 
-	if(pThis->m_SelectedModule == HudLayout::MODULE_VOTES || pThis->m_SelectedModule == HudLayout::MODULE_GAME_TIMER)
-	{
-		View.HSplitTop(8.0f, nullptr, &View);
-		View.HSplitTop(16.0f, &ExtraToggleButton, &View);
-		int *pValue = pThis->m_SelectedModule == HudLayout::MODULE_VOTES ? &g_Config.m_TcMiniVoteHud : &g_Config.m_BcMusicPlayer;
-		const char *pLabel = pThis->m_SelectedModule == HudLayout::MODULE_VOTES ? Localize("Mini vote HUD") : Localize("Enable music player");
-		if(pThis->GameClient()->m_Menus.DoButton_CheckBox(&pThis->m_ExtraModuleToggleButton, pLabel, *pValue, &ExtraToggleButton))
-			*pValue ^= 1;
-	}
-
 	View.HSplitTop(10.0f, nullptr, &View);
 	View.HSplitTop(16.0f, &ResetPositionButton, &View);
 	if(pThis->Ui()->DoButton_PopupMenu(&pThis->m_ResetPositionButton, Localize("Reset position"), &ResetPositionButton, 8.0f, TEXTALIGN_MC))
@@ -557,10 +460,7 @@ CUi::EPopupMenuFunctionResult CHudEditor::PopupModuleSettings(void *pContext, CU
 	View.HSplitTop(5.0f, nullptr, &View);
 	View.HSplitTop(16.0f, &ResetSettingsButton, &View);
 	if(pThis->Ui()->DoButton_PopupMenu(&pThis->m_ResetSettingsButton, Localize("Reset settings"), &ResetSettingsButton, 8.0f, TEXTALIGN_MC))
-	{
 		HudLayout::ResetSettings(pThis->m_SelectedModule);
-		pThis->ResetModuleExtraSettings(pThis->m_SelectedModule);
-	}
 	return CUi::POPUP_KEEP_OPEN;
 }
 
@@ -595,11 +495,7 @@ void CHudEditor::OpenModuleSettings(const SModuleVisual &Visual)
 void CHudEditor::RenderModuleOutline(const SModuleVisual &Visual, bool Hovered, bool Selected) const
 {
 	const CUIRect &Rect = Visual.m_Rect;
-	const ColorRGBA OutlineColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_BcHudEditorOutlineColor, true));
-	const ColorRGBA HoverColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_BcHudEditorHoverColor, true));
-	ColorRGBA Color = Selected ? OutlineColor : (Hovered ? HoverColor : OutlineColor);
-	if(!Hovered && !Selected)
-		Color.a *= 0.5f;
+	ColorRGBA Color = Selected ? ColorRGBA(1.0f, 1.0f, 1.0f, 0.92f) : (Hovered ? ColorRGBA(1.0f, 1.0f, 1.0f, 0.78f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.46f));
 	if(!Visual.m_Editable)
 		Color.a *= 0.72f;
 	if(!Visual.m_Enabled)
@@ -673,32 +569,10 @@ void CHudEditor::RenderChatExtraPreview(const SModuleVisual &Visual) const
 	}
 }
 
-void CHudEditor::RenderColorPickerRow(const char *pLabel, CButtonContainer *pButton, CUi::SColorPickerPopupContext *pPopup, unsigned int *pColorValue, bool Alpha, CUIRect &Row)
-{
-	(void)pButton;
-	CUIRect LabelRect, ButtonRect;
-	Row.VSplitRight(22.0f, &LabelRect, nullptr);
-	Row.VSplitRight(18.0f, &LabelRect, &ButtonRect);
-	Ui()->DoLabel(&LabelRect, pLabel, 6.5f, TEXTALIGN_ML);
-
-	const ColorHSLA HslaColor = ColorHSLA(*pColorValue, Alpha);
-	CUIRect Inner = ButtonRect;
-	Inner.Margin(2.0f, &Inner);
-	ButtonRect.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.2f), IGraphics::CORNER_ALL, 4.0f);
-	Inner.Draw(color_cast<ColorRGBA>(HslaColor), IGraphics::CORNER_ALL, 4.0f);
-
-	if(Ui()->IsPopupOpen(pPopup) && pPopup->m_pHslaColor == pColorValue)
-	{
-		*pColorValue = color_cast<ColorHSLA>(pPopup->m_HsvaColor).Pack(Alpha);
-	}
-}
-
 void CHudEditor::RenderModulePreview(const SModuleVisual &Visual) const
 {
 	const CUIRect &Rect = Visual.m_Rect;
 	if(Rect.w <= 0.0f || Rect.h <= 0.0f)
-		return;
-	if(IsLiveRenderedModule(Visual.m_Module))
 		return;
 
 	const bool LivePreview = IsLivePreviewModule(Visual.m_Module);
@@ -858,20 +732,13 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 	const float Height = HudHeight();
 	Graphics()->MapScreen(0.0f, 0.0f, Width, Height);
 	Graphics()->TextureClear();
-	Graphics()->DrawRect(0.0f, 0.0f, Width, Height, color_cast<ColorRGBA>(ColorHSLA(g_Config.m_BcHudEditorOverlayColor, true)), IGraphics::CORNER_ALL, 0.0f);
+	Graphics()->DrawRect(0.0f, 0.0f, Width, Height, ColorRGBA(0.0f, 0.0f, 0.0f, 0.38f), IGraphics::CORNER_ALL, 0.0f);
 
 	// Draw true HUD previews first, then add interactive editor overlays on top.
-	GameClient()->m_MusicPlayer.RenderHudEditor(true);
 	GameClient()->m_Chat.RenderHud(true);
 	GameClient()->m_Voting.RenderHud(true);
 	GameClient()->m_VoiceChat.RenderHudTalkingIndicator(Width, Height, true);
 	GameClient()->m_VoiceChat.RenderHudMuteStatusIndicator(Width, Height, true);
-	GameClient()->m_Hud.RenderHudEditorModule(HudLayout::MODULE_GAME_TIMER, true);
-	GameClient()->m_Hud.RenderHudEditorModule(HudLayout::MODULE_LOCAL_TIME, true);
-	GameClient()->m_Hud.RenderHudEditorModule(HudLayout::MODULE_MOVEMENT_INFO, true);
-	GameClient()->m_Hud.RenderHudEditorModule(HudLayout::MODULE_SPECTATOR_COUNT, true);
-	GameClient()->m_Hud.RenderHudEditorModule(HudLayout::MODULE_SCORE, true);
-	GameClient()->m_InfoMessages.RenderHud(true);
 
 	SModuleVisual aVisuals[MAX_MODULE_VISUALS];
 	int Count = 0;
@@ -896,90 +763,18 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 				continue;
 			const bool Hovered = aVisuals[i].m_Module == m_HoveredModule;
 			const bool Selected = aVisuals[i].m_Module == m_SelectedModule || aVisuals[i].m_Module == m_PressedModule;
-			if(!aVisuals[i].m_Enabled)
-				Graphics()->DrawRect(aVisuals[i].m_Rect.x, aVisuals[i].m_Rect.y, aVisuals[i].m_Rect.w, aVisuals[i].m_Rect.h, ColorRGBA(0.02f, 0.03f, 0.04f, 0.26f), IGraphics::CORNER_ALL, aVisuals[i].m_Rounding);
 			RenderModuleOutline(aVisuals[i], Hovered, Selected);
 			if(Hovered)
 				RenderModuleLabel(aVisuals[i]);
 		}
 	}
 
-	const CUIRect DrawerRect = GetDrawerRect(m_DrawerPhase);
-	const CUIRect DrawerToggleRect = GetDrawerToggleRect();
-	const bool DrawerToggleHovered = PointInRect(MousePos, DrawerToggleRect);
-	DrawerRect.Draw(ColorRGBA(0.03f, 0.04f, 0.06f, 0.78f), IGraphics::CORNER_ALL, 6.0f);
-	DrawerToggleRect.Draw(DrawerToggleHovered ? ColorRGBA(1.0f, 1.0f, 1.0f, 0.20f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.12f), IGraphics::CORNER_ALL, 5.0f);
-	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
-	Ui()->DoLabel(&DrawerToggleRect, BCUiAnimations::EaseInOutCubic(m_DrawerPhase) > 0.5f ? FontIcon::CHEVRON_LEFT : FontIcon::CHEVRON_RIGHT, 6.5f, TEXTALIGN_MC);
-	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
-
-	if(m_DrawerPhase > 0.02f)
-	{
-		CUIRect Content = DrawerRect;
-		Content.Margin(5.0f, &Content);
-		Content.VSplitLeft(16.0f, nullptr, &Content);
-
-		CUIRect ResetRect, Gap, SettingsRect;
-		Content.HSplitTop(18.0f, &ResetRect, &Content);
-		Content.HSplitTop(6.0f, &Gap, &Content);
-		Content.HSplitTop(18.0f, &SettingsRect, &Content);
-
-		const bool ResetHovered = PointInRect(MousePos, ResetRect);
-		const ColorRGBA ResetColor = m_PressedOnReset ? ColorRGBA(0.95f, 0.48f, 0.48f, 0.90f) :
-			(ResetHovered ? ColorRGBA(0.95f, 0.48f, 0.48f, 0.55f) : ColorRGBA(0.95f, 0.48f, 0.48f, 0.36f));
-		ResetRect.Draw(ResetColor, IGraphics::CORNER_ALL, 4.0f);
-		Ui()->DoLabel(&ResetRect, Localize("Reset All"), 6.5f, TEXTALIGN_MC);
-
-		const bool SettingsHovered = PointInRect(MousePos, SettingsRect);
-		SettingsRect.Draw(SettingsHovered ? ColorRGBA(1.0f, 1.0f, 1.0f, 0.22f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.14f), IGraphics::CORNER_ALL, 4.0f);
-		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
-		Ui()->DoLabel(&SettingsRect, FontIcon::GEAR, 7.0f, TEXTALIGN_MC);
-		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
-	}
-
-	if(m_SettingsPanelPhase > 0.01f)
-	{
-		const float Phase = BCUiAnimations::EaseInOutCubic(m_SettingsPanelPhase);
-		Graphics()->DrawRect(0.0f, 0.0f, Width, Height, ColorRGBA(0.0f, 0.0f, 0.0f, 0.35f * Phase), IGraphics::CORNER_ALL, 0.0f);
-		CUIRect Panel = GetSettingsPanelRect();
-		Panel.Draw(ColorRGBA(0.06f, 0.07f, 0.10f, 0.92f), IGraphics::CORNER_ALL, 6.0f);
-
-		CUIRect Body = Panel;
-		Body.Margin(7.0f, &Body);
-		CUIRect Title;
-		Body.HSplitTop(14.0f, &Title, &Body);
-		Ui()->DoLabel(&Title, Localize("HUD editor settings"), 7.5f, TEXTALIGN_ML);
-		Body.HSplitTop(6.0f, nullptr, &Body);
-
-		CUIRect Row;
-		Body.HSplitTop(16.0f, &Row, &Body);
-		RenderColorPickerRow(Localize("Overlay"), &m_EditorOverlayColorButton, &m_OverlayColorPickerPopup, &g_Config.m_BcHudEditorOverlayColor, true, Row);
-		Body.HSplitTop(4.0f, nullptr, &Body);
-		Body.HSplitTop(16.0f, &Row, &Body);
-		RenderColorPickerRow(Localize("Outline"), &m_EditorOutlineColorButton, &m_OutlineColorPickerPopup, &g_Config.m_BcHudEditorOutlineColor, true, Row);
-		Body.HSplitTop(4.0f, nullptr, &Body);
-		Body.HSplitTop(16.0f, &Row, &Body);
-		RenderColorPickerRow(Localize("Hover"), &m_EditorHoverColorButton, &m_HoverColorPickerPopup, &g_Config.m_BcHudEditorHoverColor, true, Row);
-		Body.HSplitTop(6.0f, nullptr, &Body);
-
-		auto RenderCheck = [&](const char *pLabel, const CUIRect &CheckRow, bool Active) {
-			CUIRect Box = CheckRow;
-			CUIRect Label = CheckRow;
-			Label.VSplitLeft(18.0f, &Box, &Label);
-			CUIRect Inner = Box;
-			Inner.w = 12.0f;
-			Inner.h = 12.0f;
-			Inner.y += 2.0f;
-			Inner.Draw(Active ? ColorRGBA(0.38f, 0.82f, 0.52f, 0.95f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.16f), IGraphics::CORNER_ALL, 3.0f);
-			Ui()->DoLabel(&Label, pLabel, 6.5f, TEXTALIGN_ML);
-		};
-
-		Body.HSplitTop(16.0f, &Row, &Body);
-		RenderCheck(Localize("Autocorner"), Row, g_Config.m_BcHudEditorAutoCorner != 0);
-		Body.HSplitTop(4.0f, nullptr, &Body);
-		Body.HSplitTop(16.0f, &Row, &Body);
-		RenderCheck(Localize("Auto snap"), Row, g_Config.m_BcHudEditorAutoSnap != 0);
-	}
+	CUIRect ResetRect = {8.0f, 8.0f, 66.0f, 16.0f};
+	const bool ResetHovered = PointInRect(MousePos, ResetRect);
+	const ColorRGBA ResetColor = m_PressedOnReset ? ColorRGBA(0.95f, 0.48f, 0.48f, 0.90f) :
+					 (ResetHovered ? ColorRGBA(0.95f, 0.48f, 0.48f, 0.55f) : ColorRGBA(0.95f, 0.48f, 0.48f, 0.36f));
+	Graphics()->DrawRect(ResetRect.x, ResetRect.y, ResetRect.w, ResetRect.h, ResetColor, IGraphics::CORNER_ALL, 4.0f);
+	Ui()->DoLabel(&ResetRect, Localize("Reset All"), 6.5f, TEXTALIGN_MC);
 
 	Ui()->MapScreen();
 	Ui()->RenderPopupMenus();
@@ -1009,97 +804,26 @@ void CHudEditor::OnRender()
 	const bool RightDown = Input()->KeyIsPressed(KEY_MOUSE_2);
 	const bool LeftClicked = LeftDown && !m_MouseDownLast;
 	const bool RightClicked = RightDown && !m_RightMouseDownLast;
-	BCUiAnimations::UpdatePhase(m_DrawerPhase, m_DrawerOpen ? 1.0f : 0.0f, Client()->RenderFrameTime(), 0.18f);
-	BCUiAnimations::UpdatePhase(m_SettingsPanelPhase, m_SettingsPanelOpen ? 1.0f : 0.0f, Client()->RenderFrameTime(), 0.18f);
-
 	const bool PopupOpen = Ui()->IsPopupOpen(&m_SettingsPopupId);
-	const bool ColorPopupOpen = Ui()->IsPopupOpen(&m_OverlayColorPickerPopup) || Ui()->IsPopupOpen(&m_OutlineColorPickerPopup) || Ui()->IsPopupOpen(&m_HoverColorPickerPopup);
 
-	const CUIRect DrawerToggleRect = GetDrawerToggleRect();
-	const CUIRect DrawerRect = GetDrawerRect(m_DrawerPhase);
-	CUIRect DrawerContent = DrawerRect;
-	DrawerContent.Margin(5.0f, &DrawerContent);
-	DrawerContent.VSplitLeft(16.0f, nullptr, &DrawerContent);
-	CUIRect ResetRect, SettingsRect, Tmp;
-	DrawerContent.HSplitTop(18.0f, &ResetRect, &DrawerContent);
-	DrawerContent.HSplitTop(6.0f, &Tmp, &DrawerContent);
-	DrawerContent.HSplitTop(18.0f, &SettingsRect, &DrawerContent);
+	m_HoveredModule = HitTestModule(MousePos);
 
-	CUIRect Panel = GetSettingsPanelRect();
-	CUIRect PanelBody = Panel;
-	PanelBody.Margin(7.0f, &PanelBody);
-	CUIRect Title, OverlayRow, OutlineRow, HoverRow, AutoCornerRow, AutoSnapRow;
-	PanelBody.HSplitTop(14.0f, &Title, &PanelBody);
-	PanelBody.HSplitTop(6.0f, nullptr, &PanelBody);
-	PanelBody.HSplitTop(16.0f, &OverlayRow, &PanelBody);
-	PanelBody.HSplitTop(4.0f, nullptr, &PanelBody);
-	PanelBody.HSplitTop(16.0f, &OutlineRow, &PanelBody);
-	PanelBody.HSplitTop(4.0f, nullptr, &PanelBody);
-	PanelBody.HSplitTop(16.0f, &HoverRow, &PanelBody);
-	PanelBody.HSplitTop(6.0f, nullptr, &PanelBody);
-	PanelBody.HSplitTop(16.0f, &AutoCornerRow, &PanelBody);
-	PanelBody.HSplitTop(4.0f, nullptr, &PanelBody);
-	PanelBody.HSplitTop(16.0f, &AutoSnapRow, &PanelBody);
-	CUIRect OverlayButton = OverlayRow;
-	CUIRect OutlineButton = OutlineRow;
-	CUIRect HoverButton = HoverRow;
-	OverlayButton.VSplitRight(22.0f, &OverlayButton, nullptr);
-	OverlayButton.VSplitRight(18.0f, &OverlayButton, &OverlayButton);
-	OutlineButton.VSplitRight(22.0f, &OutlineButton, nullptr);
-	OutlineButton.VSplitRight(18.0f, &OutlineButton, &OutlineButton);
-	HoverButton.VSplitRight(22.0f, &HoverButton, nullptr);
-	HoverButton.VSplitRight(18.0f, &HoverButton, &HoverButton);
+	CUIRect ResetRect = {8.0f, 8.0f, 66.0f, 16.0f};
+	const bool ResetHovered = PointInRect(MousePos, ResetRect);
 
-	auto OpenColorPopup = [&](CUi::SColorPickerPopupContext &Popup, unsigned int *pColorValue) {
-		const ColorHSLA HslaColor(*pColorValue, true);
-		Popup.m_pHslaColor = pColorValue;
-		Popup.m_HslaColor = HslaColor;
-		Popup.m_HsvaColor = color_cast<ColorHSVA>(HslaColor);
-		Popup.m_RgbaColor = color_cast<ColorRGBA>(Popup.m_HsvaColor);
-		Popup.m_Alpha = true;
-		Ui()->ShowPopupColorPicker(Ui()->MouseX(), Ui()->MouseY(), &Popup);
-	};
-
-	const bool MouseOnDrawer = PointInRect(MousePos, DrawerToggleRect) || (m_DrawerPhase > 0.02f && PointInRect(MousePos, DrawerRect));
-	const bool MouseOnSettingsPanel = m_SettingsPanelPhase > 0.01f && PointInRect(MousePos, Panel);
-	const bool MouseOnUi = MouseOnDrawer || MouseOnSettingsPanel;
-
-	m_HoveredModule = MouseOnUi ? HudLayout::MODULE_COUNT : HitTestModule(MousePos);
-
-	if(RightClicked && !MouseOnUi && m_HoveredModule != HudLayout::MODULE_COUNT && IsEditableModule(m_HoveredModule))
+	if(RightClicked && m_HoveredModule != HudLayout::MODULE_COUNT && IsEditableModule(m_HoveredModule))
 	{
 		m_SelectedModule = m_HoveredModule;
 		OpenModuleSettings(GetModuleVisual(m_HoveredModule));
 	}
 
-	if(PopupOpen || ColorPopupOpen)
+	if(PopupOpen)
 	{
 		m_Dragging = false;
 		m_PressedModule = HudLayout::MODULE_COUNT;
 		m_PressedOnReset = false;
 	}
-	else if(LeftClicked && PointInRect(MousePos, DrawerToggleRect))
-	{
-		m_DrawerOpen = !m_DrawerOpen;
-		m_PressedOnReset = false;
-	}
-	else if(LeftClicked && m_SettingsPanelPhase > 0.01f)
-	{
-		m_PressedOnReset = false;
-		if(PointInRect(MousePos, OverlayButton))
-			OpenColorPopup(m_OverlayColorPickerPopup, &g_Config.m_BcHudEditorOverlayColor);
-		else if(PointInRect(MousePos, OutlineButton))
-			OpenColorPopup(m_OutlineColorPickerPopup, &g_Config.m_BcHudEditorOutlineColor);
-		else if(PointInRect(MousePos, HoverButton))
-			OpenColorPopup(m_HoverColorPickerPopup, &g_Config.m_BcHudEditorHoverColor);
-		else if(PointInRect(MousePos, AutoCornerRow))
-			g_Config.m_BcHudEditorAutoCorner ^= 1;
-		else if(PointInRect(MousePos, AutoSnapRow))
-			g_Config.m_BcHudEditorAutoSnap ^= 1;
-		else if(!PointInRect(MousePos, Panel))
-			m_SettingsPanelOpen = false;
-	}
-	else if(LeftClicked && m_DrawerPhase > 0.02f && PointInRect(MousePos, ResetRect))
+	else if(LeftClicked && ResetHovered)
 	{
 		SModuleVisual aVisuals[MAX_MODULE_VISUALS];
 		int Count = 0;
@@ -1107,24 +831,15 @@ void CHudEditor::OnRender()
 		for(int i = 0; i < Count; ++i)
 		{
 			if(IsEditableModule(aVisuals[i].m_Module))
-			{
 				HudLayout::ResetSettings(aVisuals[i].m_Module);
-				ResetModuleExtraSettings(aVisuals[i].m_Module);
-			}
 		}
-		ResetEditorSettings();
 		m_Dragging = false;
 		m_PressedModule = HudLayout::MODULE_COUNT;
 		m_SelectedModule = HudLayout::MODULE_COUNT;
 		m_PressedOnReset = true;
 		Ui()->ClosePopupMenus();
 	}
-	else if(LeftClicked && m_DrawerPhase > 0.02f && PointInRect(MousePos, SettingsRect))
-	{
-		m_SettingsPanelOpen = !m_SettingsPanelOpen;
-		m_PressedOnReset = false;
-	}
-	else if(LeftClicked && !MouseOnUi)
+	else if(LeftClicked)
 	{
 		m_PressedOnReset = false;
 		m_PressMousePos = MousePos;

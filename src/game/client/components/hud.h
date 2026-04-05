@@ -9,8 +9,6 @@
 #include <generated/protocol.h>
 
 #include <game/client/component.h>
-#include <game/client/components/hud_layout.h>
-#include <game/client/ui_rect.h>
 
 struct SScoreInfo
 {
@@ -80,9 +78,9 @@ class CHud : public CComponent
 	void RenderPlayerState(int ClientId);
 
 	int m_LastSpectatorCountTick;
-	void RenderSpectatorCount(bool ForcePreview = false);
+	void RenderSpectatorCount();
 	void RenderDummyActions();
-	void RenderMovementInformation(bool ForcePreview = false);
+	void RenderMovementInformation();
 
 	void UpdateMovementInformationTextContainer(STextContainerIndex &TextContainer, float FontSize, float Value, float &PrevValue);
 	void RenderMovementInformationTextContainer(STextContainerIndex &TextContainer, const ColorRGBA &Color, float X, float Y);
@@ -97,22 +95,16 @@ class CHud : public CComponent
 	class CMovementInformation GetMovementInformation(int ClientId, int Conn) const;
 	bool HasPlayerBelowOnSameX(int ClientId, const CMovementInformation &Info) const;
 
-	void RenderGameTimer(bool ForcePreview = false);
+	void RenderGameTimer();
 	void RenderPauseNotification();
 	void RenderSuddenDeath();
 
-	void RenderScoreHud(bool ForcePreview = false);
+	void RenderScoreHud();
 	int m_LastLocalClientId = -1;
 
 	void RenderSpectatorHud();
 	void RenderWarmupTimer();
-	void RenderLocalTime(bool ForcePreview = false);
-
-	CUIRect GetGameTimerRect(bool ForcePreview = false) const;
-	CUIRect GetScoreHudRect(bool ForcePreview = false) const;
-	CUIRect GetMovementInformationRect(bool ForcePreview = false) const;
-	CUIRect GetSpectatorCountRect(bool ForcePreview = false) const;
-	CUIRect GetLocalTimeRect(bool ForcePreview = false) const;
+	void RenderLocalTime(float x);
 
 	static constexpr float MOVEMENT_INFORMATION_LINE_HEIGHT = 8.0f;
 
@@ -131,8 +123,6 @@ public:
 
 	void OnMessage(int MsgType, void *pRawMsg) override;
 	void RenderNinjaBarPos(float x, float y, float Width, float Height, float Progress, float Alpha = 1.0f);
-	CUIRect GetHudEditorRect(HudLayout::EModule Module, bool ForcePreview = false) const;
-	void RenderHudEditorModule(HudLayout::EModule Module, bool ForcePreview = false);
 
 private:
 	void RenderRecord();
@@ -147,7 +137,7 @@ private:
 	int m_SpeedrunTimerExpiredTick;
 	bool m_ShowFinishTime;
 
-	inline float GetMovementInformationBoxHeight() const;
+	inline float GetMovementInformationBoxHeight();
 	inline int GetDigitsIndex(int Value, int Max);
 
 	// Quad Offsets

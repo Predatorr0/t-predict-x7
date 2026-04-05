@@ -146,11 +146,6 @@ MACRO_CONFIG_INT(BcHudChatScale, bc_hud_chat_scale, 100, 25, 300, CFGFLAG_CLIENT
 MACRO_CONFIG_INT(BcHudVotesX, bc_hud_votes_x, 0, -1000, 1000, CFGFLAG_CLIENT, "HUD editor X position for votes")
 MACRO_CONFIG_INT(BcHudVotesY, bc_hud_votes_y, 60, -1000, 1000, CFGFLAG_CLIENT, "HUD editor Y position for votes")
 MACRO_CONFIG_INT(BcHudVotesScale, bc_hud_votes_scale, 100, 25, 300, CFGFLAG_CLIENT, "HUD editor scale for votes")
-MACRO_CONFIG_COL(BcHudEditorOverlayColor, bc_hud_editor_overlay_color, 0x61000000U, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "HUD editor overlay background color")
-MACRO_CONFIG_COL(BcHudEditorOutlineColor, bc_hud_editor_outline_color, 0xF2FFFFFFU, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "HUD editor module outline color")
-MACRO_CONFIG_COL(BcHudEditorHoverColor, bc_hud_editor_hover_color, 0xC7FFFFFFU, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "HUD editor module hover outline color")
-MACRO_CONFIG_INT(BcHudEditorAutoCorner, bc_hud_editor_autocorner, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply automatic HUD corner clipping when modules touch screen edges")
-MACRO_CONFIG_INT(BcHudEditorAutoSnap, bc_hud_editor_autosnap, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Snap HUD editor modules to screen edges and nearby modules while dragging")
 MACRO_CONFIG_INT(BcDisabledComponentsMaskLo, bc_disabled_components_mask_lo, 0, 0, 2147483647, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Low bitmask for disabled components")
 MACRO_CONFIG_INT(BcDisabledComponentsMaskHi, bc_disabled_components_mask_hi, 0, 0, 2147483647, CFGFLAG_CLIENT | CFGFLAG_SAVE, "High bitmask for disabled components")
 

@@ -206,7 +206,7 @@ void ConHudLayoutSet(IConsole::IResult *pResult, void *pUserData)
 	const int ModuleIndex = pResult->GetInteger(0);
 	if(ModuleIndex < 0 || ModuleIndex >= MODULE_COUNT)
 		return;
-	if(ModuleIndex == MODULE_MUSIC_PLAYER)
+	if(ModuleIndex == MODULE_MUSIC_PLAYER || ModuleIndex == MODULE_GAME_TIMER)
 		return;
 
 	const EModule Module = (EModule)ModuleIndex;
@@ -230,7 +230,7 @@ void ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData)
 	char aLine[256];
 	for(int Module = 0; Module < MODULE_COUNT; ++Module)
 	{
-		if(Module == MODULE_MUSIC_PLAYER)
+		if(Module == MODULE_MUSIC_PLAYER || Module == MODULE_GAME_TIMER)
 			continue;
 		const EModule ModuleId = (EModule)Module;
 		const SModuleLayout Layout = ConfigLayout(ModuleId);
@@ -345,8 +345,6 @@ int BackgroundCorners(int DefaultCorners, float RectX, float RectY, float RectW,
 	int Corners = DefaultCorners;
 	const float Eps = 0.01f;
 	if(RectW <= 0.0f || RectH <= 0.0f)
-		return Corners;
-	if(g_Config.m_BcHudEditorAutoCorner == 0)
 		return Corners;
 
 	if(RectX <= Eps)

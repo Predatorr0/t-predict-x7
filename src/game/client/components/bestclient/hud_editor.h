@@ -41,31 +41,16 @@ private:
 	bool m_RightMouseDownLast = false;
 	bool m_Dragging = false;
 	bool m_PressedOnReset = false;
-	bool m_DrawerOpen = false;
-	bool m_SettingsPanelOpen = false;
-	float m_DrawerPhase = 0.0f;
-	float m_SettingsPanelPhase = 0.0f;
 	HudLayout::EModule m_PressedModule = HudLayout::MODULE_COUNT;
 	HudLayout::EModule m_HoveredModule = HudLayout::MODULE_COUNT;
 	HudLayout::EModule m_SelectedModule = HudLayout::MODULE_COUNT;
 	vec2 m_DragMouseOffset = vec2(0.0f, 0.0f);
 	vec2 m_PressMousePos = vec2(0.0f, 0.0f);
 	SPopupMenuId m_SettingsPopupId;
-	CButtonContainer m_DrawerToggleButton;
 	CButtonContainer m_ResetAllButton;
-	CButtonContainer m_DrawerSettingsButton;
 	CButtonContainer m_ToggleModuleButton;
-	CButtonContainer m_ExtraModuleToggleButton;
 	CButtonContainer m_ResetPositionButton;
 	CButtonContainer m_ResetSettingsButton;
-	CButtonContainer m_EditorAutoCornerButton;
-	CButtonContainer m_EditorAutoSnapButton;
-	CButtonContainer m_EditorOverlayColorButton;
-	CButtonContainer m_EditorOutlineColorButton;
-	CButtonContainer m_EditorHoverColorButton;
-	CUi::SColorPickerPopupContext m_OverlayColorPickerPopup;
-	CUi::SColorPickerPopupContext m_OutlineColorPickerPopup;
-	CUi::SColorPickerPopupContext m_HoverColorPickerPopup;
 
 	SModuleVisual GetModuleVisual(HudLayout::EModule Module) const;
 	CUIRect GetFallbackModuleRect(HudLayout::EModule Module) const;
@@ -73,7 +58,6 @@ private:
 	float HudHeight() const;
 	bool IsEditableModule(HudLayout::EModule Module) const;
 	bool IsModuleEnabled(HudLayout::EModule Module) const;
-	bool IsLiveRenderedModule(HudLayout::EModule Module) const;
 	void RenderModulePreview(const SModuleVisual &Visual) const;
 	void RenderChatExtraPreview(const SModuleVisual &Visual) const;
 	void CollectModuleVisuals(SModuleVisual *pOut, int &Count) const;
@@ -85,12 +69,6 @@ private:
 	void OpenModuleSettings(const SModuleVisual &Visual);
 	void ApplyDraggedPosition(HudLayout::EModule Module, const CUIRect &Rect);
 	CUIRect SnapRect(const CUIRect &Rect, HudLayout::EModule DraggedModule) const;
-	void ResetEditorSettings();
-	void ResetModuleExtraSettings(HudLayout::EModule Module);
-	CUIRect GetDrawerToggleRect() const;
-	CUIRect GetDrawerRect(float Phase) const;
-	CUIRect GetSettingsPanelRect() const;
-	void RenderColorPickerRow(const char *pLabel, CButtonContainer *pButton, CUi::SColorPickerPopupContext *pPopup, unsigned int *pColorValue, bool Alpha, CUIRect &Row);
 };
 
 #endif
