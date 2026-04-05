@@ -53,7 +53,7 @@ int ReleasedFireState(int FireState)
 	return FireState;
 }
 
-float EffectiveFastInputOffsetTicks()
+float EffectiveFastInputOffsetTicks(const CGameClient *pGameClient)
 {
 	if(!g_Config.m_TcFastInput)
 		return 0.0f;
@@ -72,7 +72,12 @@ float EffectiveFastInputOffsetTicks()
 		return g_Config.m_BcFastInputDeltaInput / 100.0f;
 	}
 
-	const int GammaInputAmount = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
+	const bool HookActive = pGameClient != nullptr && pGameClient->m_Controls.m_aInputData[g_Config.m_ClDummy].m_Hook != 0;
+	const int GammaInputAmount = BcFastInputGammaActiveEffectiveAmount(
+		g_Config.m_BcFastInputGammaMovement,
+		g_Config.m_BcFastInputGammaHook,
+		g_Config.m_BcFastInputGammaInput,
+		HookActive);
 	if(GammaInputAmount <= 0)
 		return 0.0f;
 	return GammaInputAmount / 100.0f;
@@ -1234,7 +1239,7 @@ bool CFastPractice::OverridePredict()
 
 int CFastPractice::ApplyVisualFastInputPrediction(int FinalTickRegular, int LocalClientId, int DummyClientId, int LocalInputConn, int DummyInputConn)
 {
-	const float FastInputOffsetTicks = EffectiveFastInputOffsetTicks();
+	const float FastInputOffsetTicks = EffectiveFastInputOffsetTicks(GameClient());
 	const int FastInputTicks = FastInputPredictionTicks(FastInputOffsetTicks);
 	if(FastInputTicks <= 0)
 		return FinalTickRegular;
