@@ -1060,7 +1060,7 @@ TEST(Str, SanitizeFilename)
 	TestInplace<str_sanitize_filename>("", "");
 	TestInplace<str_sanitize_filename>("a", "a");
 	TestInplace<str_sanitize_filename>("Merhaba dünya!", "Merhaba dünya!");
-	TestInplace<str_sanitize_filename>("привет Yormungand", "привет Наташа");
+	TestInplace<str_sanitize_filename>("привет Наташа", "привет Наташа");
 	TestInplace<str_sanitize_filename>("ąçęįǫų", "ąçęįǫų");
 	TestInplace<str_sanitize_filename>("DDNet最好了", "DDNet最好了");
 	TestInplace<str_sanitize_filename>("aβい🐘", "aβい🐘");
