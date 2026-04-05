@@ -2932,6 +2932,8 @@ void CMusicPlayer::RenderMusicPlayer(bool ForcePreview)
 			ColorRGBA DotColor = MixColor(Palette.m_Glow, Palette.m_Light, 0.22f + (1.0f - Centered) * 0.58f);
 			DotColor = MixColor(DotColor, ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), 0.06f + BarT * 0.08f);
 			DotColor.a = 0.40f + PassiveLevel * 0.32f + 0.12f * HoverT;
+			if(TranslucentColorMode)
+				DotColor = ColorRGBA(1.0f, 1.0f, 1.0f, DotColor.a);
 			Graphics()->DrawRect(DotX, DotY, DotSize, DotSize, DotColor, IGraphics::CORNER_ALL, DotSize * 0.5f);
 			continue;
 		}
@@ -2947,6 +2949,11 @@ void CMusicPlayer::RenderMusicPlayer(bool ForcePreview)
 			BarColor = MixColor(BarColor, ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), 0.03f);
 		BarColor.a = 0.86f + 0.08f * HoverT;
 		ColorRGBA LaneColor = WithAlpha(MixColor(Palette.m_Dark, Palette.m_Glow, 0.10f + 0.04f * (1.0f - Centered)), 0.02f + 0.015f * HoverT);
+		if(TranslucentColorMode)
+		{
+			BarColor = ColorRGBA(1.0f, 1.0f, 1.0f, BarColor.a);
+			LaneColor = ColorRGBA(1.0f, 1.0f, 1.0f, 0.0f);
+		}
 		Graphics()->DrawRect(LaneX, LaneY, LaneW, LaneH, LaneColor, IGraphics::CORNER_ALL, minimum(LaneW, LaneH) * 0.08f);
 		Graphics()->DrawRect(LaneX, Y, LaneW, H, BarColor, IGraphics::CORNER_ALL, minimum(LaneW, H) * 0.10f);
 	}
