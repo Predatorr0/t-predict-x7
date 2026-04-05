@@ -2928,7 +2928,7 @@ void CClient::Update()
 					g_Config.m_TcFastInput &&
 					((g_Config.m_BcFastInputMode == 0 && g_Config.m_TcFastInputAmount > 0) ||
 						(g_Config.m_BcFastInputMode == 1 && g_Config.m_BcFastInputDeltaInput > 0) ||
-						(g_Config.m_BcFastInputMode == 2 && BcFastInputGammaMaxEffectiveAmount(g_Config.m_BcFastInputGammaMovement, g_Config.m_BcFastInputGammaHook, g_Config.m_BcFastInputGammaInput) > 0));
+						(g_Config.m_BcFastInputMode == 2 && BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput) > 0));
 				if(HasFastInput && GameClient()->CheckNewInput())
 				{
 					Repredict = true;
@@ -5669,8 +5669,8 @@ int CClient::PredictionMargin() const
 	}
 	else
 	{
-		const int GammaInputAmount = BcFastInputGammaMaxEffectiveAmount(g_Config.m_BcFastInputGammaMovement, g_Config.m_BcFastInputGammaHook, g_Config.m_BcFastInputGammaInput);
-		// gamma input uses separate movement/hook sliders, so auto margin must fit the larger effective amount.
+		const int GammaInputAmount = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
+		// gamma input is configured directly in 0.01 ticks.
 		FastInputMargin = (GammaInputAmount + 2) / 5;
 	}
 

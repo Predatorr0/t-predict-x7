@@ -1732,43 +1732,25 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 						g_Config.m_BcFastInputMode = 2;
 				}
 
-				const auto EnsureGammaInputAmountsInitialized = []() {
-					const int LegacyAmount = BcFastInputGammaLegacyUiFallbackAmount(g_Config.m_BcFastInputGammaMovement, g_Config.m_BcFastInputGammaHook, g_Config.m_BcFastInputGammaInput);
-					if(LegacyAmount <= 0)
-						return;
-					g_Config.m_BcFastInputGammaMovement = LegacyAmount;
-					g_Config.m_BcFastInputGammaHook = LegacyAmount;
-				};
-
 				if(g_Config.m_BcFastInputMode != OldMode)
 				{
 					if(g_Config.m_BcFastInputMode == 1 && g_Config.m_BcFastInputDeltaInput <= 0)
 					{
-						if(OldMode == 2 && BcFastInputGammaMaxEffectiveAmount(g_Config.m_BcFastInputGammaMovement, g_Config.m_BcFastInputGammaHook, g_Config.m_BcFastInputGammaInput) > 0)
-							g_Config.m_BcFastInputDeltaInput = BcFastInputGammaMaxEffectiveAmount(g_Config.m_BcFastInputGammaMovement, g_Config.m_BcFastInputGammaHook, g_Config.m_BcFastInputGammaInput);
+						if(OldMode == 2 && g_Config.m_BcFastInputGammaInput > 0)
+							g_Config.m_BcFastInputDeltaInput = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
 						else if(g_Config.m_TcFastInputAmount > 0)
 							g_Config.m_BcFastInputDeltaInput = std::clamp(g_Config.m_TcFastInputAmount * 5, 0, 500);
 					}
-					else if(g_Config.m_BcFastInputMode == 2 && BcFastInputGammaMaxEffectiveAmount(g_Config.m_BcFastInputGammaMovement, g_Config.m_BcFastInputGammaHook, g_Config.m_BcFastInputGammaInput) <= 0)
+					else if(g_Config.m_BcFastInputMode == 2 && g_Config.m_BcFastInputGammaInput <= 0)
 					{
-						int GammaUiAmount = 0;
 						if(OldMode == 1 && g_Config.m_BcFastInputDeltaInput > 0)
-							GammaUiAmount = BcFastInputGammaEffectiveToUiAmount(g_Config.m_BcFastInputDeltaInput);
+							g_Config.m_BcFastInputGammaInput = BcFastInputGammaEffectiveToUiAmount(g_Config.m_BcFastInputDeltaInput);
 						else if(g_Config.m_TcFastInputAmount > 0)
-							GammaUiAmount = BcFastInputGammaEffectiveToUiAmount(g_Config.m_TcFastInputAmount * 5);
-						else
-							GammaUiAmount = BcFastInputGammaMovementUiAmount(g_Config.m_BcFastInputGammaMovement, g_Config.m_BcFastInputGammaHook, g_Config.m_BcFastInputGammaInput);
-
-						if(GammaUiAmount > 0)
-						{
-							g_Config.m_BcFastInputGammaMovement = GammaUiAmount;
-							g_Config.m_BcFastInputGammaHook = GammaUiAmount;
-							g_Config.m_BcFastInputGammaInput = GammaUiAmount;
-						}
+							g_Config.m_BcFastInputGammaInput = BcFastInputGammaEffectiveToUiAmount(g_Config.m_TcFastInputAmount * 5);
 					}
 					else if(g_Config.m_BcFastInputMode == 0 && g_Config.m_TcFastInputAmount <= 0)
 					{
-						const int SourceAmount = OldMode == 2 ? BcFastInputGammaMaxEffectiveAmount(g_Config.m_BcFastInputGammaMovement, g_Config.m_BcFastInputGammaHook, g_Config.m_BcFastInputGammaInput) : g_Config.m_BcFastInputDeltaInput;
+						const int SourceAmount = OldMode == 2 ? BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput) : g_Config.m_BcFastInputDeltaInput;
 						if(SourceAmount > 0)
 							g_Config.m_TcFastInputAmount = std::clamp((SourceAmount + 2) / 5, 0, 40);
 					}
@@ -1786,37 +1768,28 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 					const bool GammaMode = g_Config.m_BcFastInputMode == 2;
 					if(GammaMode)
 					{
-						EnsureGammaInputAmountsInitialized();
+						const int Max = BC_FAST_INPUT_GAMMA_UI_MAX;
+						int *pAmountValue = &g_Config.m_BcFastInputGammaInput;
+						int Value = std::clamp(*pAmountValue, Min, Max);
 
-						auto RenderGammaAmountSlider = [&](int *pAmountValue, const char *pAmountLabel) {
-							const int Max = BC_FAST_INPUT_GAMMA_UI_MAX;
-							int Value = std::clamp(*pAmountValue, Min, Max);
+						const int Increment = std::max(1, (Max - Min) / 35);
+						if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_UP) && Ui()->MouseInside(&Button))
+							Value = std::clamp(Value + Increment, Min, Max);
+						if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_DOWN) && Ui()->MouseInside(&Button))
+							Value = std::clamp(Value - Increment, Min, Max);
 
-							const int Increment = std::max(1, (Max - Min) / 35);
-							if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_UP) && Ui()->MouseInside(&Button))
-								Value = std::clamp(Value + Increment, Min, Max);
-							if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_DOWN) && Ui()->MouseInside(&Button))
-								Value = std::clamp(Value - Increment, Min, Max);
+						char aBuf[256];
+						str_format(aBuf, sizeof(aBuf), "%s: %.2fM", BCLocalize("Gamma amount"), Value / 100.0f);
 
-							char aBuf[256];
-							str_format(aBuf, sizeof(aBuf), "%s: %.2fM", pAmountLabel, Value / 100.0f);
+						CUIRect AmountLabel, ScrollBar;
+						Button.VSplitMid(&AmountLabel, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
+						const float LabelFontSize = AmountLabel.h * CUi::ms_FontmodHeight * 0.8f;
+						Ui()->DoLabel(&AmountLabel, aBuf, LabelFontSize, TEXTALIGN_ML);
 
-							CUIRect AmountLabel, ScrollBar;
-							Button.VSplitMid(&AmountLabel, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
-							const float LabelFontSize = AmountLabel.h * CUi::ms_FontmodHeight * 0.8f;
-							Ui()->DoLabel(&AmountLabel, aBuf, LabelFontSize, TEXTALIGN_ML);
-
-							const float Rel = (Value - Min) / (float)(Max - Min);
-							const float NewRel = Ui()->DoScrollbarH(pAmountValue, &ScrollBar, Rel);
-							Value = (int)(Min + NewRel * (Max - Min) + 0.5f);
-							*pAmountValue = std::clamp(Value, Min, Max);
-						};
-
-						RenderGammaAmountSlider(&g_Config.m_BcFastInputGammaMovement, BCLocalize("Gamma movement"));
-
-						Expand.HSplitTop(MarginSmall, nullptr, &Expand);
-						Expand.HSplitTop(LineSize, &Button, &Expand);
-						RenderGammaAmountSlider(&g_Config.m_BcFastInputGammaHook, BCLocalize("Gamma hook"));
+						const float Rel = (Value - Min) / (float)(Max - Min);
+						const float NewRel = Ui()->DoScrollbarH(pAmountValue, &ScrollBar, Rel);
+						Value = (int)(Min + NewRel * (Max - Min) + 0.5f);
+						*pAmountValue = std::clamp(Value, Min, Max);
 					}
 					else
 					{

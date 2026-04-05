@@ -74,67 +74,12 @@ constexpr int BcFastInputGammaClampUiAmount(int GammaUiAmount)
 
 constexpr int BcFastInputGammaUiToEffectiveAmount(int GammaUiAmount)
 {
-	if(GammaUiAmount <= 0)
-		return 0;
-	if(GammaUiAmount >= BC_FAST_INPUT_GAMMA_UI_MAX)
-		return BC_FAST_INPUT_GAMMA_EFFECTIVE_MAX;
-	return (GammaUiAmount * BC_FAST_INPUT_GAMMA_EFFECTIVE_MAX + BC_FAST_INPUT_GAMMA_UI_MAX / 2) / BC_FAST_INPUT_GAMMA_UI_MAX;
+	return BcFastInputGammaClampUiAmount(GammaUiAmount);
 }
 
 constexpr int BcFastInputGammaEffectiveToUiAmount(int EffectiveAmount)
 {
-	if(EffectiveAmount <= 0)
-		return 0;
-	if(EffectiveAmount >= BC_FAST_INPUT_GAMMA_EFFECTIVE_MAX)
-		return BC_FAST_INPUT_GAMMA_UI_MAX;
-	return (EffectiveAmount * BC_FAST_INPUT_GAMMA_UI_MAX + BC_FAST_INPUT_GAMMA_EFFECTIVE_MAX / 2) / BC_FAST_INPUT_GAMMA_EFFECTIVE_MAX;
-}
-
-constexpr int BcFastInputGammaLegacyUiFallbackAmount(int GammaMovementUiAmount, int GammaHookUiAmount, int GammaLegacyUiAmount)
-{
-	if(GammaMovementUiAmount > 0 || GammaHookUiAmount > 0)
-		return 0;
-	return BcFastInputGammaClampUiAmount(GammaLegacyUiAmount);
-}
-
-constexpr int BcFastInputGammaMovementUiAmount(int GammaMovementUiAmount, int GammaHookUiAmount, int GammaLegacyUiAmount)
-{
-	if(GammaMovementUiAmount > 0 || GammaHookUiAmount > 0)
-		return BcFastInputGammaClampUiAmount(GammaMovementUiAmount);
-	return BcFastInputGammaClampUiAmount(GammaLegacyUiAmount);
-}
-
-constexpr int BcFastInputGammaHookUiAmount(int GammaMovementUiAmount, int GammaHookUiAmount, int GammaLegacyUiAmount)
-{
-	if(GammaMovementUiAmount > 0 || GammaHookUiAmount > 0)
-		return BcFastInputGammaClampUiAmount(GammaHookUiAmount);
-	return BcFastInputGammaClampUiAmount(GammaLegacyUiAmount);
-}
-
-constexpr int BcFastInputGammaMovementEffectiveAmount(int GammaMovementUiAmount, int GammaHookUiAmount, int GammaLegacyUiAmount)
-{
-	return BcFastInputGammaUiToEffectiveAmount(BcFastInputGammaMovementUiAmount(GammaMovementUiAmount, GammaHookUiAmount, GammaLegacyUiAmount));
-}
-
-constexpr int BcFastInputGammaHookEffectiveAmount(int GammaMovementUiAmount, int GammaHookUiAmount, int GammaLegacyUiAmount)
-{
-	return BcFastInputGammaUiToEffectiveAmount(BcFastInputGammaHookUiAmount(GammaMovementUiAmount, GammaHookUiAmount, GammaLegacyUiAmount));
-}
-
-constexpr int BcFastInputGammaMaxEffectiveAmount(int GammaMovementUiAmount, int GammaHookUiAmount, int GammaLegacyUiAmount)
-{
-	const int GammaMovementEffectiveAmount = BcFastInputGammaMovementEffectiveAmount(GammaMovementUiAmount, GammaHookUiAmount, GammaLegacyUiAmount);
-	const int GammaHookEffectiveAmount = BcFastInputGammaHookEffectiveAmount(GammaMovementUiAmount, GammaHookUiAmount, GammaLegacyUiAmount);
-	return GammaMovementEffectiveAmount >= GammaHookEffectiveAmount ? GammaMovementEffectiveAmount : GammaHookEffectiveAmount;
-}
-
-constexpr int BcFastInputGammaActiveEffectiveAmount(int GammaMovementUiAmount, int GammaHookUiAmount, int GammaLegacyUiAmount, bool HookActive)
-{
-	const int GammaMovementEffectiveAmount = BcFastInputGammaMovementEffectiveAmount(GammaMovementUiAmount, GammaHookUiAmount, GammaLegacyUiAmount);
-	if(!HookActive)
-		return GammaMovementEffectiveAmount;
-	const int GammaHookEffectiveAmount = BcFastInputGammaHookEffectiveAmount(GammaMovementUiAmount, GammaHookUiAmount, GammaLegacyUiAmount);
-	return GammaMovementEffectiveAmount >= GammaHookEffectiveAmount ? GammaMovementEffectiveAmount : GammaHookEffectiveAmount;
+	return BcFastInputGammaClampUiAmount(EffectiveAmount);
 }
 
 /**

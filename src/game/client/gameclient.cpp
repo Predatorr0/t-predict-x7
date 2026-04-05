@@ -102,16 +102,6 @@ bool IsGameplayInputComponentDisabled()
 		g_Config.m_BcDisabledComponentsMaskLo, g_Config.m_BcDisabledComponentsMaskHi);
 }
 
-bool IsGammaInputHookActive(const CGameClient *pGameClient)
-{
-	if(!pGameClient)
-		return false;
-	const int Dummy = g_Config.m_ClDummy;
-	if(Dummy < 0 || Dummy >= NUM_DUMMIES)
-		return false;
-	return pGameClient->m_Controls.m_aInputData[Dummy].m_Hook != 0;
-}
-
 float EffectiveFastInputOffsetTicksFastMode()
 {
 
@@ -140,16 +130,14 @@ float EffectiveFastInputOffsetTicksDeltaInputMode()
 
 float EffectiveFastInputOffsetTicksGammaInputMode(const CGameClient *pGameClient)
 {
-	// Mode 2: gamma input (tick based, stored in separate 0.01 tick movement/hook sliders)
+	(void)pGameClient;
+
+	// Mode 2: gamma input (tick based, stored in 0.01 ticks)
 	if(!g_Config.m_TcFastInput ||
 		g_Config.m_BcFastInputMode != 2 ||
 		IsGameplayInputComponentDisabled())
 		return 0.0f;
-	const int GammaInputAmount = BcFastInputGammaActiveEffectiveAmount(
-		g_Config.m_BcFastInputGammaMovement,
-		g_Config.m_BcFastInputGammaHook,
-		g_Config.m_BcFastInputGammaInput,
-		IsGammaInputHookActive(pGameClient));
+	const int GammaInputAmount = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
 	if(GammaInputAmount <= 0)
 		return 0.0f;
 	return GammaInputAmount / 100.0f;

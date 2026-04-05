@@ -55,6 +55,8 @@ int ReleasedFireState(int FireState)
 
 float EffectiveFastInputOffsetTicks(const CGameClient *pGameClient)
 {
+	(void)pGameClient;
+
 	if(!g_Config.m_TcFastInput)
 		return 0.0f;
 
@@ -72,12 +74,7 @@ float EffectiveFastInputOffsetTicks(const CGameClient *pGameClient)
 		return g_Config.m_BcFastInputDeltaInput / 100.0f;
 	}
 
-	const bool HookActive = pGameClient != nullptr && pGameClient->m_Controls.m_aInputData[g_Config.m_ClDummy].m_Hook != 0;
-	const int GammaInputAmount = BcFastInputGammaActiveEffectiveAmount(
-		g_Config.m_BcFastInputGammaMovement,
-		g_Config.m_BcFastInputGammaHook,
-		g_Config.m_BcFastInputGammaInput,
-		HookActive);
+	const int GammaInputAmount = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
 	if(GammaInputAmount <= 0)
 		return 0.0f;
 	return GammaInputAmount / 100.0f;
