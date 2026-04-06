@@ -79,7 +79,7 @@ class CHud : public CComponent
 	void RenderPlayerState(int ClientId);
 
 	int m_LastSpectatorCountTick;
-	void RenderSpectatorCount();
+	void RenderSpectatorCount(bool ForcePreview = false);
 	void RenderDummyActions();
 	void RenderMovementInformation(bool ForcePreview = false);
 
@@ -115,12 +115,23 @@ class CHud : public CComponent
 	bool GetMovementInformationState(SMovementInformationState &State, bool ForcePreview) const;
 	float GetMovementInformationBoxHeight(const SMovementInformationState &State, float Scale) const;
 	CUIRect GetMovementInformationRect(bool ForcePreview) const;
+	class SSpectatorCountState
+	{
+	public:
+		int m_Count = 0;
+		char m_aCountBuf[16] = {};
+		char m_aaNameLines[6][MAX_NAME_LENGTH + 8] = {};
+		int m_NumNameLines = 0;
+	};
+	bool GetSpectatorCountState(SSpectatorCountState &State, bool ForcePreview);
+	CUIRect GetSpectatorCountRect(bool ForcePreview);
 
 	void RenderGameTimer();
 	void RenderPauseNotification();
 	void RenderSuddenDeath();
 
-	void RenderScoreHud();
+	void RenderScoreHud(bool ForcePreview = false);
+	CUIRect GetScoreHudRect(bool ForcePreview) const;
 	int m_LastLocalClientId = -1;
 
 	void RenderSpectatorHud();
@@ -142,6 +153,10 @@ public:
 	void OnRender() override;
 	void OnInit() override;
 	void OnNewSnapshot() override;
+	CUIRect GetScoreHudEditorRect() const;
+	void RenderScoreHudPreview();
+	CUIRect GetSpectatorCountHudEditorRect();
+	void RenderSpectatorCountPreview();
 	CUIRect GetMovementInformationHudEditorRect() const;
 	void RenderMovementInformationPreview();
 	CUIRect GetLocalTimeHudEditorRect() const;

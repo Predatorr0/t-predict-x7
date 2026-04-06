@@ -35,6 +35,8 @@ bool IsMusicPlayerEnabled(const CGameClient *pGameClient)
 bool IsEditorModule(HudLayout::EModule Module)
 {
 	return Module == HudLayout::MODULE_MUSIC_PLAYER ||
+	       Module == HudLayout::MODULE_SCORE ||
+	       Module == HudLayout::MODULE_SPECTATOR_COUNT ||
 	       Module == HudLayout::MODULE_MOVEMENT_INFO ||
 	       Module == HudLayout::MODULE_CHAT ||
 	       Module == HudLayout::MODULE_VOICE_TALKERS ||
@@ -47,6 +49,8 @@ bool IsEditorModule(HudLayout::EModule Module)
 bool IsLivePreviewModule(HudLayout::EModule Module)
 {
 	return Module == HudLayout::MODULE_MUSIC_PLAYER ||
+		Module == HudLayout::MODULE_SCORE ||
+		Module == HudLayout::MODULE_SPECTATOR_COUNT ||
 		Module == HudLayout::MODULE_MOVEMENT_INFO ||
 		Module == HudLayout::MODULE_CHAT ||
 		Module == HudLayout::MODULE_VOTES ||
@@ -245,8 +249,11 @@ CUIRect CHudEditor::GetFallbackModuleRect(HudLayout::EModule Module) const
 	switch(Module)
 	{
 	case HudLayout::MODULE_SCORE:
-		Rect = {Layout.m_X, Layout.m_Y, 112.0f, 56.0f};
+	{
+		const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+		Rect = {Layout.m_X, Layout.m_Y, 112.0f * Scale, 56.0f * Scale};
 		break;
+	}
 	case HudLayout::MODULE_MOVEMENT_INFO:
 	{
 		const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
@@ -282,8 +289,11 @@ CUIRect CHudEditor::GetFallbackModuleRect(HudLayout::EModule Module) const
 		break;
 	}
 	case HudLayout::MODULE_SPECTATOR_COUNT:
-		Rect = {Layout.m_X, Layout.m_Y, 118.0f, 16.0f};
+	{
+		const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+		Rect = {Layout.m_X, Layout.m_Y, 118.0f * Scale, 16.0f * Scale};
 		break;
+	}
 	case HudLayout::MODULE_HOOK_COMBO:
 	{
 		const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
@@ -360,6 +370,14 @@ CHudEditor::SModuleVisual CHudEditor::GetModuleVisual(HudLayout::EModule Module)
 		Visual.m_Rect = GameClient()->m_Hud.GetLocalTimeHudEditorRect();
 		Visual.m_Rounding = 3.75f * std::clamp(HudLayout::Get(HudLayout::MODULE_LOCAL_TIME, Width, Height).m_Scale / 100.0f, 0.25f, 3.0f);
 		break;
+	case HudLayout::MODULE_SCORE:
+		Visual.m_Rect = GameClient()->m_Hud.GetScoreHudEditorRect();
+		Visual.m_Rounding = 5.0f * std::clamp(HudLayout::Get(HudLayout::MODULE_SCORE, Width, Height).m_Scale / 100.0f, 0.25f, 3.0f);
+		break;
+	case HudLayout::MODULE_SPECTATOR_COUNT:
+		Visual.m_Rect = GameClient()->m_Hud.GetSpectatorCountHudEditorRect();
+		Visual.m_Rounding = 5.0f * std::clamp(HudLayout::Get(HudLayout::MODULE_SPECTATOR_COUNT, Width, Height).m_Scale / 100.0f, 0.25f, 3.0f);
+		break;
 	case HudLayout::MODULE_MOVEMENT_INFO:
 		Visual.m_Rect = GameClient()->m_Hud.GetMovementInformationHudEditorRect();
 		Visual.m_Rounding = 5.0f * std::clamp(HudLayout::Get(HudLayout::MODULE_MOVEMENT_INFO, Width, Height).m_Scale / 100.0f, 0.25f, 3.0f);
@@ -399,6 +417,8 @@ void CHudEditor::CollectModuleVisuals(SModuleVisual *pOut, int &Count) const
 	};
 
 	AddModule(HudLayout::MODULE_MUSIC_PLAYER);
+	AddModule(HudLayout::MODULE_SCORE);
+	AddModule(HudLayout::MODULE_SPECTATOR_COUNT);
 	AddModule(HudLayout::MODULE_MOVEMENT_INFO);
 	AddModule(HudLayout::MODULE_CHAT);
 	AddModule(HudLayout::MODULE_VOTES);
@@ -850,6 +870,8 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 	// Draw true HUD previews first, then add interactive editor overlays on top.
 	const bool MusicPlayerHasLiveRect = IsMusicPlayerEnabled(GameClient()) && GameClient()->m_MusicPlayer.HudReservation().m_Visible;
 	GameClient()->m_MusicPlayer.RenderHudEditor(!MusicPlayerHasLiveRect);
+	GameClient()->m_Hud.RenderScoreHudPreview();
+	GameClient()->m_Hud.RenderSpectatorCountPreview();
 	GameClient()->m_Hud.RenderMovementInformationPreview();
 	GameClient()->m_Chat.RenderHud(true);
 	GameClient()->m_Voting.RenderHud(true);
