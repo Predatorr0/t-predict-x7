@@ -508,7 +508,10 @@ void CHudEditor::UpdateDragging(vec2 MousePos)
 	CUIRect NewRect = Visual.m_Rect;
 	NewRect.x = MousePos.x - m_DragMouseOffset.x;
 	NewRect.y = MousePos.y - m_DragMouseOffset.y;
-	NewRect = SnapRect(NewRect, m_PressedModule);
+	if(!Input()->ShiftIsPressed())
+		NewRect = SnapRect(NewRect, m_PressedModule);
+	else
+		NewRect = ClampToBounds(NewRect, HudWidth(), HudHeight());
 	ApplyDraggedPosition(m_PressedModule, NewRect);
 }
 
