@@ -2547,8 +2547,8 @@ public:
 		const vec2 MousePos = UiMousePos * UiToHudScale;
 		const bool ChatActive = pOwner->GameClient()->m_Chat.IsActive();
 		const bool HudEditorActive = pOwner->GameClient()->m_HudEditor.IsActive();
-		const bool AllowInteraction = ChatActive || HudEditorActive;
-		const bool FreezeNonChatLayout = !AllowInteraction &&
+		const bool AllowInteraction = ChatActive;
+		const bool FreezeNonChatLayout = !ChatActive && !HudEditorActive &&
 			(pOwner->GameClient()->m_GameConsole.IsActive() || pOwner->GameClient()->m_Menus.IsActive());
 
 		const float ProbeT = EaseInOutCubic(m_ExpandAnim);
@@ -2704,10 +2704,11 @@ CUIRect CMusicPlayer::GetHudEditorRect(bool ForcePreview) const
 	const float Width = Height * Graphics()->ScreenAspect();
 	const auto Layout = HudLayout::Get(HudLayout::MODULE_MUSIC_PLAYER, Width, Height);
 	const float LayoutScale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+	const float LayoutWidthScale = Width / maximum(HudLayout::CANVAS_WIDTH, 0.001f);
 	const float CompactTitleFont = 6.6f * LayoutScale;
 	const SGameTimerDisplay GameTimer = BuildGameTimerDisplay(GameClient()->m_Snap.m_pGameInfoObj, Client()->GameTick(g_Config.m_ClDummy), Client()->GameTickSpeed(), true);
-	const float CompactTextSlotWidth = ComputeCompactTextSlotWidth(TextRender(), GameTimer, CompactTitleFont, LayoutScale, Width / maximum(HudLayout::CANVAS_WIDTH, 0.001f));
-	const SMusicPlayerMetrics Metrics = ComputeMusicPlayerMetrics(Layout, Width, Height, 1.0f, CompactTextSlotWidth);
+	const float CompactTextSlotWidth = ComputeCompactTextSlotWidth(TextRender(), GameTimer, CompactTitleFont, LayoutScale, LayoutWidthScale);
+	const SMusicPlayerMetrics Metrics = ComputeMusicPlayerMetrics(Layout, Width, Height, 0.0f, CompactTextSlotWidth);
 	return Metrics.m_ViewRect;
 }
 
@@ -2788,7 +2789,7 @@ void CMusicPlayer::RenderMusicPlayer(bool ForcePreview)
 {
 	if(!m_pImpl)
 		return;
-	if(g_Config.m_BcMusicPlayer == 0)
+	if(!ForcePreview && g_Config.m_BcMusicPlayer == 0)
 		return;
 	if(!ForcePreview && g_Config.m_ClFocusMode && g_Config.m_ClFocusModeHideSongPlayer)
 		return;
@@ -2831,9 +2832,9 @@ void CMusicPlayer::RenderMusicPlayer(bool ForcePreview)
 	const vec2 UiMousePos = Ui()->UpdatedMousePos() * vec2(UiScreen.w, UiScreen.h) / WindowSize;
 	const vec2 UiToHudScale(Width / maximum(UiScreen.w, 1.0f), Height / maximum(UiScreen.h, 1.0f));
 	const vec2 MousePos = UiMousePos * UiToHudScale;
-	const bool AllowInteraction = !ForcePreview && (GameClient()->m_Chat.IsActive() || GameClient()->m_HudEditor.IsActive());
+	const bool AllowInteraction = !ForcePreview && GameClient()->m_Chat.IsActive();
 
-	const float ExpandT = ForcePreview ? 1.0f : EaseInOutCubic(m_pImpl->m_ExpandAnim);
+	const float ExpandT = ForcePreview ? 0.0f : EaseInOutCubic(m_pImpl->m_ExpandAnim);
 	const float TextT = EaseOutCubic(std::clamp((ExpandT - 0.04f) / 0.96f, 0.0f, 1.0f));
 	const float ControlsT = EaseOutCubic(std::clamp((ExpandT - 0.16f) / 0.84f, 0.0f, 1.0f));
 	const float HoverT = ForcePreview ? 1.0f : EaseOutCubic(m_pImpl->m_HoverAnim);
@@ -2874,7 +2875,8 @@ void CMusicPlayer::RenderMusicPlayer(bool ForcePreview)
 	}
 	else
 	{
-		Graphics()->DrawRect(View.x, View.y, View.w, View.h, PanelColor, IGraphics::CORNER_ALL, Metrics.m_Rounding);
+		const int Corners = HudLayout::BackgroundCorners(IGraphics::CORNER_ALL, View.x, View.y, View.w, View.h, Width, Height);
+		Graphics()->DrawRect(View.x, View.y, View.w, View.h, PanelColor, Corners, Metrics.m_Rounding);
 	}
 
 	CUIRect Content = View;

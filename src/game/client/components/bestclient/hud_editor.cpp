@@ -34,7 +34,8 @@ bool IsMusicPlayerEnabled(const CGameClient *pGameClient)
 
 bool IsEditorModule(HudLayout::EModule Module)
 {
-	return Module == HudLayout::MODULE_CHAT ||
+	return Module == HudLayout::MODULE_MUSIC_PLAYER ||
+	       Module == HudLayout::MODULE_CHAT ||
 	       Module == HudLayout::MODULE_VOICE_TALKERS ||
 	       Module == HudLayout::MODULE_VOICE_STATUS ||
 	       Module == HudLayout::MODULE_VOTES ||
@@ -43,7 +44,8 @@ bool IsEditorModule(HudLayout::EModule Module)
 
 bool IsLivePreviewModule(HudLayout::EModule Module)
 {
-	return Module == HudLayout::MODULE_CHAT ||
+	return Module == HudLayout::MODULE_MUSIC_PLAYER ||
+		Module == HudLayout::MODULE_CHAT ||
 		Module == HudLayout::MODULE_VOTES ||
 		Module == HudLayout::MODULE_LOCAL_TIME ||
 		Module == HudLayout::MODULE_VOICE_TALKERS ||
@@ -323,17 +325,9 @@ CHudEditor::SModuleVisual CHudEditor::GetModuleVisual(HudLayout::EModule Module)
 	switch(Module)
 	{
 	case HudLayout::MODULE_MUSIC_PLAYER:
-		if(IsMusicPlayerEnabled(GameClient()))
-		{
-			Visual.m_Rect = GameClient()->m_MusicPlayer.GetHudEditorRect(false);
-			if(Visual.m_Rect.w <= 0.0f || Visual.m_Rect.h <= 0.0f)
-				Visual.m_Rect = GameClient()->m_MusicPlayer.GetHudEditorRect(true);
-		}
-		else
-		{
-			const auto Layout = HudLayout::Get(HudLayout::MODULE_MUSIC_PLAYER, Width, Height);
-			Visual.m_Rect = {Layout.m_X, Layout.m_Y, 92.0f, 12.0f};
-		}
+		Visual.m_Rect = GameClient()->m_MusicPlayer.GetHudEditorRect(false);
+		if(Visual.m_Rect.w <= 0.0f || Visual.m_Rect.h <= 0.0f)
+			Visual.m_Rect = GameClient()->m_MusicPlayer.GetHudEditorRect(true);
 		Visual.m_Rounding = 8.0f;
 		break;
 	case HudLayout::MODULE_VOICE_TALKERS:
@@ -387,6 +381,7 @@ void CHudEditor::CollectModuleVisuals(SModuleVisual *pOut, int &Count) const
 		pOut[Count++] = GetModuleVisual(Module);
 	};
 
+	AddModule(HudLayout::MODULE_MUSIC_PLAYER);
 	AddModule(HudLayout::MODULE_CHAT);
 	AddModule(HudLayout::MODULE_VOTES);
 	AddModule(HudLayout::MODULE_LOCAL_TIME);
@@ -429,6 +424,15 @@ void CHudEditor::ApplyDraggedPosition(HudLayout::EModule Module, const CUIRect &
 	{
 		const float BottomAnchor = Rect.y + Rect.h - ChatInputBottomExtra(GameClient()->m_Chat);
 		HudLayout::SetPosition(Module, CanvasX, BottomAnchor);
+	}
+	else if(Module == HudLayout::MODULE_MUSIC_PLAYER)
+	{
+		const auto Layout = HudLayout::Get(HudLayout::MODULE_MUSIC_PLAYER, HudWidth(), HudHeight());
+		const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+		const float WidthScale = HudWidth() / maximum(HudLayout::CANVAS_WIDTH, 0.001f);
+		const float ExpandedW = 104.0f * Scale * WidthScale;
+		const float BaseX = Rect.x - maximum(0.0f, ExpandedW - Rect.w) * 0.5f;
+		HudLayout::SetPosition(Module, BaseX * (HudLayout::CANVAS_WIDTH / maximum(HudWidth(), 1.0f)), Rect.y);
 	}
 	else if(Module == HudLayout::MODULE_LOCAL_TIME)
 	{
@@ -814,6 +818,8 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 	Graphics()->DrawRect(0.0f, 0.0f, Width, Height, ColorRGBA(0.0f, 0.0f, 0.0f, 0.38f), IGraphics::CORNER_ALL, 0.0f);
 
 	// Draw true HUD previews first, then add interactive editor overlays on top.
+	const bool MusicPlayerHasLiveRect = IsMusicPlayerEnabled(GameClient()) && GameClient()->m_MusicPlayer.HudReservation().m_Visible;
+	GameClient()->m_MusicPlayer.RenderHudEditor(!MusicPlayerHasLiveRect);
 	GameClient()->m_Chat.RenderHud(true);
 	GameClient()->m_Voting.RenderHud(true);
 	GameClient()->m_Hud.RenderLocalTimePreview();

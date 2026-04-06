@@ -195,10 +195,6 @@ SModuleLayout ResolveBaseLayout(EModule Module, float HudWidth, float HudHeight)
 	{
 		Layout = ConfigLayout(Module);
 		Layout.m_X = CanvasXToHud(Layout.m_X, HudWidth);
-		if(Module == MODULE_MUSIC_PLAYER)
-		{
-			Layout.m_X = std::clamp(Layout.m_X, 0.0f, HudWidth);
-		}
 	}
 	return Layout;
 }
