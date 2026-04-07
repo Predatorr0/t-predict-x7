@@ -356,6 +356,7 @@ static void BestClientShopSetSearch(CMenus *pMenus, const char *pSearch)
 	}
 
 	str_copy(gs_BestClientShopState.m_aAppliedSearch, aTrimmed, sizeof(gs_BestClientShopState.m_aAppliedSearch));
+	gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab] = 1;
 	BestClientShopInvalidatePage(pMenus);
 }
 
@@ -1174,16 +1175,17 @@ static void BestClientShopBuildInstallUrls(int Tab, const SBestClientShopItem &I
 static void BestClientShopStartFetch(CMenus *pMenus)
 {
 	const char *pApiType = gs_aBestClientShopTypeInfos[gs_BestClientShopState.m_Tab].m_pApiType;
+	const int CurrentPage = gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab];
 	char aUrl[512];
 	if(BestClientShopHasActiveSearch())
 	{
 		char aEscapedQuery[384];
 		EscapeUrl(aEscapedQuery, sizeof(aEscapedQuery), gs_BestClientShopState.m_aAppliedSearch);
-		str_format(aUrl, sizeof(aUrl), BESTCLIENT_SHOP_SEARCH_API_URL, 1, pApiType, aEscapedQuery);
+		str_format(aUrl, sizeof(aUrl), BESTCLIENT_SHOP_SEARCH_API_URL, CurrentPage, pApiType, aEscapedQuery);
 	}
 	else
 	{
-		str_format(aUrl, sizeof(aUrl), BESTCLIENT_SHOP_BROWSE_API_URL, gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab], pApiType);
+		str_format(aUrl, sizeof(aUrl), BESTCLIENT_SHOP_BROWSE_API_URL, CurrentPage, pApiType);
 	}
 
 	gs_BestClientShopState.m_pFetchTask = HttpGet(aUrl);
@@ -1193,7 +1195,7 @@ static void BestClientShopStartFetch(CMenus *pMenus)
 	gs_BestClientShopState.m_pFetchTask->LogProgress(HTTPLOG::NONE);
 	gs_BestClientShopState.m_pFetchTask->FailOnErrorStatus(false);
 	gs_BestClientShopState.m_FetchTab = gs_BestClientShopState.m_Tab;
-	gs_BestClientShopState.m_FetchPage = BestClientShopHasActiveSearch() ? 1 : gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab];
+	gs_BestClientShopState.m_FetchPage = CurrentPage;
 	str_copy(gs_BestClientShopState.m_aFetchSearch, gs_BestClientShopState.m_aAppliedSearch, sizeof(gs_BestClientShopState.m_aFetchSearch));
 	BestClientShopSetStatus(TCLocalize("Loading shop..."));
 	pMenus->MenuHttp()->Run(gs_BestClientShopState.m_pFetchTask);
@@ -1206,7 +1208,7 @@ static void BestClientShopEnsureFetch(CMenus *pMenus)
 		return;
 	}
 
-	const int CurrentPage = BestClientShopHasActiveSearch() ? 1 : gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab];
+	const int CurrentPage = gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab];
 	if(gs_BestClientShopState.m_LoadedTab != gs_BestClientShopState.m_Tab ||
 		gs_BestClientShopState.m_LoadedPage != CurrentPage ||
 		str_comp(gs_BestClientShopState.m_aLoadedSearch, gs_BestClientShopState.m_aAppliedSearch) != 0)
@@ -1257,7 +1259,7 @@ static void BestClientShopStartPreviewFetch(CMenus *pMenus)
 		BestClientShopBuildPreviewPath(gs_BestClientShopState.m_Tab, Item.m_aId, gs_BestClientShopState.m_aPreviewPath, sizeof(gs_BestClientShopState.m_aPreviewPath));
 		str_copy(gs_BestClientShopState.m_aPreviewItemId, Item.m_aId, sizeof(gs_BestClientShopState.m_aPreviewItemId));
 		gs_BestClientShopState.m_PreviewTab = gs_BestClientShopState.m_Tab;
-		gs_BestClientShopState.m_PreviewPage = BestClientShopHasActiveSearch() ? 1 : gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab];
+		gs_BestClientShopState.m_PreviewPage = gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab];
 		str_copy(gs_BestClientShopState.m_aPreviewSearch, gs_BestClientShopState.m_aAppliedSearch, sizeof(gs_BestClientShopState.m_aPreviewSearch));
 
 		gs_BestClientShopState.m_pPreviewTask = HttpGet(aPreviewUrl);
@@ -1280,7 +1282,7 @@ static void BestClientShopFinishPreviewFetch(CMenus *pMenus)
 
 	SBestClientShopItem *pItem = BestClientShopFindItem(gs_BestClientShopState.m_aPreviewItemId);
 	const bool SamePage = gs_BestClientShopState.m_PreviewTab == gs_BestClientShopState.m_Tab &&
-		gs_BestClientShopState.m_PreviewPage == (BestClientShopHasActiveSearch() ? 1 : gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab]) &&
+		gs_BestClientShopState.m_PreviewPage == gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab] &&
 		str_comp(gs_BestClientShopState.m_aPreviewSearch, gs_BestClientShopState.m_aAppliedSearch) == 0;
 
 	if(gs_BestClientShopState.m_pPreviewTask->State() != EHttpState::DONE)
@@ -1420,7 +1422,7 @@ static void BestClientShopFinishFetch(CMenus *pMenus)
 
 	int TotalPages = 1;
 	const json_value *pTotalPages = json_object_get(pJson, "totalPages");
-	if(!BestClientShopHasActiveSearch() && pTotalPages != &json_value_none && pTotalPages->type == json_integer)
+	if(pTotalPages != &json_value_none && pTotalPages->type == json_integer)
 	{
 		TotalPages = maximum(1, json_int_get(pTotalPages));
 	}
@@ -1438,7 +1440,7 @@ static void BestClientShopFinishFetch(CMenus *pMenus)
 	gs_BestClientShopState.m_TotalPages = TotalPages;
 	gs_BestClientShopState.m_TotalItems = TotalItems;
 
-	if(!BestClientShopHasActiveSearch() && gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab] > gs_BestClientShopState.m_TotalPages)
+	if(gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab] > gs_BestClientShopState.m_TotalPages)
 	{
 		gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab] = gs_BestClientShopState.m_TotalPages;
 	}
@@ -1681,7 +1683,6 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 	CUIRect SearchBox, SearchButton, RefreshButton, FolderButton, AutoSetButton, PrevButton, PageLabel, NextButton;
 	CUIRect ControlsRest = ControlsRow;
 	CUIRect Spacer;
-	const bool SearchMode = BestClientShopHasActiveSearch();
 	ControlsRest.VSplitRight(90.0f, &ControlsRest, &AutoSetButton);
 	ControlsRest.VSplitRight(BESTCLIENT_SHOP_MARGIN_SMALL, &ControlsRest, &Spacer);
 	ControlsRest.VSplitRight(120.0f, &ControlsRest, &FolderButton);
@@ -1690,21 +1691,13 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 	ControlsRest.VSplitRight(BESTCLIENT_SHOP_MARGIN_SMALL, &ControlsRest, &Spacer);
 	ControlsRest.VSplitRight(72.0f, &ControlsRest, &SearchButton);
 	ControlsRest.VSplitRight(BESTCLIENT_SHOP_MARGIN_SMALL, &ControlsRest, &Spacer);
-
-	if(SearchMode)
-	{
-		SearchBox = ControlsRest;
-	}
-	else
-	{
-		ControlsRest.VSplitLeft(24.0f, &PrevButton, &ControlsRest);
-		ControlsRest.VSplitLeft(2.0f, &Spacer, &ControlsRest);
-		ControlsRest.VSplitLeft(56.0f, &PageLabel, &ControlsRest);
-		ControlsRest.VSplitLeft(2.0f, &Spacer, &ControlsRest);
-		ControlsRest.VSplitLeft(24.0f, &NextButton, &ControlsRest);
-		ControlsRest.VSplitLeft(BESTCLIENT_SHOP_MARGIN_SMALL, &Spacer, &ControlsRest);
-		SearchBox = ControlsRest;
-	}
+	ControlsRest.VSplitLeft(24.0f, &PrevButton, &ControlsRest);
+	ControlsRest.VSplitLeft(2.0f, &Spacer, &ControlsRest);
+	ControlsRest.VSplitLeft(56.0f, &PageLabel, &ControlsRest);
+	ControlsRest.VSplitLeft(2.0f, &Spacer, &ControlsRest);
+	ControlsRest.VSplitLeft(24.0f, &NextButton, &ControlsRest);
+	ControlsRest.VSplitLeft(BESTCLIENT_SHOP_MARGIN_SMALL, &Spacer, &ControlsRest);
+	SearchBox = ControlsRest;
 
 	Ui()->DoEditBox_Search(&gs_BestClientShopSearchInput, &SearchBox, 12.0f, !Ui()->IsPopupOpen() && !GameClient()->m_GameConsole.IsActive());
 
@@ -1736,7 +1729,6 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 		g_Config.m_BcShopAutoSet = !g_Config.m_BcShopAutoSet;
 	}
 
-	if(!SearchMode)
 	{
 		const int CurrentPage = gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab];
 		if(DoButton_Menu(&s_PrevButton, "<", CurrentPage > 1 ? 0 : -1, &PrevButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, CurrentPage > 1 ? 0.25f : 0.15f)) && CurrentPage > 1)
@@ -1755,7 +1747,7 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 	}
 
 	if(gs_BestClientShopState.m_LoadedTab != gs_BestClientShopState.m_Tab ||
-		gs_BestClientShopState.m_LoadedPage != (SearchMode ? 1 : gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab]) ||
+		gs_BestClientShopState.m_LoadedPage != gs_BestClientShopState.m_aPages[gs_BestClientShopState.m_Tab] ||
 		str_comp(gs_BestClientShopState.m_aLoadedSearch, gs_BestClientShopState.m_aAppliedSearch) != 0)
 	{
 		BestClientShopEnsureFetch(this);
@@ -1770,7 +1762,7 @@ void CMenus::RenderSettingsBestClientShop(CUIRect MainView)
 	{
 		str_copy(aStatusText, gs_BestClientShopState.m_aStatus, sizeof(aStatusText));
 	}
-	else if(SearchMode)
+	else if(BestClientShopHasActiveSearch())
 	{
 		str_format(aStatusText, sizeof(aStatusText), "%s: %d", TCLocalize("Search results"), gs_BestClientShopState.m_TotalItems);
 	}
