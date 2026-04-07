@@ -1756,7 +1756,30 @@ static float RoundedArtInset(float LocalX, float W, float Radius)
 	return 0.0f;
 }
 
-static void DrawRoundedTexture(IGraphics *pGraphics, IGraphics::CTextureHandle Texture, const CUIRect &Rect, float Rounding, int TextureWidth, int TextureHeight)
+struct SArtCropProfile
+{
+	float m_Left = 0.06f;
+	float m_Right = 0.06f;
+	float m_Top = 0.06f;
+	float m_Bottom = 0.06f;
+};
+
+static SArtCropProfile MusicArtCropProfile(std::string_view ServiceId)
+{
+	SArtCropProfile Profile;
+	if(BestClientVisualizer::MediaSourceContainsI(ServiceId, "spotify"))
+	{
+		// Spotify overlays a branded strip/logo near the bottom edge on some covers.
+		// Bias the crop downward so the artwork fills the frame and the branding stays outside.
+		Profile.m_Left = 0.10f;
+		Profile.m_Right = 0.10f;
+		Profile.m_Top = 0.08f;
+		Profile.m_Bottom = 0.20f;
+	}
+	return Profile;
+}
+
+static void DrawRoundedTexture(IGraphics *pGraphics, IGraphics::CTextureHandle Texture, const CUIRect &Rect, float Rounding, int TextureWidth, int TextureHeight, const SArtCropProfile &CropProfile)
 {
 	if(pGraphics == nullptr || !Texture.IsValid() || Rect.w <= 0.0f || Rect.h <= 0.0f)
 		return;
@@ -1784,15 +1807,14 @@ static void DrawRoundedTexture(IGraphics *pGraphics, IGraphics::CTextureHandle T
 			V1 = 1.0f - Crop;
 		}
 	}
-	const float ExtraCrop = 0.06f;
 	const float OriginalU0 = U0;
 	const float OriginalU1 = U1;
 	const float OriginalV0 = V0;
 	const float OriginalV1 = V1;
-	U0 = mix(OriginalU0, OriginalU1, ExtraCrop);
-	U1 = mix(OriginalU1, OriginalU0, ExtraCrop);
-	V0 = mix(OriginalV0, OriginalV1, ExtraCrop);
-	V1 = mix(OriginalV1, OriginalV0, ExtraCrop);
+	U0 = mix(OriginalU0, OriginalU1, std::clamp(CropProfile.m_Left, 0.0f, 0.45f));
+	U1 = mix(OriginalU1, OriginalU0, std::clamp(CropProfile.m_Right, 0.0f, 0.45f));
+	V0 = mix(OriginalV0, OriginalV1, std::clamp(CropProfile.m_Top, 0.0f, 0.45f));
+	V1 = mix(OriginalV1, OriginalV0, std::clamp(CropProfile.m_Bottom, 0.0f, 0.45f));
 
 	pGraphics->TextureSet(Texture);
 	pGraphics->QuadsBegin();
@@ -2945,7 +2967,7 @@ void CMusicPlayer::RenderMusicPlayer(bool ForcePreview)
 	IGraphics::CTextureHandle ArtTexture;
 	if(!m_pImpl->m_vArtFrames.empty() && MediaDecoder::GetCurrentFrameTexture(m_pImpl->m_vArtFrames, m_pImpl->m_ArtAnimated, m_pImpl->m_ArtAnimationStart, ArtTexture) && ArtTexture.IsValid())
 	{
-		DrawRoundedTexture(Graphics(), ArtTexture, ArtRect, ArtRounding, m_pImpl->m_ArtWidth, m_pImpl->m_ArtHeight);
+		DrawRoundedTexture(Graphics(), ArtTexture, ArtRect, ArtRounding, m_pImpl->m_ArtWidth, m_pImpl->m_ArtHeight, MusicArtCropProfile(Snapshot.m_ServiceId));
 	}
 	else
 	{
