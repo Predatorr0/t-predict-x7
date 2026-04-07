@@ -83,6 +83,7 @@
 #endif
 
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <limits>
 #include <stack>
@@ -507,6 +508,12 @@ void CClient::OnEnterGame(bool Dummy)
 	m_aPredIntraTick[Dummy] = 0.0f;
 	m_aGameTime[Dummy].Init(0);
 	m_PredictedTime.Init(0);
+	if(!Dummy)
+	{
+		m_AutoMarginLastSampleTime = 0;
+		m_AutoMarginLatencyAverageMs = 0.0f;
+		m_AutoMarginLatencyJitterMs = 0.0f;
+	}
 
 	if(!Dummy)
 	{
@@ -791,6 +798,9 @@ void CClient::DisconnectWithReason(const char *pReason)
 	mem_zero(&m_CurrentServerPingUuid, sizeof(m_CurrentServerPingUuid));
 	m_CurrentServerCurrentPingTime = -1;
 	m_CurrentServerNextPingTime = -1;
+	m_AutoMarginLastSampleTime = 0;
+	m_AutoMarginLatencyAverageMs = 0.0f;
+	m_AutoMarginLatencyJitterMs = 0.0f;
 
 	ResetMapDownload(true);
 
@@ -5653,28 +5663,56 @@ int CClient::PredictionMargin() const
 		return 10;
 
 	int PredictionMargin = g_Config.m_ClPredictionMargin;
-	if(!g_Config.m_BcFastInputAutoMargin || !g_Config.m_TcFastInput)
+	if(!g_Config.m_BcFastInputAutoMargin)
 		return PredictionMargin;
 
 	int FastInputMargin = 0;
-	if(g_Config.m_BcFastInputMode == 0)
+	if(g_Config.m_TcFastInput)
 	{
-		FastInputMargin = std::max(0, g_Config.m_TcFastInputAmount);
-	}
-	else if(g_Config.m_BcFastInputMode == 1)
-	{
-		const int DeltaInputAmount = std::max(0, g_Config.m_BcFastInputDeltaInput);
-		// delta input is measured in 0.01 ticks, convert it to milliseconds.
-		FastInputMargin = (DeltaInputAmount + 2) / 5;
-	}
-	else
-	{
-		const int GammaInputAmount = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
-		// gamma input is configured directly in 0.01 ticks.
-		FastInputMargin = (GammaInputAmount + 2) / 5;
+		if(g_Config.m_BcFastInputMode == 0)
+		{
+			FastInputMargin = std::max(0, g_Config.m_TcFastInputAmount);
+		}
+		else if(g_Config.m_BcFastInputMode == 1)
+		{
+			const int DeltaInputAmount = std::max(0, g_Config.m_BcFastInputDeltaInput);
+			// delta input is measured in 0.01 ticks, convert it to milliseconds.
+			FastInputMargin = (DeltaInputAmount + 2) / 5;
+		}
+		else
+		{
+			const int GammaInputAmount = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
+			// gamma input is configured directly in 0.01 ticks.
+			FastInputMargin = (GammaInputAmount + 2) / 5;
+		}
 	}
 
-	return std::max(PredictionMargin, FastInputMargin);
+	const int BaseMargin = std::max(PredictionMargin, FastInputMargin);
+	const int64_t Now = time_get();
+	const int LivePredictionMs = std::max(0, (int)((m_PredictedTime.Get(Now) - m_aGameTime[g_Config.m_ClDummy].Get(Now)) * 1000 / (float)time_freq()));
+
+	if(m_AutoMarginLastSampleTime == 0)
+	{
+		m_AutoMarginLastSampleTime = Now;
+		m_AutoMarginLatencyAverageMs = LivePredictionMs;
+		m_AutoMarginLatencyJitterMs = 0.0f;
+	}
+	else if(Now > m_AutoMarginLastSampleTime + time_freq() / 20)
+	{
+		// Track current latency and its spread so auto margin can react to unstable links in real time.
+		const float LatencyDelta = std::abs((float)LivePredictionMs - m_AutoMarginLatencyAverageMs);
+		m_AutoMarginLatencyAverageMs += (LivePredictionMs - m_AutoMarginLatencyAverageMs) * 0.15f;
+		m_AutoMarginLatencyJitterMs += (LatencyDelta - m_AutoMarginLatencyJitterMs) * 0.15f;
+		m_AutoMarginLastSampleTime = Now;
+	}
+
+	const int BaseMaxLatencyTicks = GameTickSpeed() + (BaseMargin * GameTickSpeed()) / 1000;
+	const bool ConnectionProblems = m_aNetClient[g_Config.m_ClDummy].GotProblems(BaseMaxLatencyTicks * time_freq() / GameTickSpeed());
+	const float ConnectionMargin = std::max(m_AutoMarginLatencyAverageMs, (float)LivePredictionMs) / 8.0f +
+		m_AutoMarginLatencyJitterMs * 2.0f +
+		(ConnectionProblems ? 15.0f : 0.0f);
+
+	return std::clamp(std::max(BaseMargin, round_to_int(ConnectionMargin)), 1, 300);
 }
 
 int CClient::UdpConnectivity(int NetType)
