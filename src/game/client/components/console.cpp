@@ -1742,6 +1742,16 @@ bool CGameConsole::OnInput(const IInput::CEvent &Event)
 	if((Event.m_Key >= KEY_F1 && Event.m_Key <= KEY_F12) || (Event.m_Key >= KEY_F13 && Event.m_Key <= KEY_F24))
 		return false;
 
+	#if defined(CONF_PLATFORM_ANDROID)
+	if(Event.m_Key == KEY_ESCAPE && (Event.m_Flags & IInput::FLAG_PRESS) && Graphics()->IsScreenKeyboardShown())
+	{
+		// The Android back key is translated to escape globally. Ignore it while
+		// the software keyboard is visible so opening the console cannot
+		// immediately close it again.
+		return true;
+	}
+	#endif
+
 	if(Event.m_Key == KEY_ESCAPE && (Event.m_Flags & IInput::FLAG_PRESS) && !CurrentConsole()->m_Searching)
 		Toggle(m_ConsoleType);
 	else if(!CurrentConsole()->OnInput(Event))
