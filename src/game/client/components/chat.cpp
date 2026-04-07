@@ -79,6 +79,94 @@ static bool ChatTypingAnimSupportsText(const char *pText)
 	return true;
 }
 
+static int WrongLayoutToLatinCodepoint(int Codepoint)
+{
+	switch(Codepoint)
+	{
+	case '.': return '/';
+	case 0x0451: return '`'; // ё
+	case 0x0401: return '~'; // Ё
+	case 0x0439: return 'q'; // й
+	case 0x0419: return 'Q'; // Й
+	case 0x0446: return 'w'; // ц
+	case 0x0426: return 'W'; // Ц
+	case 0x0443: return 'e'; // у
+	case 0x0423: return 'E'; // У
+	case 0x043a: return 'r'; // к
+	case 0x041a: return 'R'; // К
+	case 0x0435: return 't'; // е
+	case 0x0415: return 'T'; // Е
+	case 0x043d: return 'y'; // н
+	case 0x041d: return 'Y'; // Н
+	case 0x0433: return 'u'; // г
+	case 0x0413: return 'U'; // Г
+	case 0x0448: return 'i'; // ш
+	case 0x0428: return 'I'; // Ш
+	case 0x0449: return 'o'; // щ
+	case 0x0429: return 'O'; // Щ
+	case 0x0437: return 'p'; // з
+	case 0x0417: return 'P'; // З
+	case 0x0445: return '['; // х
+	case 0x0425: return '{'; // Х
+	case 0x044a: return ']'; // ъ
+	case 0x042a: return '}'; // Ъ
+	case 0x0444: return 'a'; // ф
+	case 0x0424: return 'A'; // Ф
+	case 0x044b: return 's'; // ы
+	case 0x042b: return 'S'; // Ы
+	case 0x0432: return 'd'; // в
+	case 0x0412: return 'D'; // В
+	case 0x0430: return 'f'; // а
+	case 0x0410: return 'F'; // А
+	case 0x043f: return 'g'; // п
+	case 0x041f: return 'G'; // П
+	case 0x0440: return 'h'; // р
+	case 0x0420: return 'H'; // Р
+	case 0x043e: return 'j'; // о
+	case 0x041e: return 'J'; // О
+	case 0x043b: return 'k'; // л
+	case 0x041b: return 'K'; // Л
+	case 0x0434: return 'l'; // д
+	case 0x0414: return 'L'; // Д
+	case 0x0436: return ';'; // ж
+	case 0x0416: return ':'; // Ж
+	case 0x044d: return '\''; // э
+	case 0x042d: return '"'; // Э
+	case 0x044f: return 'z'; // я
+	case 0x042f: return 'Z'; // Я
+	case 0x0447: return 'x'; // ч
+	case 0x0427: return 'X'; // Ч
+	case 0x0441: return 'c'; // с
+	case 0x0421: return 'C'; // С
+	case 0x043c: return 'v'; // м
+	case 0x041c: return 'V'; // М
+	case 0x0438: return 'b'; // и
+	case 0x0418: return 'B'; // И
+	case 0x0442: return 'n'; // т
+	case 0x0422: return 'N'; // Т
+	case 0x044c: return 'm'; // ь
+	case 0x042c: return 'M'; // Ь
+	case 0x0431: return ','; // б
+	case 0x0411: return '<'; // Б
+	case 0x044e: return '.'; // ю
+	case 0x042e: return '>'; // Ю
+	default: return Codepoint;
+	}
+}
+
+static bool IsLikelySlashCommandName(const char *pName)
+{
+	if(!pName || !pName[0] || !std::isalpha((unsigned char)pName[0]))
+		return false;
+
+	for(const char *pChar = pName; *pChar != '\0'; ++pChar)
+	{
+		if(!std::isalnum((unsigned char)*pChar) && *pChar != '_' && *pChar != '-')
+			return false;
+	}
+	return true;
+}
+
 class CChat::CMediaDecodeJob : public IJob
 {
 	EMediaKind m_MediaKind;
@@ -320,6 +408,70 @@ void CChat::RegisterCommand(const char *pName, const char *pParams, const char *
 void CChat::UnregisterCommand(const char *pName)
 {
 	m_vServerCommands.erase(std::remove_if(m_vServerCommands.begin(), m_vServerCommands.end(), [pName](const CCommand &Command) { return str_comp(Command.m_aName, pName) == 0; }), m_vServerCommands.end());
+}
+
+bool CChat::HasServerCommand(const char *pName) const
+{
+	for(const auto &Command : m_vServerCommands)
+	{
+		if(str_comp_nocase(Command.m_aName, pName) == 0)
+			return true;
+	}
+	return false;
+}
+
+bool CChat::TryConvertWrongLayoutSlashCommand(const char *pLine, char *pOut, int OutSize) const
+{
+	if(!g_Config.m_BcChatAltCommandLayout || !pLine || !pOut || OutSize <= 0)
+		return false;
+
+	const char *pTokenStart = str_utf8_skip_whitespaces(pLine);
+	if(*pTokenStart == '\0')
+		return false;
+
+	const char *pTokenEnd = pTokenStart;
+	while(*pTokenEnd)
+	{
+		const char *pNext = pTokenEnd;
+		const int Codepoint = str_utf8_decode(&pNext);
+		if(Codepoint <= 0 || str_utf8_isspace(Codepoint))
+			break;
+		pTokenEnd = pNext;
+	}
+
+	char aConvertedToken[MAX_LINE_LENGTH];
+	int ConvertedLen = 0;
+	bool Changed = false;
+	for(const char *pScan = pTokenStart; pScan < pTokenEnd;)
+	{
+		const char *pNext = pScan;
+		const int Codepoint = str_utf8_decode(&pNext);
+		const int ConvertedCodepoint = WrongLayoutToLatinCodepoint(Codepoint);
+		Changed |= ConvertedCodepoint != Codepoint;
+
+		char aEncoded[8];
+		const int EncodedLen = str_utf8_encode(aEncoded, ConvertedCodepoint);
+		if(ConvertedLen + EncodedLen >= (int)sizeof(aConvertedToken))
+			return false;
+		std::copy_n(aEncoded, EncodedLen, aConvertedToken + ConvertedLen);
+		ConvertedLen += EncodedLen;
+		pScan = pNext;
+	}
+	aConvertedToken[ConvertedLen] = '\0';
+
+	if(!Changed || aConvertedToken[0] != '/')
+		return false;
+
+	const char *pCommandName = aConvertedToken + 1;
+	if(!IsLikelySlashCommandName(pCommandName))
+		return false;
+	if(!m_vServerCommands.empty() && !HasServerCommand(pCommandName))
+		return false;
+
+	str_truncate(pOut, OutSize, pLine, pTokenStart - pLine);
+	str_append(pOut, aConvertedToken, OutSize);
+	str_append(pOut, pTokenEnd, OutSize);
+	return str_comp(pOut, pLine) != 0;
 }
 
 void CChat::RebuildChat()
@@ -5708,6 +5860,10 @@ void CChat::SendChatQueued(const char *pLine)
 {
 	if(!pLine || *str_utf8_skip_whitespaces(pLine) == '\0')
 		return;
+
+	char aConvertedLine[MAX_LINE_LENGTH];
+	if(TryConvertWrongLayoutSlashCommand(pLine, aConvertedLine, sizeof(aConvertedLine)))
+		pLine = aConvertedLine;
 
 	const int Team = m_Mode == MODE_ALL ? 0 : 1;
 	AddHistoryEntry(Team, pLine);

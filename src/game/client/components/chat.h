@@ -316,6 +316,8 @@ class CChat : public CComponent
 	void RenderTranslateSettingsButton(const CUIRect &ButtonRect);
 	static CUi::EPopupMenuFunctionResult PopupTranslateSettings(void *pContext, CUIRect View, bool Active);
 	void SendChatQueuedInternal(int Team, const char *pLine);
+	bool HasServerCommand(const char *pName) const;
+	bool TryConvertWrongLayoutSlashCommand(const char *pLine, char *pOut, int OutSize) const;
 
 	static void ConSay(IConsole::IResult *pResult, void *pUserData);
 	static void ConSayTeam(IConsole::IResult *pResult, void *pUserData);
