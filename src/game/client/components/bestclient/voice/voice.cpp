@@ -2194,6 +2194,9 @@ bool CVoiceChat::OpenAudioDevices()
 		}
 	}
 
+	m_CaptureSpec = {};
+	m_PlaybackSpec = {};
+
 	SDL_AudioSpec WantedCapture = {};
 	WantedCapture.freq = BestClientVoice::SAMPLE_RATE;
 	WantedCapture.format = AUDIO_S16SYS;
@@ -2201,19 +2204,31 @@ bool CVoiceChat::OpenAudioDevices()
 	WantedCapture.samples = BestClientVoice::FRAME_SIZE;
 	WantedCapture.callback = nullptr;
 
-	const char *pCaptureDeviceName = GetAudioDeviceNameByIndex(1, g_Config.m_BcVoiceChatInputDevice);
-	m_CaptureDevice = SDL_OpenAudioDevice(pCaptureDeviceName, 1, &WantedCapture, nullptr, 0);
-	if(m_CaptureDevice == 0 && pCaptureDeviceName)
+	const int CaptureDeviceCount = SDL_GetNumAudioDevices(1);
+	if(CaptureDeviceCount <= 0)
 	{
-		dbg_msg("voice", "failed to open selected capture device, fallback to default: %s", SDL_GetError());
-		m_CaptureDevice = SDL_OpenAudioDevice(nullptr, 1, &WantedCapture, nullptr, 0);
+		// Keep voice chat usable for playback when the system has no microphone.
+		dbg_msg("voice", "no capture devices available, voice transmit disabled");
 	}
-	if(m_CaptureDevice == 0)
+	else
 	{
-		dbg_msg("voice", "failed to open capture device: %s", SDL_GetError());
-		return false;
+		const char *pCaptureDeviceName = GetAudioDeviceNameByIndex(1, g_Config.m_BcVoiceChatInputDevice);
+		m_CaptureDevice = SDL_OpenAudioDevice(pCaptureDeviceName, 1, &WantedCapture, nullptr, 0);
+		if(m_CaptureDevice == 0 && pCaptureDeviceName)
+		{
+			dbg_msg("voice", "failed to open selected capture device, fallback to default: %s", SDL_GetError());
+			m_CaptureDevice = SDL_OpenAudioDevice(nullptr, 1, &WantedCapture, nullptr, 0);
+		}
+		if(m_CaptureDevice == 0)
+		{
+			
+			dbg_msg("voice", "failed to open capture device, voice transmit disabled: %s", SDL_GetError());
+		}
+		else
+		{
+			m_CaptureSpec = WantedCapture;
+		}
 	}
-	m_CaptureSpec = WantedCapture;
 
 	SDL_AudioSpec WantedPlayback = {};
 	WantedPlayback.freq = BestClientVoice::SAMPLE_RATE;
@@ -2237,7 +2252,8 @@ bool CVoiceChat::OpenAudioDevices()
 	}
 	m_PlaybackSpec = WantedPlayback;
 
-	SDL_PauseAudioDevice(m_CaptureDevice, 0);
+	if(m_CaptureDevice != 0)
+		SDL_PauseAudioDevice(m_CaptureDevice, 0);
 	SDL_PauseAudioDevice(m_PlaybackDevice, 0);
 	return true;
 }
@@ -2249,11 +2265,13 @@ void CVoiceChat::CloseAudioDevices()
 		SDL_CloseAudioDevice(m_CaptureDevice);
 		m_CaptureDevice = 0;
 	}
+	m_CaptureSpec = {};
 	if(m_PlaybackDevice != 0)
 	{
 		SDL_CloseAudioDevice(m_PlaybackDevice);
 		m_PlaybackDevice = 0;
 	}
+	m_PlaybackSpec = {};
 }
 
 bool CVoiceChat::CreateEncoder()
