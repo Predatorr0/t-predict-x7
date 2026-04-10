@@ -576,7 +576,9 @@ void CScoreboard::RenderSpectators(CUIRect Spectators)
 
 		const CGameClient::CClientData &ClientData = GameClient()->m_aClients[pInfo->m_ClientId];
 		{
-			const char *pClanName = ClientData.m_aClan;
+			char aSanitizedClan[MAX_CLAN_LENGTH];
+			GameClient()->m_BestClient.SanitizeText(ClientData.m_aClan, aSanitizedClan, sizeof(aSanitizedClan));
+			const char *pClanName = aSanitizedClan;
 			if(pClanName[0] != '\0')
 			{
 				if(GameClient()->m_aLocalIds[g_Config.m_ClDummy] >= 0 && str_comp(pClanName, GameClient()->m_aClients[GameClient()->m_aLocalIds[g_Config.m_ClDummy]].m_aClan) == 0)
@@ -600,7 +602,9 @@ void CScoreboard::RenderSpectators(CUIRect Spectators)
 			TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClAuthedPlayerColor)));
 		}
 
-		TextRender()->TextEx(&Cursor, GameClient()->m_aClients[pInfo->m_ClientId].m_aName);
+		char aSanitizedName[MAX_NAME_LENGTH];
+		GameClient()->m_BestClient.SanitizePlayerName(GameClient()->m_aClients[pInfo->m_ClientId].m_aName, aSanitizedName, sizeof(aSanitizedName), pInfo->m_ClientId, true);
+		TextRender()->TextEx(&Cursor, aSanitizedName);
 		TextRender()->TextColor(TextRender()->DefaultTextColor());
 
 		CommaNeeded = true;
@@ -989,6 +993,8 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 
 			// name
 			{
+				char aSanitizedName[MAX_NAME_LENGTH];
+				GameClient()->m_BestClient.SanitizePlayerName(ClientData.m_aName, aSanitizedName, sizeof(aSanitizedName), pInfo->m_ClientId, true);
 				CTextCursor Cursor;
 				Cursor.SetPosition(vec2(NameOffset, Row.y + (Row.h - FontSize) / 2.0f));
 				Cursor.m_FontSize = FontSize;
@@ -1016,7 +1022,7 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 				if(pInfo->m_ClientId >= 0 && g_Config.m_TcWarList && g_Config.m_TcWarListScoreboard && GameClient()->m_WarList.GetAnyWar(pInfo->m_ClientId))
 					TextRender()->TextColor(GameClient()->m_WarList.GetNameplateColor(pInfo->m_ClientId));
 
-				TextRender()->TextEx(&Cursor, ClientData.m_aName);
+				TextRender()->TextEx(&Cursor, aSanitizedName);
 
 				// ready / watching
 				if(Client()->IsSixup() && Client()->m_TranslationContext.m_aClients[pInfo->m_ClientId].m_PlayerFlags7 & protocol7::PLAYERFLAG_READY)
@@ -1028,7 +1034,9 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 
 			// clan
 			{
-				if(GameClient()->m_aLocalIds[g_Config.m_ClDummy] >= 0 && str_comp(ClientData.m_aClan, GameClient()->m_aClients[GameClient()->m_aLocalIds[g_Config.m_ClDummy]].m_aClan) == 0)
+				char aSanitizedClan[MAX_CLAN_LENGTH];
+				GameClient()->m_BestClient.SanitizeText(ClientData.m_aClan, aSanitizedClan, sizeof(aSanitizedClan));
+				if(GameClient()->m_aLocalIds[g_Config.m_ClDummy] >= 0 && str_comp(aSanitizedClan, GameClient()->m_aClients[GameClient()->m_aLocalIds[g_Config.m_ClDummy]].m_aClan) == 0)
 				{
 					TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClSameClanColor)));
 				}
@@ -1042,11 +1050,11 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 					TextRender()->TextColor(GameClient()->m_WarList.GetClanColor(pInfo->m_ClientId));
 
 				CTextCursor Cursor;
-				Cursor.SetPosition(vec2(ClanOffset + (ClanLength - minimum(TextRender()->TextWidth(FontSize, ClientData.m_aClan), ClanLength)) / 2.0f, Row.y + (Row.h - FontSize) / 2.0f));
+				Cursor.SetPosition(vec2(ClanOffset + (ClanLength - minimum(TextRender()->TextWidth(FontSize, aSanitizedClan), ClanLength)) / 2.0f, Row.y + (Row.h - FontSize) / 2.0f));
 				Cursor.m_FontSize = FontSize;
 				Cursor.m_Flags |= TEXTFLAG_ELLIPSIS_AT_END;
 				Cursor.m_LineWidth = ClanLength;
-				TextRender()->TextEx(&Cursor, ClientData.m_aClan);
+				TextRender()->TextEx(&Cursor, aSanitizedClan);
 			}
 
 			// country flag
@@ -1370,38 +1378,44 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 	const float FontSize = 12.0f;
 
 	View.HSplitTop(FontSize, &Label, &View);
-	pUi->DoLabel(&Label, Client.m_aName, FontSize, TEXTALIGN_ML);
+	char aSanitizedPopupName[MAX_NAME_LENGTH];
+	pScoreboard->GameClient()->m_BestClient.SanitizePlayerName(Client.m_aName, aSanitizedPopupName, sizeof(aSanitizedPopupName), pPopupContext->m_ClientId, true);
+	pUi->DoLabel(&Label, aSanitizedPopupName, FontSize, TEXTALIGN_ML);
 
 	if(!pPopupContext->m_IsLocal)
 	{
-		const int ActionsNum = 3;
+		const bool HideFriendInfo = pScoreboard->GameClient()->m_BestClient.HasStreamerFlag(CBestClient::STREAMER_HIDE_FRIEND_WHISPER);
+		const int ActionsNum = HideFriendInfo ? 2 : 3;
 		const float ActionSize = 25.0f;
-		const float ActionSpacing = (View.w - (ActionsNum * ActionSize)) / 2;
+		const float ActionSpacing = ActionsNum > 1 ? (View.w - (ActionsNum * ActionSize)) / (ActionsNum - 1) : 0.0f;
 		int ActionCorners = IGraphics::CORNER_ALL;
 
 		View.HSplitTop(ItemSpacing * 2, nullptr, &View);
 		View.HSplitTop(ActionSize, &Container, &View);
 
-		Container.VSplitLeft(ActionSize, &Action, &Container);
-
-		ColorRGBA FriendActionColor = Client.m_Friend ? ColorRGBA(0.95f, 0.3f, 0.3f, 0.85f * pUi->ButtonColorMul(&pPopupContext->m_FriendAction)) :
-								ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_FriendAction));
-		const char *pFriendActionIcon = pUi->HotItem() == &pPopupContext->m_FriendAction && Client.m_Friend ? FontIcon::HEART_CRACK : FontIcon::HEART;
-		if(pUi->DoButton_FontIcon(&pPopupContext->m_FriendAction, pFriendActionIcon, Client.m_Friend, &Action, BUTTONFLAG_LEFT, ActionCorners, true, FriendActionColor))
+		if(!HideFriendInfo)
 		{
-			if(Client.m_Friend)
+			Container.VSplitLeft(ActionSize, &Action, &Container);
+
+			ColorRGBA FriendActionColor = Client.m_Friend ? ColorRGBA(0.95f, 0.3f, 0.3f, 0.85f * pUi->ButtonColorMul(&pPopupContext->m_FriendAction)) :
+									ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * pUi->ButtonColorMul(&pPopupContext->m_FriendAction));
+			const char *pFriendActionIcon = pUi->HotItem() == &pPopupContext->m_FriendAction && Client.m_Friend ? FontIcon::HEART_CRACK : FontIcon::HEART;
+			if(pUi->DoButton_FontIcon(&pPopupContext->m_FriendAction, pFriendActionIcon, Client.m_Friend, &Action, BUTTONFLAG_LEFT, ActionCorners, true, FriendActionColor))
 			{
-				pScoreboard->GameClient()->Friends()->RemoveFriend(Client.m_aName, Client.m_aClan);
+				if(Client.m_Friend)
+				{
+					pScoreboard->GameClient()->Friends()->RemoveFriend(Client.m_aName, Client.m_aClan);
+				}
+				else
+				{
+					pScoreboard->GameClient()->Friends()->AddFriend(Client.m_aName, Client.m_aClan);
+				}
 			}
-			else
-			{
-				pScoreboard->GameClient()->Friends()->AddFriend(Client.m_aName, Client.m_aClan);
-			}
+
+			pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_FriendAction, &Action, Client.m_Friend ? Localize("Remove friend") : Localize("Add friend"));
+
+			Container.VSplitLeft(ActionSpacing, nullptr, &Container);
 		}
-
-		pScoreboard->GameClient()->m_Tooltips.DoToolTip(&pPopupContext->m_FriendAction, &Action, Client.m_Friend ? Localize("Remove friend") : Localize("Add friend"));
-
-		Container.VSplitLeft(ActionSpacing, nullptr, &Container);
 		Container.VSplitLeft(ActionSize, &Action, &Container);
 
 		if(pUi->DoButton_FontIcon(&pPopupContext->m_MuteAction, FontIcon::BAN, Client.m_ChatIgnore, &Action, BUTTONFLAG_LEFT, ActionCorners))

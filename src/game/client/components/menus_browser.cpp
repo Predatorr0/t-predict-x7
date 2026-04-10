@@ -773,9 +773,16 @@ void CMenus::RenderServerbrowserStatusBox(CUIRect StatusBox, bool WasListboxItem
 		ServerAddr.VSplitLeft(SearchExcludeAddrStrMax + 5.0f + ExcludeSearchIconMax + 5.0f, &ServerAddrLabel, &ServerAddrEditBox);
 
 		Ui()->DoLabel(&ServerAddrLabel, Localize("Server address:"), 14.0f, TEXTALIGN_ML);
-		static CLineInput s_ServerAddressInput(g_Config.m_UiServerAddress, sizeof(g_Config.m_UiServerAddress));
-		if(Ui()->DoClearableEditBox(&s_ServerAddressInput, &ServerAddrEditBox, 12.0f))
-			m_ServerBrowserShouldRevealSelection = true;
+		if(GameClient()->m_BestClient.HasStreamerFlag(CBestClient::STREAMER_HIDE_SERVER_IP))
+		{
+			Ui()->DoLabel(&ServerAddrEditBox, Localize("Hidden"), 12.0f, TEXTALIGN_ML);
+		}
+		else
+		{
+			static CLineInput s_ServerAddressInput(g_Config.m_UiServerAddress, sizeof(g_Config.m_UiServerAddress));
+			if(Ui()->DoClearableEditBox(&s_ServerAddressInput, &ServerAddrEditBox, 12.0f))
+				m_ServerBrowserShouldRevealSelection = true;
+		}
 	}
 
 	// buttons

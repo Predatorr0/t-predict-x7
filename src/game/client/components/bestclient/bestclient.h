@@ -8,7 +8,9 @@
 #include <game/client/component.h>
 
 #include <array>
+#include <cstddef>
 #include <memory>
+#include <string>
 #include <vector>
 
 class CBestClient : public CComponent
@@ -47,11 +49,25 @@ class CBestClient : public CComponent
 	int m_Smallsenstogglelastinput = 0;
 	int m_SmallsensEnabled = 0;
 	char m_Oldmouse1Bind[128] = {};
+	bool m_StreamerWordsLoaded = false;
+	std::vector<std::string> m_vStreamerBlockedWords;
 
 	void FinishBestClientInfo();
 	void ResetBestClientInfoTask();
+	void EnsureStreamerWordsLoaded();
+	void SaveStreamerWords() const;
 
 public:
+	enum EStreamerFlags
+	{
+		STREAMER_HIDE_SERVER_IP = 1 << 0,
+		STREAMER_HIDE_CHAT = 1 << 1,
+		STREAMER_HIDE_FRIEND_WHISPER = 1 << 2,
+		STREAMER_HIDE_OWN_NAME = 1 << 3,
+		STREAMER_HIDE_OTHER_NAMES = 1 << 4,
+		STREAMER_HIDE_TAB_NAMES = 1 << 5,
+	};
+
 	enum EBestClientComponent
 	{
 		COMPONENT_VISUALS_MUSIC_PLAYER = 0,
@@ -104,6 +120,7 @@ public:
 		COMPONENT_OTHERS_CHAT_MEDIA,
 		COMPONENT_OTHERS_VOICE_SETTINGS,
 		COMPONENT_OTHERS_VOICE_BINDS,
+		COMPONENT_OTHERS_STREAMER,
 		COMPONENT_VISUALS_JELLY_TEE,
 		NUM_COMPONENTS_EDITOR_COMPONENTS,
 	};
@@ -116,6 +133,17 @@ public:
 	void OnStateChange(int NewState, int OldState) override;
 	void OnRender() override;
 	void OnConsoleInit() override;
+	bool IsStreamerModeEnabled() const;
+	bool HasStreamerFlag(int Flag) const;
+	const char *MaskServerAddress(const char *pAddress, char *pOutput, size_t OutputSize) const;
+	bool IsLocalClientId(int ClientId) const;
+	bool ShouldHidePlayerName(int ClientId, bool InScoreboard) const;
+	void AddStreamerBlockedWord(const char *pWord);
+	void RemoveStreamerBlockedWord(int Index);
+	const std::vector<std::string> &StreamerBlockedWords();
+	int StreamerBlockedWordCount();
+	void SanitizeText(const char *pInput, char *pOutput, size_t OutputSize);
+	void SanitizePlayerName(const char *pInput, char *pOutput, size_t OutputSize, int ClientId, bool InScoreboard = false);
 	bool IsComponentDisabled(EBestClientComponent Component) const;
 	static bool IsComponentDisabledByMask(int Component, int MaskLo, int MaskHi);
 	void RenderHookCombo(bool ForcePreview = false);

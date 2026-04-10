@@ -456,7 +456,9 @@ void CMenus::RenderEscPlayersCarousel(CUIRect MainView)
 		SLabelProperties LabelProps;
 		LabelProps.m_MaxWidth = NameRect.w;
 		LabelProps.m_EllipsisAtEnd = true;
-		Ui()->DoLabel(&NameRect, GameClient()->m_aClients[ClientId].m_aName, 12.0f, TEXTALIGN_MC, LabelProps);
+		char aSanitizedName[MAX_NAME_LENGTH];
+		GameClient()->m_BestClient.SanitizePlayerName(GameClient()->m_aClients[ClientId].m_aName, aSanitizedName, sizeof(aSanitizedName), ClientId, true);
+		Ui()->DoLabel(&NameRect, aSanitizedName, 12.0f, TEXTALIGN_MC, LabelProps);
 
 		CUIRect ItemRect = {ItemX, SkinsRow.y, ItemWidth, SkinsRow.h};
 		CUIRect TeeRect = ItemRect;
@@ -743,8 +745,13 @@ void CMenus::RenderPlayers(CUIRect MainView)
 		Player.VSplitMid(&Player, &Button);
 		Row.VSplitRight(210.0f, &Button2, &Row);
 
-		Ui()->DoLabel(&Player, CurrentClient.m_aName, 14.0f, TEXTALIGN_ML);
-		Ui()->DoLabel(&Button, CurrentClient.m_aClan, 14.0f, TEXTALIGN_ML);
+		char aSanitizedName[MAX_NAME_LENGTH];
+		char aSanitizedClan[MAX_CLAN_LENGTH];
+		GameClient()->m_BestClient.SanitizePlayerName(CurrentClient.m_aName, aSanitizedName, sizeof(aSanitizedName), Index);
+		GameClient()->m_BestClient.SanitizeText(CurrentClient.m_aClan, aSanitizedClan, sizeof(aSanitizedClan));
+
+		Ui()->DoLabel(&Player, aSanitizedName, 14.0f, TEXTALIGN_ML);
+		Ui()->DoLabel(&Button, aSanitizedClan, 14.0f, TEXTALIGN_ML);
 
 		GameClient()->m_CountryFlags.Render(CurrentClient.m_Country, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f),
 			Button2.x, Button2.y + Button2.h / 2.0f - 0.75f * Button2.h / 2.0f, 1.5f * Button2.h, 0.75f * Button2.h);
@@ -774,7 +781,9 @@ void CMenus::RenderPlayers(CUIRect MainView)
 		Row.VSplitLeft(Width, &Button, &Row);
 		Button.VSplitLeft((Width - Button.h) / 4.0f, nullptr, &Button);
 		Button.VSplitLeft(Button.h, &Button, nullptr);
-		if(DoButton_Toggle(&s_aPlayerIds[Index][2], CurrentClient.m_Friend, &Button, true))
+		if(GameClient()->m_BestClient.HasStreamerFlag(CBestClient::STREAMER_HIDE_FRIEND_WHISPER))
+			DoButton_Toggle(&s_aPlayerIds[Index][2], 0, &Button, false);
+		else if(DoButton_Toggle(&s_aPlayerIds[Index][2], CurrentClient.m_Friend, &Button, true))
 		{
 			if(CurrentClient.m_Friend)
 				GameClient()->Friends()->RemoveFriend(CurrentClient.m_aName, CurrentClient.m_aClan);
@@ -812,11 +821,15 @@ void CMenus::RenderServerInfo(CUIRect MainView)
 
 	ServerInfo.HSplitTop(FontSizeBody, &Label, &ServerInfo);
 	ServerInfo.HSplitTop(FontSizeBody, nullptr, &ServerInfo);
-	Ui()->DoLabel(&Label, CurrentServerInfo.m_aName, FontSizeBody, TEXTALIGN_ML);
+	char aSanitizedServerName[sizeof(CurrentServerInfo.m_aName)];
+	GameClient()->m_BestClient.SanitizeText(CurrentServerInfo.m_aName, aSanitizedServerName, sizeof(aSanitizedServerName));
+	Ui()->DoLabel(&Label, aSanitizedServerName, FontSizeBody, TEXTALIGN_ML);
 
 	ServerInfo.HSplitTop(FontSizeBody, &Label, &ServerInfo);
 	char aBuf[256];
-	str_format(aBuf, sizeof(aBuf), "%s: %s", Localize("Address"), CurrentServerInfo.m_aAddress);
+	char aMaskedAddress[sizeof(CurrentServerInfo.m_aAddress)];
+	GameClient()->m_BestClient.MaskServerAddress(CurrentServerInfo.m_aAddress, aMaskedAddress, sizeof(aMaskedAddress));
+	str_format(aBuf, sizeof(aBuf), "%s: %s", Localize("Address"), aMaskedAddress);
 	Ui()->DoLabel(&Label, aBuf, FontSizeBody, TEXTALIGN_ML);
 
 	if(GameClient()->m_Snap.m_pLocalInfo)
@@ -862,15 +875,17 @@ void CMenus::RenderServerInfo(CUIRect MainView)
 		if(DoButton_Menu(&s_CopyButton, Localize("Copy info"), 0, &Button))
 		{
 			char aInfo[256];
+			char aSanitizedOwnName[MAX_NAME_LENGTH];
+			GameClient()->m_BestClient.SanitizePlayerName(Client()->PlayerName(), aSanitizedOwnName, sizeof(aSanitizedOwnName), GameClient()->m_aLocalIds[g_Config.m_ClDummy]);
 			str_format(
 				aInfo,
 				sizeof(aInfo),
 				"%s\n"
 				"Address: ddnet://%s\n"
 				"My IGN: %s\n",
-				CurrentServerInfo.m_aName,
-				CurrentServerInfo.m_aAddress,
-				Client()->PlayerName());
+				aSanitizedServerName,
+				aMaskedAddress,
+				aSanitizedOwnName);
 			Input()->SetClipboardText(aInfo);
 		}
 	}

@@ -348,7 +348,9 @@ void CHud::RenderScoreHud(bool ForcePreview)
 				else if(aFlagCarrier[t] >= 0)
 				{
 					const int Id = aFlagCarrier[t] % MAX_CLIENTS;
-					const char *pName = GameClient()->m_aClients[Id].m_aName;
+					char aSanitizedName[MAX_NAME_LENGTH];
+					GameClient()->m_BestClient.SanitizePlayerName(GameClient()->m_aClients[Id].m_aName, aSanitizedName, sizeof(aSanitizedName), Id, true);
+					const char *pName = aSanitizedName;
 					const float NameWidth = TextRender()->TextWidth(NameTextSize, pName, -1, -1.0f);
 					TextRender()->Text(
 						minimum(RightEdge - NameWidth - 1.0f * Scale, BoxX),
@@ -460,7 +462,9 @@ void CHud::RenderScoreHud(bool ForcePreview)
 			const int Id = apPlayerInfo[t]->m_ClientId;
 			if(Id >= 0 && Id < MAX_CLIENTS)
 			{
-				const char *pName = GameClient()->m_aClients[Id].m_aName;
+				char aSanitizedName[MAX_NAME_LENGTH];
+				GameClient()->m_BestClient.SanitizePlayerName(GameClient()->m_aClients[Id].m_aName, aSanitizedName, sizeof(aSanitizedName), Id, true);
+				const char *pName = aSanitizedName;
 				const float NameWidth = TextRender()->TextWidth(NameTextSize, pName, -1, -1.0f);
 				TextRender()->Text(
 					minimum(RightEdge - NameWidth - 1.0f * Scale, BoxX),
@@ -1489,7 +1493,9 @@ bool CHud::GetSpectatorCountState(SSpectatorCountState &State, bool ForcePreview
 		int ShownNames = 0;
 		for(int i = 0; i < NumSpectatorIds && ShownNames < VisibleNames; i++)
 		{
-			const char *pName = GameClient()->m_aClients[aSpectatorIds[i]].m_aName;
+			char aSanitizedName[MAX_NAME_LENGTH];
+			GameClient()->m_BestClient.SanitizePlayerName(GameClient()->m_aClients[aSpectatorIds[i]].m_aName, aSanitizedName, sizeof(aSanitizedName), aSpectatorIds[i], true);
+			const char *pName = aSanitizedName;
 			if(pName[0] == '\0')
 				continue;
 			str_copy(State.m_aaNameLines[State.m_NumNameLines], pName);
@@ -2078,10 +2084,12 @@ void CHud::RenderSpectatorHud()
 	else if(GameClient()->m_Snap.m_SpecInfo.m_SpectatorId != SPEC_FREEVIEW)
 	{
 		const auto &Player = GameClient()->m_aClients[GameClient()->m_Snap.m_SpecInfo.m_SpectatorId];
+		char aSanitizedName[MAX_NAME_LENGTH];
+		GameClient()->m_BestClient.SanitizePlayerName(Player.m_aName, aSanitizedName, sizeof(aSanitizedName), Player.ClientId(), true);
 		if(g_Config.m_ClShowIds)
-			str_format(aBuf, sizeof(aBuf), Localize("Following %d: %s", "Spectating"), Player.ClientId(), Player.m_aName);
+			str_format(aBuf, sizeof(aBuf), Localize("Following %d: %s", "Spectating"), Player.ClientId(), aSanitizedName);
 		else
-			str_format(aBuf, sizeof(aBuf), Localize("Following %s", "Spectating"), Player.m_aName);
+			str_format(aBuf, sizeof(aBuf), Localize("Following %s", "Spectating"), aSanitizedName);
 	}
 	else
 	{

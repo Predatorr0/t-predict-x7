@@ -97,6 +97,7 @@ static const SBestClientComponentEntry gs_aBestClientComponentEntries[] = {
 	{CBestClient::COMPONENT_VISUALS_CHAT_BUBBLES, "Chat Bubbles", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_OTHERS_VOICE_SETTINGS, "Voice Chat", COMPONENTS_GROUP_OTHERS},
 	{CBestClient::COMPONENT_OTHERS_VOICE_BINDS, "Voice Binds", COMPONENTS_GROUP_OTHERS},
+	{CBestClient::COMPONENT_OTHERS_STREAMER, "Streamer Mode", COMPONENTS_GROUP_OTHERS},
 	{CBestClient::COMPONENT_TCLIENT_SETTINGS_TAB, "Settings tab", COMPONENTS_GROUP_TCLIENT},
 	{CBestClient::COMPONENT_TCLIENT_BIND_WHEEL_TAB, "Bind wheel tab", COMPONENTS_GROUP_TCLIENT},
 	{CBestClient::COMPONENT_TCLIENT_WAR_LIST_TAB, "War list tab", COMPONENTS_GROUP_TCLIENT},
@@ -5849,6 +5850,177 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Content.HSplitTop(LineSize, &Row, &Content);
 			Ui()->DoScrollbarOption(&g_Config.m_BcAutoServerListRefreshSeconds, &g_Config.m_BcAutoServerListRefreshSeconds, &Row, Localize("Seconds"), 1, 300, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_DELAYUPDATE, " s");
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcUseShortKogServerName, Localize("Use short KoG server name"), &g_Config.m_BcUseShortKogServerName, &Content, LineSize);
+
+			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+		}
+
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_OTHERS_STREAMER))
+		{
+			static float s_StreamerPhase = 0.0f;
+			const bool StreamerExpanded = g_Config.m_ClStreamerMode != 0;
+			UpdateRevealPhase(s_StreamerPhase, StreamerExpanded);
+			const float ExpandedTargetHeight = 6.0f * LineSize;
+			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedTargetHeight * s_StreamerPhase;
+			CUIRect Content, Label, Note, Visible;
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Label.VSplitRight(160.0f, &Label, &Note);
+			Ui()->DoLabel(&Label, Localize("Streamer Mode"), HeadlineFontSize, TEXTALIGN_ML);
+			Ui()->DoLabel(&Note, "(from CAT client)", 12.0f, TEXTALIGN_MR);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClStreamerMode, Localize("Enable streamer mode"), &g_Config.m_ClStreamerMode, &Content, LineSize);
+
+			const float ExpandedHeight = ExpandedTargetHeight * s_StreamerPhase;
+			if(ExpandedHeight > 0.0f)
+			{
+				Content.HSplitTop(ExpandedHeight, &Visible, &Content);
+				Ui()->ClipEnable(&Visible);
+				struct SScopedClip
+				{
+					CUi *m_pUi;
+					~SScopedClip() { m_pUi->ClipDisable(); }
+				} ClipGuard{Ui()};
+
+				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
+				auto DoStreamerFlagCheckBox = [&](const void *pId, const char *pLabel, int Flag) {
+					CUIRect Button;
+					Expand.HSplitTop(LineSize, &Button, &Expand);
+					const int Checked = (g_Config.m_BcStreamerFlags & Flag) != 0;
+					if(DoButton_CheckBox(pId, pLabel, Checked, &Button))
+						g_Config.m_BcStreamerFlags ^= Flag;
+				};
+
+				static CButtonContainer s_HideServerIpButton;
+				static CButtonContainer s_HideChatButton;
+				static CButtonContainer s_HideFriendInfoButton;
+				static CButtonContainer s_HideOwnNameButton;
+				static CButtonContainer s_HideOtherNamesButton;
+				static CButtonContainer s_HideTabNamesButton;
+				DoStreamerFlagCheckBox(&s_HideServerIpButton, Localize("Hide server IP"), CBestClient::STREAMER_HIDE_SERVER_IP);
+				DoStreamerFlagCheckBox(&s_HideChatButton, Localize("Hide chat"), CBestClient::STREAMER_HIDE_CHAT);
+				DoStreamerFlagCheckBox(&s_HideFriendInfoButton, Localize("Hide friend/whisper info"), CBestClient::STREAMER_HIDE_FRIEND_WHISPER);
+				DoStreamerFlagCheckBox(&s_HideOwnNameButton, Localize("Hide own nickname"), CBestClient::STREAMER_HIDE_OWN_NAME);
+				DoStreamerFlagCheckBox(&s_HideOtherNamesButton, Localize("Hide other nicknames"), CBestClient::STREAMER_HIDE_OTHER_NAMES);
+				DoStreamerFlagCheckBox(&s_HideTabNamesButton, Localize("Hide nicknames in tab"), CBestClient::STREAMER_HIDE_TAB_NAMES);
+			}
+
+			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+		}
+
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_OTHERS_STREAMER) && g_Config.m_ClStreamerMode)
+		{
+			static bool s_ShowBlockedWordsList = false;
+			static CLineInputBuffered<128> s_WordInput;
+			static CButtonContainer s_AddWordButton;
+			static CButtonContainer s_OpenBlockedWordsButton;
+			static CButtonContainer s_HideBlockedWordsButton;
+			static CScrollRegion s_BlockedWordsScrollRegion;
+			static std::vector<CButtonContainer> s_vDeleteWordButtons;
+
+			const float ContentHeight = s_ShowBlockedWordsList ? 292.0f : 96.0f;
+			CUIRect Content, HeaderRow, Label, ToggleButton, InputRow, InputBox, AddButton, ListBox, Description;
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &HeaderRow, &Content);
+			HeaderRow.VSplitRight(92.0f, &Label, &ToggleButton);
+			char aTitle[64];
+			str_format(aTitle, sizeof(aTitle), Localize("Blocked Words (%d)"), GameClient()->m_BestClient.StreamerBlockedWordCount());
+			Ui()->DoLabel(&Label, aTitle, HeadlineFontSize, TEXTALIGN_ML);
+
+			if(s_ShowBlockedWordsList)
+			{
+				if(DoButton_Menu(&s_HideBlockedWordsButton, Localize("Hide"), 0, &ToggleButton))
+					s_ShowBlockedWordsList = false;
+			}
+			else if(DoButton_Menu(&s_OpenBlockedWordsButton, Localize("Open"), 0, &ToggleButton))
+			{
+				s_ShowBlockedWordsList = true;
+			}
+
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+			if(!s_ShowBlockedWordsList)
+			{
+				Content.HSplitTop(LineSize * 2.0f, &Description, &Content);
+				SLabelProperties Props;
+				Props.m_MaxWidth = Description.w;
+				Ui()->DoLabel(&Description, Localize("The list is hidden by default for stream safety."), 12.0f, TEXTALIGN_ML, Props);
+			}
+			else
+			{
+				Content.HSplitTop(LineSize, &InputRow, &Content);
+				InputRow.VSplitRight(LineSize + 4.0f, &InputBox, &AddButton);
+				s_WordInput.SetEmptyText(Localize("Add blocked word"));
+				Ui()->DoEditBox(&s_WordInput, &InputBox, 12.0f);
+
+				if(DoButton_Menu(&s_AddWordButton, "+", 0, &AddButton))
+				{
+					GameClient()->m_BestClient.AddStreamerBlockedWord(s_WordInput.GetString());
+					s_WordInput.Clear();
+				}
+
+				Content.HSplitTop(MarginSmall, nullptr, &Content);
+				ListBox = Content;
+
+				CScrollRegionParams ScrollParams;
+				ScrollParams.m_ScrollbarWidth = 14.0f;
+				ScrollParams.m_ScrollbarMargin = 3.0f;
+				ScrollParams.m_ScrollUnit = LineSize * 4.0f;
+				ScrollParams.m_ClipBgColor = ColorRGBA(1.0f, 1.0f, 1.0f, 0.03f);
+				ScrollParams.m_RailBgColor = ColorRGBA(1.0f, 1.0f, 1.0f, 0.10f);
+				ScrollParams.m_SliderColor = ColorRGBA(1.0f, 1.0f, 1.0f, 0.28f);
+				ScrollParams.m_SliderColorHover = ColorRGBA(1.0f, 1.0f, 1.0f, 0.42f);
+				ScrollParams.m_SliderColorGrabbed = ColorRGBA(1.0f, 1.0f, 1.0f, 0.55f);
+
+				const auto &vWords = GameClient()->m_BestClient.StreamerBlockedWords();
+				s_vDeleteWordButtons.resize(vWords.size());
+
+				vec2 ScrollOffset(0.0f, 0.0f);
+				s_BlockedWordsScrollRegion.Begin(&ListBox, &ScrollOffset, &ScrollParams);
+
+				CUIRect ListContent = ListBox;
+				ListContent.y += ScrollOffset.y;
+				int RemoveIndex = -1;
+
+				if(vWords.empty())
+				{
+					CUIRect EmptyRow;
+					ListContent.HSplitTop(LineSize, &EmptyRow, &ListContent);
+					s_BlockedWordsScrollRegion.AddRect(EmptyRow);
+					if(!s_BlockedWordsScrollRegion.RectClipped(EmptyRow))
+						Ui()->DoLabel(&EmptyRow, Localize("No blocked words yet"), 12.0f, TEXTALIGN_MC);
+				}
+				else
+				{
+					for(size_t i = 0; i < vWords.size(); ++i)
+					{
+						if(i != 0)
+							ListContent.HSplitTop(MarginSmall, nullptr, &ListContent);
+
+						CUIRect Row, Inner, WordLabel, DeleteButton;
+						ListContent.HSplitTop(LineSize + 4.0f, &Row, &ListContent);
+						s_BlockedWordsScrollRegion.AddRect(Row);
+						if(s_BlockedWordsScrollRegion.RectClipped(Row))
+							continue;
+
+						Row.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, i % 2 == 0 ? 0.05f : 0.08f), IGraphics::CORNER_ALL, 6.0f);
+						Row.Margin(4.0f, &Inner);
+						Inner.VSplitRight(LineSize, &WordLabel, &DeleteButton);
+
+						SLabelProperties Props;
+						Props.m_MaxWidth = WordLabel.w;
+						Ui()->DoLabel(&WordLabel, vWords[i].c_str(), 12.0f, TEXTALIGN_ML, Props);
+
+						if(Ui()->DoButton_FontIcon(&s_vDeleteWordButtons[i], FontIcon::TRASH, 0, &DeleteButton, BUTTONFLAG_LEFT, IGraphics::CORNER_ALL, true, ColorRGBA(0.85f, 0.25f, 0.25f, 0.35f)))
+							RemoveIndex = (int)i;
+					}
+				}
+
+				s_BlockedWordsScrollRegion.End();
+				if(RemoveIndex >= 0)
+					GameClient()->m_BestClient.RemoveStreamerBlockedWord(RemoveIndex);
+			}
 
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		}

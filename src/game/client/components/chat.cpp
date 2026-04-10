@@ -2876,8 +2876,21 @@ void CChat::ConToggleHideChatMedia(IConsole::IResult *pResult, void *pUserData)
 	pThis->Echo(pThis->m_HideMediaByBind ? "Chat media hidden" : "Chat media visible");
 }
 
+bool CChat::ShouldHideLineFromStreamer(const CLine &Line) const
+{
+	return m_Mode == MODE_NONE && GameClient()->m_BestClient.HasStreamerFlag(CBestClient::STREAMER_HIDE_FRIEND_WHISPER) && Line.m_Whisper;
+}
+
+bool CChat::ShouldShowFriendMarker(const CLine &Line) const
+{
+	return Line.m_Friend && g_Config.m_ClMessageFriend && !(m_Mode == MODE_NONE && GameClient()->m_BestClient.HasStreamerFlag(CBestClient::STREAMER_HIDE_FRIEND_WHISPER));
+}
+
 std::string CChat::BuildPlainTextLine(const CLine &Line) const
 {
+	if(ShouldHideLineFromStreamer(Line))
+		return "";
+
 	char aClientId[16] = "";
 	if(g_Config.m_ClShowIds && Line.m_ClientId >= 0 && Line.m_aName[0] != '\0')
 	{
@@ -2941,7 +2954,7 @@ std::string CChat::BuildPlainTextLine(const CLine &Line) const
 	}
 
 	std::string Result;
-	if(Line.m_ClientId >= 0 && Line.m_aName[0] != '\0' && Line.m_Friend && g_Config.m_ClMessageFriend)
+	if(Line.m_ClientId >= 0 && Line.m_aName[0] != '\0' && ShouldShowFriendMarker(Line))
 		Result += "♥ ";
 	Result += aClientId;
 	Result += Line.m_aName;
@@ -3053,7 +3066,7 @@ void CChat::RenderTextLine(CLine &Line, float y, float FontSize, float LineWidth
 	if(Line.m_ClientId >= 0 && Line.m_aName[0] != '\0')
 	{
 		LineCursor.m_X += RealMsgPaddingTee;
-		if(Line.m_Friend && g_Config.m_ClMessageFriend)
+		if(ShouldShowFriendMarker(Line))
 		{
 			TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageFriendColor)).WithAlpha(Blend));
 			TextRender()->TextEx(&LineCursor, "♥ ");
@@ -4160,6 +4173,10 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	if(pEnd != nullptr)
 		*(const_cast<char *>(pEnd)) = '\0';
 
+	char aSanitizedText[1024];
+	GameClient()->m_BestClient.SanitizeText(pLine, aSanitizedText, sizeof(aSanitizedText));
+	pLine = aSanitizedText;
+
 	if(*pLine == 0)
 		return;
 
@@ -4176,7 +4193,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 		}
 		else
 		{
-			if(Line.m_Friend && g_Config.m_ClMessageFriend)
+			if(ShouldShowFriendMarker(Line))
 				ChatLogColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageFriendColor));
 			else if(Line.m_Team)
 				ChatLogColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageTeamColor));
@@ -4319,8 +4336,10 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 			str_copy(CurrentLine.m_aName, "→");
 			if(LineAuthor.m_Active)
 			{
+				char aSanitizedName[64];
+				GameClient()->m_BestClient.SanitizePlayerName(LineAuthor.m_aName, aSanitizedName, sizeof(aSanitizedName), CurrentLine.m_ClientId);
 				str_append(CurrentLine.m_aName, " ");
-				str_append(CurrentLine.m_aName, LineAuthor.m_aName);
+				str_append(CurrentLine.m_aName, aSanitizedName);
 			}
 			CurrentLine.m_NameColor = TEAM_BLUE;
 			CurrentLine.m_Highlighted = false;
@@ -4331,8 +4350,10 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 			str_copy(CurrentLine.m_aName, "←");
 			if(LineAuthor.m_Active)
 			{
+				char aSanitizedName[64];
+				GameClient()->m_BestClient.SanitizePlayerName(LineAuthor.m_aName, aSanitizedName, sizeof(aSanitizedName), CurrentLine.m_ClientId);
 				str_append(CurrentLine.m_aName, " ");
-				str_append(CurrentLine.m_aName, LineAuthor.m_aName);
+				str_append(CurrentLine.m_aName, aSanitizedName);
 			}
 			CurrentLine.m_NameColor = TEAM_RED;
 			CurrentLine.m_Highlighted = true;
@@ -4340,7 +4361,7 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 		}
 		else
 		{
-			str_copy(CurrentLine.m_aName, LineAuthor.m_aName);
+			GameClient()->m_BestClient.SanitizePlayerName(LineAuthor.m_aName, CurrentLine.m_aName, sizeof(CurrentLine.m_aName), CurrentLine.m_ClientId);
 		}
 
 		if(LineAuthor.m_Active)
@@ -4464,6 +4485,8 @@ void CChat::OnPrepareLines(float y, int StartLine, int HoveredTranslateLineIndex
 			const CLine &RecentLine = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
 			if(!RecentLine.m_Initialized)
 				break;
+			if(ShouldHideLineFromStreamer(RecentLine))
+				continue;
 			if(ShouldDisplayMediaSlot(RecentLine))
 				return true;
 		}
@@ -4483,6 +4506,8 @@ void CChat::OnPrepareLines(float y, int StartLine, int HoveredTranslateLineIndex
 		CLine &Line = m_aLines[LineIndex];
 		if(!Line.m_Initialized)
 			break;
+		if(ShouldHideLineFromStreamer(Line))
+			continue;
 		if(Now > Line.m_Time + 16 * time_freq() && !m_PrevShowChat && !KeepLinesAlive)
 			break;
 
@@ -4577,7 +4602,7 @@ void CChat::OnPrepareLines(float y, int StartLine, int HoveredTranslateLineIndex
 			{
 				MeasureCursor.m_X += RealMsgPaddingTee;
 
-				if(Line.m_Friend && g_Config.m_ClMessageFriend)
+				if(ShouldShowFriendMarker(Line))
 				{
 					TextRender()->TextEx(&MeasureCursor, "♥ ");
 				}
@@ -4711,7 +4736,7 @@ void CChat::OnPrepareLines(float y, int StartLine, int HoveredTranslateLineIndex
 		{
 			LineCursor.m_X += RealMsgPaddingTee;
 
-			if(Line.m_Friend && g_Config.m_ClMessageFriend)
+			if(ShouldShowFriendMarker(Line))
 			{
 				TextRender()->TextColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageFriendColor)).WithAlpha(1.0f));
 				TextRender()->CreateOrAppendTextContainer(Line.m_TextContainerIndex, &LineCursor, "♥ ");
@@ -4871,6 +4896,9 @@ void CChat::OnPrepareLines(float y, int StartLine, int HoveredTranslateLineIndex
 void CChat::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
+		return;
+
+	if(GameClient()->m_BestClient.HasStreamerFlag(CBestClient::STREAMER_HIDE_CHAT) && m_Mode == MODE_NONE)
 		return;
 
 	// send pending chat messages
@@ -5207,6 +5235,8 @@ void CChat::OnRender()
 			const CLine &RecentLine = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
 			if(!RecentLine.m_Initialized)
 				break;
+			if(ShouldHideLineFromStreamer(RecentLine))
+				continue;
 			if(ShouldDisplayMediaSlot(RecentLine))
 				return true;
 		}
@@ -5245,6 +5275,8 @@ void CChat::OnRender()
 		for(int i = StartLine; i < TotalLines; i++)
 		{
 			CLine &Line = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
+			if(ShouldHideLineFromStreamer(Line))
+				continue;
 			const float LineHeight = Line.m_aYOffset[OffsetType] > 0.0f ? Line.m_aYOffset[OffsetType] : (FontSize() + RealMsgPaddingY);
 			TmpY -= LineHeight;
 			if(TmpY < HeightLimit)
@@ -5341,6 +5373,8 @@ void CChat::OnRender()
 		CLine &Line = m_aLines[LineIndex];
 		if(!Line.m_Initialized)
 			break;
+		if(ShouldHideLineFromStreamer(Line))
+			continue;
 		if(Now > Line.m_Time + 16 * time_freq() && !m_PrevShowChat && !KeepLinesAlive)
 			break;
 
@@ -5409,7 +5443,7 @@ void CChat::OnRender()
 					GameClient()->FormatClientId(Line.m_ClientId, aClientId, EClientIdFormat::INDENT_AUTO);
 
 				float NameRectX = LineRenderX + RealMsgPaddingX / 2.0f + RealMsgPaddingTee;
-				if(Line.m_Friend && g_Config.m_ClMessageFriend)
+				if(ShouldShowFriendMarker(Line))
 					NameRectX += TextRender()->TextWidth(FontSize(), "♥ ");
 				NameRectX += TextRender()->TextWidth(FontSize(), aClientId);
 				Line.m_NameRect.m_X = NameRectX;

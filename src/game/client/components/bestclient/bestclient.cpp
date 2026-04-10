@@ -10,17 +10,66 @@
 #include <engine/client/enums.h>
 #include <engine/shared/config.h>
 #include <engine/shared/json.h>
+#include <engine/storage.h>
 
 #include <game/client/components/hud_layout.h>
 #include <game/client/components/sounds.h>
 #include <game/client/gameclient.h>
+#include <game/localization.h>
 #include <game/version.h>
 
 #include <algorithm>
 #include <cctype>
+#include <string>
 #include <vector>
 
 static constexpr const char *BestClient_INFO_URL = "https://api.github.com/repos/RoflikBEST/bestdownload/releases?per_page=10";
+static constexpr const char *BestClient_STREAMER_WORDS_FILE = "nwords.txt";
+static const char *const gs_apDefaultStreamerWords[] = {
+	"пидор",
+	"чурка",
+	"петух",
+	"петушок",
+	"петушня",
+	"пидорасы",
+	"пидрилы",
+	"негры",
+	"нигеры",
+	"негор",
+	"негар",
+	"nigger",
+	"niggers",
+	"nigga",
+	"niga",
+	"sniggers",
+	"niggerz",
+	"пидорасня",
+	"пидорасина",
+	"kys",
+	"kill your self",
+	"suicide",
+	"суицид",
+	"суициднись",
+	"убейся",
+	"вскройся",
+	"нiгер",
+	"HuGGER",
+};
+
+static bool StreamerWordExists(const std::vector<std::string> &vWords, const char *pWord)
+{
+	return std::any_of(vWords.begin(), vWords.end(), [pWord](const std::string &Word) {
+		return str_utf8_comp_nocase(Word.c_str(), pWord) == 0;
+	});
+}
+
+static void AppendSanitizedChunk(char **ppDst, char *pDstEnd, const char *pChunkStart, const char *pChunkEnd)
+{
+	while(pChunkStart < pChunkEnd && *ppDst < pDstEnd)
+	{
+		*(*ppDst)++ = *pChunkStart++;
+	}
+}
 
 static void NormalizeBestClientVersion(const char *pVersion, char *pBuf, int BufSize)
 {
@@ -96,6 +145,212 @@ static int CompareBestClientVersions(const char *pLeft, const char *pRight)
 static void BuildBestClientInfoUrl(char *pBuf, int BufSize)
 {
 	str_format(pBuf, BufSize, "%s&t=%lld", BestClient_INFO_URL, (long long)time_timestamp());
+}
+
+bool CBestClient::IsStreamerModeEnabled() const
+{
+	return g_Config.m_ClStreamerMode != 0;
+}
+
+bool CBestClient::HasStreamerFlag(int Flag) const
+{
+	return IsStreamerModeEnabled() && (g_Config.m_BcStreamerFlags & Flag) != 0;
+}
+
+bool CBestClient::IsLocalClientId(int ClientId) const
+{
+	for(int LocalId : GameClient()->m_aLocalIds)
+	{
+		if(LocalId == ClientId)
+			return true;
+	}
+
+	return Client()->State() == IClient::STATE_DEMOPLAYBACK && GameClient()->m_Snap.m_LocalClientId == ClientId;
+}
+
+bool CBestClient::ShouldHidePlayerName(int ClientId, bool InScoreboard) const
+{
+	if(!IsStreamerModeEnabled() || ClientId < 0)
+		return false;
+	if(InScoreboard && HasStreamerFlag(STREAMER_HIDE_TAB_NAMES))
+		return true;
+	if(IsLocalClientId(ClientId))
+		return HasStreamerFlag(STREAMER_HIDE_OWN_NAME);
+	return HasStreamerFlag(STREAMER_HIDE_OTHER_NAMES);
+}
+
+const char *CBestClient::MaskServerAddress(const char *pAddress, char *pOutput, size_t OutputSize) const
+{
+	if(HasStreamerFlag(STREAMER_HIDE_SERVER_IP))
+	{
+		str_copy(pOutput, Localize("Hidden"), OutputSize);
+		return pOutput;
+	}
+
+	str_copy(pOutput, pAddress != nullptr ? pAddress : "", OutputSize);
+	return pOutput;
+}
+
+void CBestClient::EnsureStreamerWordsLoaded()
+{
+	if(m_StreamerWordsLoaded)
+		return;
+
+	m_StreamerWordsLoaded = true;
+	m_vStreamerBlockedWords.clear();
+
+	char *pFileData = Storage()->ReadFileStr(BestClient_STREAMER_WORDS_FILE, IStorage::TYPE_SAVE);
+	if(pFileData != nullptr)
+	{
+		const char *pCursor = pFileData;
+		while(*pCursor != '\0')
+		{
+			const char *pLineEnd = pCursor;
+			while(*pLineEnd != '\0' && *pLineEnd != '\n' && *pLineEnd != '\r')
+				++pLineEnd;
+
+			char aWord[128];
+			str_truncate(aWord, sizeof(aWord), pCursor, pLineEnd - pCursor);
+			str_utf8_trim_right(aWord);
+			const char *pTrimmedWord = str_utf8_skip_whitespaces(aWord);
+			if(*pTrimmedWord != '\0' && !StreamerWordExists(m_vStreamerBlockedWords, pTrimmedWord))
+				m_vStreamerBlockedWords.emplace_back(pTrimmedWord);
+
+			pCursor = pLineEnd;
+			while(*pCursor == '\n' || *pCursor == '\r')
+				++pCursor;
+		}
+
+		free(pFileData);
+	}
+
+	if(m_vStreamerBlockedWords.empty())
+	{
+		for(const char *pWord : gs_apDefaultStreamerWords)
+			m_vStreamerBlockedWords.emplace_back(pWord);
+		SaveStreamerWords();
+	}
+}
+
+void CBestClient::SaveStreamerWords() const
+{
+	IOHANDLE File = Storage()->OpenFile(BestClient_STREAMER_WORDS_FILE, IOFLAG_WRITE, IStorage::TYPE_SAVE);
+	if(!File)
+		return;
+
+	for(const std::string &Word : m_vStreamerBlockedWords)
+	{
+		io_write(File, Word.c_str(), str_length(Word.c_str()));
+		io_write_newline(File);
+	}
+
+	io_close(File);
+}
+
+void CBestClient::AddStreamerBlockedWord(const char *pWord)
+{
+	EnsureStreamerWordsLoaded();
+
+	char aWord[128];
+	str_copy(aWord, pWord != nullptr ? pWord : "", sizeof(aWord));
+	str_utf8_trim_right(aWord);
+	const char *pTrimmedWord = str_utf8_skip_whitespaces(aWord);
+	if(*pTrimmedWord == '\0' || StreamerWordExists(m_vStreamerBlockedWords, pTrimmedWord))
+		return;
+
+	m_vStreamerBlockedWords.emplace_back(pTrimmedWord);
+	SaveStreamerWords();
+}
+
+void CBestClient::RemoveStreamerBlockedWord(int Index)
+{
+	EnsureStreamerWordsLoaded();
+
+	if(Index < 0 || Index >= (int)m_vStreamerBlockedWords.size())
+		return;
+
+	m_vStreamerBlockedWords.erase(m_vStreamerBlockedWords.begin() + Index);
+	SaveStreamerWords();
+}
+
+const std::vector<std::string> &CBestClient::StreamerBlockedWords()
+{
+	EnsureStreamerWordsLoaded();
+	return m_vStreamerBlockedWords;
+}
+
+int CBestClient::StreamerBlockedWordCount()
+{
+	EnsureStreamerWordsLoaded();
+	return (int)m_vStreamerBlockedWords.size();
+}
+
+void CBestClient::SanitizeText(const char *pInput, char *pOutput, size_t OutputSize)
+{
+	EnsureStreamerWordsLoaded();
+
+	if(!IsStreamerModeEnabled() || pInput == nullptr || OutputSize == 0)
+	{
+		if(OutputSize > 0)
+			str_copy(pOutput, pInput != nullptr ? pInput : "", OutputSize);
+		return;
+	}
+
+	char *pDst = pOutput;
+	char *pDstEnd = pOutput + OutputSize - 1;
+	const char *pCursor = pInput;
+
+	while(*pCursor != '\0' && pDst < pDstEnd)
+	{
+		const char *pBestStart = nullptr;
+		const char *pBestEnd = nullptr;
+		for(const std::string &Word : m_vStreamerBlockedWords)
+		{
+			if(Word.empty())
+				continue;
+
+			const char *pMatchEnd = nullptr;
+			const char *pFound = str_utf8_find_nocase(pCursor, Word.c_str(), &pMatchEnd);
+			if(pFound != nullptr && (pBestStart == nullptr || pFound < pBestStart || (pFound == pBestStart && pMatchEnd > pBestEnd)))
+			{
+				pBestStart = pFound;
+				pBestEnd = pMatchEnd;
+			}
+		}
+
+		if(pBestStart == nullptr)
+		{
+			AppendSanitizedChunk(&pDst, pDstEnd, pCursor, pCursor + str_length(pCursor));
+			break;
+		}
+
+		AppendSanitizedChunk(&pDst, pDstEnd, pCursor, pBestStart);
+
+		const char *pWalk = pBestStart;
+		while(pWalk < pBestEnd && pDst < pDstEnd)
+		{
+			str_utf8_decode(&pWalk);
+			*pDst++ = '*';
+		}
+
+		pCursor = pBestEnd;
+	}
+
+	*pDst = '\0';
+}
+
+void CBestClient::SanitizePlayerName(const char *pInput, char *pOutput, size_t OutputSize, int ClientId, bool InScoreboard)
+{
+	if(OutputSize == 0)
+		return;
+
+	if(ShouldHidePlayerName(ClientId, InScoreboard))
+	{
+		str_copy(pOutput, Localize("Hidden"), OutputSize);
+		return;
+	}
+
+	SanitizeText(pInput, pOutput, OutputSize);
 }
 
 static const char *FindBestClientReleaseVersion(const json_value *pJson)
