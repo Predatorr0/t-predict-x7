@@ -5708,11 +5708,15 @@ int CClient::PredictionMargin() const
 
 	const int BaseMaxLatencyTicks = GameTickSpeed() + (BaseMargin * GameTickSpeed()) / 1000;
 	const bool ConnectionProblems = m_aNetClient[g_Config.m_ClDummy].GotProblems(BaseMaxLatencyTicks * time_freq() / GameTickSpeed());
-	const float ConnectionMargin = std::max(m_AutoMarginLatencyAverageMs, (float)LivePredictionMs) / 8.0f +
-		m_AutoMarginLatencyJitterMs * 2.0f +
-		(ConnectionProblems ? 15.0f : 0.0f);
+	const CServerBrowser::CServerEntry *pCurrentServerEntry = const_cast<CServerBrowser &>(m_ServerBrowser).Find(ServerAddress());
+	const bool HasMeasuredPing = pCurrentServerEntry != nullptr && !pCurrentServerEntry->m_Info.m_LatencyIsEstimated && pCurrentServerEntry->m_Info.m_Latency >= 0;
+	const float MeasuredPingMargin = HasMeasuredPing ? pCurrentServerEntry->m_Info.m_Latency * 0.5f : 0.0f;
+	const float LiveConnectionMargin = std::max({MeasuredPingMargin, m_AutoMarginLatencyAverageMs, (float)LivePredictionMs});
+	const float ExcessLatencyMargin = std::max(0.0f, LiveConnectionMargin - BaseMargin) / 6.0f;
+	const float JitterMargin = std::max(0.0f, m_AutoMarginLatencyJitterMs - 2.0f) * 0.75f;
+	const float ConnectionMargin = BaseMargin + ExcessLatencyMargin + JitterMargin + (ConnectionProblems ? 10.0f : 0.0f);
 
-	return std::clamp(std::max(BaseMargin, round_to_int(ConnectionMargin)), 1, 300);
+	return std::clamp(round_to_int(ConnectionMargin), 1, 300);
 }
 
 int CClient::UdpConnectivity(int NetType)
