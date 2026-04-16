@@ -32,6 +32,7 @@
 #include <game/localization.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cerrno>
 #include <cctype>
 #include <cinttypes>
@@ -64,6 +65,130 @@ static constexpr int CHAT_MEDIA_MAX_HTML_CANDIDATES = 32;
 static constexpr size_t CHAT_MEDIA_MAX_ANIMATED_MEMORY_BYTES = 48ull * 1024ull * 1024ull;
 static constexpr bool CHAT_MEDIA_ANIMATE_VIDEOS = true;
 static constexpr float CHAT_MEDIA_MIN_PREVIEW_SIDE = 28.0f;
+
+static float NormalizeMediaPreviewCoord(float Value, float Start, float Length)
+{
+	if(Length <= 0.0f)
+		return 0.0f;
+	return std::clamp((Value - Start) / Length, 0.0f, 1.0f);
+}
+
+static void QuadsSetSubsetRelative(IGraphics *pGraphics, float X, float Y, float W, float H, float OriginX, float OriginY, float OriginW, float OriginH)
+{
+	pGraphics->QuadsSetSubset(
+		NormalizeMediaPreviewCoord(X, OriginX, OriginW),
+		NormalizeMediaPreviewCoord(Y, OriginY, OriginH),
+		NormalizeMediaPreviewCoord(X + W, OriginX, OriginW),
+		NormalizeMediaPreviewCoord(Y + H, OriginY, OriginH));
+}
+
+static void QuadsSetSubsetFreeRelative(IGraphics *pGraphics,
+	float X0, float Y0, float X1, float Y1, float X2, float Y2, float X3, float Y3,
+	float OriginX, float OriginY, float OriginW, float OriginH)
+{
+	pGraphics->QuadsSetSubsetFree(
+		NormalizeMediaPreviewCoord(X0, OriginX, OriginW),
+		NormalizeMediaPreviewCoord(Y0, OriginY, OriginH),
+		NormalizeMediaPreviewCoord(X1, OriginX, OriginW),
+		NormalizeMediaPreviewCoord(Y1, OriginY, OriginH),
+		NormalizeMediaPreviewCoord(X2, OriginX, OriginW),
+		NormalizeMediaPreviewCoord(Y2, OriginY, OriginH),
+		NormalizeMediaPreviewCoord(X3, OriginX, OriginW),
+		NormalizeMediaPreviewCoord(Y3, OriginY, OriginH));
+}
+
+static void DrawRoundedMediaPreview(IGraphics *pGraphics, const IGraphics::CTextureHandle &Texture, float X, float Y, float W, float H, float Rounding, float Alpha)
+{
+	if(!Texture.IsValid() || W <= 0.0f || H <= 0.0f)
+		return;
+
+	const float ClampedRounding = minimum(Rounding, minimum(W, H) / 2.0f);
+	pGraphics->WrapClamp();
+	pGraphics->TextureSet(Texture);
+	pGraphics->QuadsBegin();
+	pGraphics->SetColor(1.0f, 1.0f, 1.0f, Alpha);
+
+	auto DrawQuad = [&](float QuadX, float QuadY, float QuadW, float QuadH) {
+		if(QuadW <= 0.0f || QuadH <= 0.0f)
+			return;
+
+		QuadsSetSubsetRelative(pGraphics, QuadX, QuadY, QuadW, QuadH, X, Y, W, H);
+		const IGraphics::CQuadItem QuadItem(QuadX, QuadY, QuadW, QuadH);
+		pGraphics->QuadsDrawTL(&QuadItem, 1);
+	};
+
+	if(ClampedRounding <= 0.0f)
+	{
+		DrawQuad(X, Y, W, H);
+	}
+	else
+	{
+		constexpr int NumSegments = 8;
+		const float SegmentAngle = pi / 2.0f / NumSegments;
+		for(int i = 0; i < NumSegments; i += 2)
+		{
+			const float A1 = i * SegmentAngle;
+			const float A2 = (i + 1) * SegmentAngle;
+			const float A3 = (i + 2) * SegmentAngle;
+			const float CosA1 = std::cos(A1);
+			const float CosA2 = std::cos(A2);
+			const float CosA3 = std::cos(A3);
+			const float SinA1 = std::sin(A1);
+			const float SinA2 = std::sin(A2);
+			const float SinA3 = std::sin(A3);
+
+			const IGraphics::CFreeformItem TopLeft(
+				X + ClampedRounding, Y + ClampedRounding,
+				X + (1.0f - CosA1) * ClampedRounding, Y + (1.0f - SinA1) * ClampedRounding,
+				X + (1.0f - CosA3) * ClampedRounding, Y + (1.0f - SinA3) * ClampedRounding,
+				X + (1.0f - CosA2) * ClampedRounding, Y + (1.0f - SinA2) * ClampedRounding);
+			QuadsSetSubsetFreeRelative(pGraphics,
+				TopLeft.m_X0, TopLeft.m_Y0, TopLeft.m_X1, TopLeft.m_Y1, TopLeft.m_X2, TopLeft.m_Y2, TopLeft.m_X3, TopLeft.m_Y3,
+				X, Y, W, H);
+			pGraphics->QuadsDrawFreeform(&TopLeft, 1);
+
+			const IGraphics::CFreeformItem TopRight(
+				X + W - ClampedRounding, Y + ClampedRounding,
+				X + W - ClampedRounding + CosA1 * ClampedRounding, Y + (1.0f - SinA1) * ClampedRounding,
+				X + W - ClampedRounding + CosA3 * ClampedRounding, Y + (1.0f - SinA3) * ClampedRounding,
+				X + W - ClampedRounding + CosA2 * ClampedRounding, Y + (1.0f - SinA2) * ClampedRounding);
+			QuadsSetSubsetFreeRelative(pGraphics,
+				TopRight.m_X0, TopRight.m_Y0, TopRight.m_X1, TopRight.m_Y1, TopRight.m_X2, TopRight.m_Y2, TopRight.m_X3, TopRight.m_Y3,
+				X, Y, W, H);
+			pGraphics->QuadsDrawFreeform(&TopRight, 1);
+
+			const IGraphics::CFreeformItem BottomLeft(
+				X + ClampedRounding, Y + H - ClampedRounding,
+				X + (1.0f - CosA1) * ClampedRounding, Y + H - ClampedRounding + SinA1 * ClampedRounding,
+				X + (1.0f - CosA3) * ClampedRounding, Y + H - ClampedRounding + SinA3 * ClampedRounding,
+				X + (1.0f - CosA2) * ClampedRounding, Y + H - ClampedRounding + SinA2 * ClampedRounding);
+			QuadsSetSubsetFreeRelative(pGraphics,
+				BottomLeft.m_X0, BottomLeft.m_Y0, BottomLeft.m_X1, BottomLeft.m_Y1, BottomLeft.m_X2, BottomLeft.m_Y2, BottomLeft.m_X3, BottomLeft.m_Y3,
+				X, Y, W, H);
+			pGraphics->QuadsDrawFreeform(&BottomLeft, 1);
+
+			const IGraphics::CFreeformItem BottomRight(
+				X + W - ClampedRounding, Y + H - ClampedRounding,
+				X + W - ClampedRounding + CosA1 * ClampedRounding, Y + H - ClampedRounding + SinA1 * ClampedRounding,
+				X + W - ClampedRounding + CosA3 * ClampedRounding, Y + H - ClampedRounding + SinA3 * ClampedRounding,
+				X + W - ClampedRounding + CosA2 * ClampedRounding, Y + H - ClampedRounding + SinA2 * ClampedRounding);
+			QuadsSetSubsetFreeRelative(pGraphics,
+				BottomRight.m_X0, BottomRight.m_Y0, BottomRight.m_X1, BottomRight.m_Y1, BottomRight.m_X2, BottomRight.m_Y2, BottomRight.m_X3, BottomRight.m_Y3,
+				X, Y, W, H);
+			pGraphics->QuadsDrawFreeform(&BottomRight, 1);
+		}
+
+		DrawQuad(X + ClampedRounding, Y + ClampedRounding, W - ClampedRounding * 2.0f, H - ClampedRounding * 2.0f);
+		DrawQuad(X + ClampedRounding, Y, W - ClampedRounding * 2.0f, ClampedRounding);
+		DrawQuad(X + ClampedRounding, Y + H - ClampedRounding, W - ClampedRounding * 2.0f, ClampedRounding);
+		DrawQuad(X, Y + ClampedRounding, ClampedRounding, H - ClampedRounding * 2.0f);
+		DrawQuad(X + W - ClampedRounding, Y + ClampedRounding, ClampedRounding, H - ClampedRounding * 2.0f);
+	}
+
+	pGraphics->QuadsEnd();
+	pGraphics->WrapNormal();
+	pGraphics->TextureClear();
+}
 
 static bool ChatTypingAnimSupportsText(const char *pText)
 {
@@ -5516,65 +5641,47 @@ void CChat::OnRender()
 
 				const bool ShowMediaSlot = ShouldDisplayMediaSlot(Line);
 				const bool HideMediaPreview = ShouldHideMediaPreview(Line);
+				const bool HasMediaPreview = Line.m_aMediaPreviewWidth[OffsetType] > 0.0f && Line.m_aMediaPreviewHeight[OffsetType] > 0.0f;
+				const float PreviewX = LineRenderX + RealMsgPaddingX / 2.0f;
+				const float PreviewY = Line.m_TextYOffset + TextOffsetY + Line.m_aTextHeight[OffsetType] + FontSize() * 0.4f;
+				const float PreviewW = Line.m_aMediaPreviewWidth[OffsetType];
+				const float PreviewH = Line.m_aMediaPreviewHeight[OffsetType];
 				Line.m_MediaPreviewRectValid = false;
-				if(ShowMediaSlot && HideMediaPreview &&
-					Line.m_aMediaPreviewWidth[OffsetType] > 0.0f && Line.m_aMediaPreviewHeight[OffsetType] > 0.0f)
+				if(ShowMediaSlot && HasMediaPreview)
 				{
-					const float PreviewX = LineRenderX + RealMsgPaddingX / 2.0f;
-					const float PreviewY = Line.m_TextYOffset + TextOffsetY + Line.m_aTextHeight[OffsetType] + FontSize() * 0.4f;
-					const float PreviewW = Line.m_aMediaPreviewWidth[OffsetType];
-					const float PreviewH = Line.m_aMediaPreviewHeight[OffsetType];
+					auto DrawMediaPreviewFrame = [&](ColorRGBA FillColor, float &InnerPreviewX, float &InnerPreviewY, float &InnerPreviewW, float &InnerPreviewH, float &InnerPreviewRounding) {
+					const float PreviewBorder = maximum(0.35f, FontSize() * 0.025f);
+						const float PreviewRounding = minimum(minimum(PreviewW, PreviewH) / 2.0f, maximum(4.0f, FontSize() * 0.55f));
+						Graphics()->DrawRect(PreviewX, PreviewY, PreviewW, PreviewH, ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * Blend), IGraphics::CORNER_ALL, PreviewRounding);
+						InnerPreviewX = PreviewX + PreviewBorder;
+						InnerPreviewY = PreviewY + PreviewBorder;
+						InnerPreviewW = maximum(1.0f, PreviewW - PreviewBorder * 2.0f);
+						InnerPreviewH = maximum(1.0f, PreviewH - PreviewBorder * 2.0f);
+						InnerPreviewRounding = maximum(0.0f, PreviewRounding - PreviewBorder);
+						Graphics()->DrawRect(InnerPreviewX, InnerPreviewY, InnerPreviewW, InnerPreviewH, FillColor, IGraphics::CORNER_ALL, InnerPreviewRounding);
+					};
 
-					Graphics()->TextureClear();
-					Graphics()->QuadsBegin();
-					Graphics()->SetColor(0.10f, 0.10f, 0.10f, 0.82f * Blend);
-					const IGraphics::CQuadItem HiddenQuad(PreviewX, PreviewY, PreviewW, PreviewH);
-					Graphics()->QuadsDrawTL(&HiddenQuad, 1);
-					Graphics()->QuadsEnd();
+					float InnerPreviewX = PreviewX;
+					float InnerPreviewY = PreviewY;
+					float InnerPreviewW = PreviewW;
+					float InnerPreviewH = PreviewH;
+					float InnerPreviewRounding = 0.0f;
 
-					CTextCursor HiddenCursor;
-					const float HiddenFontSize = FontSize() * 0.72f;
-					const float HiddenLabelWidth = TextRender()->TextWidth(HiddenFontSize, "hidden media");
-					HiddenCursor.SetPosition(vec2(PreviewX + maximum(FontSize() * 0.35f, (PreviewW - HiddenLabelWidth) / 2.0f), PreviewY + maximum(FontSize() * 0.25f, (PreviewH - HiddenFontSize) / 2.0f)));
-					HiddenCursor.m_FontSize = HiddenFontSize;
-					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.9f * Blend);
-					TextRender()->TextEx(&HiddenCursor, "hidden media");
-					TextRender()->TextColor(TextRender()->DefaultTextColor());
-
-					Line.m_MediaRetryRectValid = false;
-					if(ChatInteractionActive)
+					if(HideMediaPreview)
 					{
-						Line.m_MediaPreviewRect.m_X = PreviewX;
-						Line.m_MediaPreviewRect.m_Y = PreviewY;
-						Line.m_MediaPreviewRect.m_W = PreviewW;
-						Line.m_MediaPreviewRect.m_H = PreviewH;
-						Line.m_MediaPreviewRectValid = true;
-					}
-				}
-				else if(ShowMediaSlot && Line.m_MediaState == EMediaState::READY &&
-					Line.m_aMediaPreviewWidth[OffsetType] > 0.0f && Line.m_aMediaPreviewHeight[OffsetType] > 0.0f)
-				{
-					IGraphics::CTextureHandle MediaTexture;
-					if(GetCurrentFrameTexture(Line, MediaTexture))
-					{
-						const float PreviewX = LineRenderX + RealMsgPaddingX / 2.0f;
-						const float PreviewY = Line.m_TextYOffset + TextOffsetY + Line.m_aTextHeight[OffsetType] + FontSize() * 0.4f;
-						const float PreviewW = Line.m_aMediaPreviewWidth[OffsetType];
-						const float PreviewH = Line.m_aMediaPreviewHeight[OffsetType];
+						DrawMediaPreviewFrame(ColorRGBA(0.10f, 0.10f, 0.10f, 0.82f * Blend), InnerPreviewX, InnerPreviewY, InnerPreviewW, InnerPreviewH, InnerPreviewRounding);
 
-						Graphics()->WrapClamp();
-						Graphics()->TextureSet(MediaTexture);
-						Graphics()->QuadsBegin();
-						Graphics()->QuadsSetSubset(0.0f, 0.0f, 1.0f, 1.0f);
-						Graphics()->SetColor(1.0f, 1.0f, 1.0f, Blend);
-						const IGraphics::CQuadItem QuadItem(PreviewX, PreviewY, PreviewW, PreviewH);
-						Graphics()->QuadsDrawTL(&QuadItem, 1);
-						Graphics()->QuadsEnd();
-						Graphics()->WrapNormal();
-						Graphics()->TextureClear();
+						CTextCursor HiddenCursor;
+						const float HiddenFontSize = FontSize() * 0.72f;
+						const float HiddenLabelWidth = TextRender()->TextWidth(HiddenFontSize, "hidden media");
+						HiddenCursor.SetPosition(vec2(InnerPreviewX + maximum(FontSize() * 0.35f, (InnerPreviewW - HiddenLabelWidth) / 2.0f), InnerPreviewY + maximum(FontSize() * 0.25f, (InnerPreviewH - HiddenFontSize) / 2.0f)));
+						HiddenCursor.m_FontSize = HiddenFontSize;
+						TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.9f * Blend);
+						TextRender()->TextEx(&HiddenCursor, "hidden media");
+						TextRender()->TextColor(TextRender()->DefaultTextColor());
 
 						Line.m_MediaRetryRectValid = false;
-						if(ChatInteractionActive && g_Config.m_BcChatMediaViewer)
+						if(ChatInteractionActive)
 						{
 							Line.m_MediaPreviewRect.m_X = PreviewX;
 							Line.m_MediaPreviewRect.m_Y = PreviewY;
@@ -5583,86 +5690,73 @@ void CChat::OnRender()
 							Line.m_MediaPreviewRectValid = true;
 						}
 					}
-				}
-				else if(ShowMediaSlot &&
-					(Line.m_MediaState == EMediaState::QUEUED || Line.m_MediaState == EMediaState::LOADING || Line.m_MediaState == EMediaState::DECODING) &&
-					Line.m_aMediaPreviewWidth[OffsetType] > 0.0f && Line.m_aMediaPreviewHeight[OffsetType] > 0.0f)
-				{
-					const float PreviewX = LineRenderX + RealMsgPaddingX / 2.0f;
-					const float PreviewY = Line.m_TextYOffset + TextOffsetY + Line.m_aTextHeight[OffsetType] + FontSize() * 0.4f;
-					const float PreviewW = Line.m_aMediaPreviewWidth[OffsetType];
-					const float PreviewH = Line.m_aMediaPreviewHeight[OffsetType];
-
-					Graphics()->TextureClear();
-					Graphics()->QuadsBegin();
-					Graphics()->SetColor(0.12f, 0.12f, 0.12f, 0.75f * Blend);
-					const IGraphics::CQuadItem LoadingQuad(PreviewX, PreviewY, PreviewW, PreviewH);
-					Graphics()->QuadsDrawTL(&LoadingQuad, 1);
-					Graphics()->QuadsEnd();
-
-					CTextCursor LoadingCursor;
-					LoadingCursor.SetPosition(vec2(PreviewX + FontSize() * 0.35f, PreviewY + PreviewH * 0.15f));
-					LoadingCursor.m_FontSize = FontSize() * 0.75f;
-					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.8f * Blend);
-					TextRender()->TextEx(&LoadingCursor, "Loading media...");
-					TextRender()->TextColor(TextRender()->DefaultTextColor());
-					Line.m_MediaRetryRectValid = false;
-				}
-				else if(ShowMediaSlot &&
-					Line.m_MediaState == EMediaState::FAILED &&
-					Line.m_aMediaPreviewWidth[OffsetType] > 0.0f && Line.m_aMediaPreviewHeight[OffsetType] > 0.0f)
-				{
-					const float PreviewX = LineRenderX + RealMsgPaddingX / 2.0f;
-					const float PreviewY = Line.m_TextYOffset + TextOffsetY + Line.m_aTextHeight[OffsetType] + FontSize() * 0.4f;
-					const float PreviewW = Line.m_aMediaPreviewWidth[OffsetType];
-					const float PreviewH = Line.m_aMediaPreviewHeight[OffsetType];
-					const bool CanRetry = Line.m_MediaRetryCount < CHAT_MEDIA_MAX_RETRIES && !Line.m_vMediaCandidates.empty();
-
-					Graphics()->TextureClear();
-					Graphics()->QuadsBegin();
-					Graphics()->SetColor(0.23f, 0.10f, 0.10f, 0.82f * Blend);
-					const IGraphics::CQuadItem FailedQuad(PreviewX, PreviewY, PreviewW, PreviewH);
-					Graphics()->QuadsDrawTL(&FailedQuad, 1);
-					Graphics()->QuadsEnd();
-
-					CTextCursor FailedCursor;
-					FailedCursor.SetPosition(vec2(PreviewX + FontSize() * 0.35f, PreviewY + FontSize() * 0.25f));
-					FailedCursor.m_FontSize = FontSize() * 0.70f;
-					TextRender()->TextColor(1.0f, 0.85f, 0.85f, 0.95f * Blend);
-					TextRender()->TextEx(&FailedCursor, CanRetry ? "Media preview unavailable" : "Media preview unavailable (retry limit reached)");
-
-					const char *pRetryLabel = CanRetry ? "Retry" : "Retry limit reached";
-					const float RetryFont = FontSize() * 0.66f;
-					const float RetryLabelWidth = TextRender()->TextWidth(RetryFont, pRetryLabel);
-					const float RetryW = maximum(FontSize() * 4.2f, RetryLabelWidth + FontSize() * 0.8f);
-					const float RetryH = maximum(FontSize() * 0.95f, 12.0f);
-					const float RetryX = PreviewX + PreviewW - RetryW - FontSize() * 0.25f;
-					const float RetryY = PreviewY + PreviewH - RetryH - FontSize() * 0.25f;
-
-					Graphics()->TextureClear();
-					Graphics()->QuadsBegin();
-					if(CanRetry)
-						Graphics()->SetColor(0.86f, 0.28f, 0.28f, 0.95f * Blend);
-					else
-						Graphics()->SetColor(0.35f, 0.35f, 0.35f, 0.75f * Blend);
-					const IGraphics::CQuadItem RetryQuad(RetryX, RetryY, RetryW, RetryH);
-					Graphics()->QuadsDrawTL(&RetryQuad, 1);
-					Graphics()->QuadsEnd();
-
-					CTextCursor RetryCursor;
-					RetryCursor.SetPosition(vec2(RetryX + (RetryW - RetryLabelWidth) / 2.0f, RetryY + (RetryH - RetryFont) / 2.0f));
-					RetryCursor.m_FontSize = RetryFont;
-					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.95f * Blend);
-					TextRender()->TextEx(&RetryCursor, pRetryLabel);
-					TextRender()->TextColor(TextRender()->DefaultTextColor());
-
-					Line.m_MediaRetryRectValid = CanRetry;
-					if(CanRetry)
+					else if(Line.m_MediaState == EMediaState::READY)
 					{
-						Line.m_MediaRetryRect.m_X = RetryX;
-						Line.m_MediaRetryRect.m_Y = RetryY;
-						Line.m_MediaRetryRect.m_W = RetryW;
-						Line.m_MediaRetryRect.m_H = RetryH;
+						IGraphics::CTextureHandle MediaTexture;
+						if(GetCurrentFrameTexture(Line, MediaTexture))
+						{
+							DrawMediaPreviewFrame(ColorRGBA(0.05f, 0.05f, 0.05f, 0.18f * Blend), InnerPreviewX, InnerPreviewY, InnerPreviewW, InnerPreviewH, InnerPreviewRounding);
+							DrawRoundedMediaPreview(Graphics(), MediaTexture, InnerPreviewX, InnerPreviewY, InnerPreviewW, InnerPreviewH, InnerPreviewRounding, Blend);
+
+							Line.m_MediaRetryRectValid = false;
+							if(ChatInteractionActive && g_Config.m_BcChatMediaViewer)
+							{
+								Line.m_MediaPreviewRect.m_X = PreviewX;
+								Line.m_MediaPreviewRect.m_Y = PreviewY;
+								Line.m_MediaPreviewRect.m_W = PreviewW;
+								Line.m_MediaPreviewRect.m_H = PreviewH;
+								Line.m_MediaPreviewRectValid = true;
+							}
+						}
+					}
+					else if(Line.m_MediaState == EMediaState::QUEUED || Line.m_MediaState == EMediaState::LOADING || Line.m_MediaState == EMediaState::DECODING)
+					{
+						DrawMediaPreviewFrame(ColorRGBA(0.12f, 0.12f, 0.12f, 0.75f * Blend), InnerPreviewX, InnerPreviewY, InnerPreviewW, InnerPreviewH, InnerPreviewRounding);
+
+						CTextCursor LoadingCursor;
+						LoadingCursor.SetPosition(vec2(InnerPreviewX + FontSize() * 0.35f, InnerPreviewY + InnerPreviewH * 0.15f));
+						LoadingCursor.m_FontSize = FontSize() * 0.75f;
+						TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.8f * Blend);
+						TextRender()->TextEx(&LoadingCursor, "Loading media...");
+						TextRender()->TextColor(TextRender()->DefaultTextColor());
+						Line.m_MediaRetryRectValid = false;
+					}
+					else if(Line.m_MediaState == EMediaState::FAILED)
+					{
+						const bool CanRetry = Line.m_MediaRetryCount < CHAT_MEDIA_MAX_RETRIES && !Line.m_vMediaCandidates.empty();
+						DrawMediaPreviewFrame(ColorRGBA(0.23f, 0.10f, 0.10f, 0.82f * Blend), InnerPreviewX, InnerPreviewY, InnerPreviewW, InnerPreviewH, InnerPreviewRounding);
+
+						CTextCursor FailedCursor;
+						FailedCursor.SetPosition(vec2(InnerPreviewX + FontSize() * 0.35f, InnerPreviewY + FontSize() * 0.25f));
+						FailedCursor.m_FontSize = FontSize() * 0.70f;
+						TextRender()->TextColor(1.0f, 0.85f, 0.85f, 0.95f * Blend);
+						TextRender()->TextEx(&FailedCursor, CanRetry ? "Media preview unavailable" : "Media preview unavailable (retry limit reached)");
+
+						const char *pRetryLabel = CanRetry ? "Retry" : "Retry limit reached";
+						const float RetryFont = FontSize() * 0.66f;
+						const float RetryLabelWidth = TextRender()->TextWidth(RetryFont, pRetryLabel);
+						const float RetryW = maximum(FontSize() * 4.2f, RetryLabelWidth + FontSize() * 0.8f);
+						const float RetryH = maximum(FontSize() * 0.95f, 12.0f);
+						const float RetryX = InnerPreviewX + InnerPreviewW - RetryW - FontSize() * 0.25f;
+						const float RetryY = InnerPreviewY + InnerPreviewH - RetryH - FontSize() * 0.25f;
+
+						Graphics()->DrawRect(RetryX, RetryY, RetryW, RetryH, CanRetry ? ColorRGBA(0.86f, 0.28f, 0.28f, 0.95f * Blend) : ColorRGBA(0.35f, 0.35f, 0.35f, 0.75f * Blend), IGraphics::CORNER_ALL, maximum(2.0f, RetryH * 0.3f));
+
+						CTextCursor RetryCursor;
+						RetryCursor.SetPosition(vec2(RetryX + (RetryW - RetryLabelWidth) / 2.0f, RetryY + (RetryH - RetryFont) / 2.0f));
+						RetryCursor.m_FontSize = RetryFont;
+						TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.95f * Blend);
+						TextRender()->TextEx(&RetryCursor, pRetryLabel);
+						TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+						Line.m_MediaRetryRectValid = CanRetry;
+						if(CanRetry)
+						{
+							Line.m_MediaRetryRect.m_X = RetryX;
+							Line.m_MediaRetryRect.m_Y = RetryY;
+							Line.m_MediaRetryRect.m_W = RetryW;
+							Line.m_MediaRetryRect.m_H = RetryH;
+						}
 					}
 				}
 		}
