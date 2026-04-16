@@ -185,6 +185,7 @@ private:
 	struct SFinishPredictionState
 	{
 		bool m_Valid = false;
+		bool m_HasPredictedTime = false;
 		float m_Progress = 0.0f;
 		int64_t m_CurrentTimeMs = 0;
 		int64_t m_PredictedFinishTimeMs = 0;
@@ -214,6 +215,7 @@ private:
 	mutable int m_FinishPredictionMapHeight;
 	mutable int m_FinishPredictionRaceStartTick;
 	mutable float m_FinishPredictionRaceStartDistance;
+	mutable float m_FinishPredictionLastProgress;
 
 	inline int GetDigitsIndex(int Value, int Max);
 

@@ -164,6 +164,7 @@ void CHud::OnReset()
 	m_FinishPredictionMapHeight = 0;
 	m_FinishPredictionRaceStartTick = -1;
 	m_FinishPredictionRaceStartDistance = -1.0f;
+	m_FinishPredictionLastProgress = 0.0f;
 
 	ResetHudContainers();
 }
@@ -176,6 +177,7 @@ bool CHud::RebuildFinishPredictionPathData()
 	m_FinishPredictionMapWidth = 0;
 	m_FinishPredictionMapHeight = 0;
 	m_FinishPredictionRaceStartDistance = -1.0f;
+	m_FinishPredictionLastProgress = 0.0f;
 
 	if(!Collision() || Collision()->GetWidth() <= 0 || Collision()->GetHeight() <= 0)
 		return false;
@@ -399,6 +401,7 @@ bool CHud::GetFinishPredictionState(SFinishPredictionState &State, bool ForcePre
 	if(ForcePreview)
 	{
 		State.m_Valid = true;
+		State.m_HasPredictedTime = true;
 		State.m_Progress = 0.051f;
 		State.m_CurrentTimeMs = 68420;
 		State.m_PredictedFinishTimeMs = 118300;
@@ -413,6 +416,7 @@ bool CHud::GetFinishPredictionState(SFinishPredictionState &State, bool ForcePre
 	{
 		const_cast<CHud *>(this)->m_FinishPredictionRaceStartTick = -1;
 		const_cast<CHud *>(this)->m_FinishPredictionRaceStartDistance = -1.0f;
+		const_cast<CHud *>(this)->m_FinishPredictionLastProgress = 0.0f;
 		return false;
 	}
 
@@ -422,6 +426,7 @@ bool CHud::GetFinishPredictionState(SFinishPredictionState &State, bool ForcePre
 			return false;
 		const_cast<CHud *>(this)->m_FinishPredictionRaceStartTick = -1;
 		const_cast<CHud *>(this)->m_FinishPredictionRaceStartDistance = -1.0f;
+		const_cast<CHud *>(this)->m_FinishPredictionLastProgress = 0.0f;
 		State.m_Valid = true;
 		State.m_Progress = 0.0f;
 		State.m_CurrentTimeMs = 0;
@@ -433,34 +438,45 @@ bool CHud::GetFinishPredictionState(SFinishPredictionState &State, bool ForcePre
 	if(!const_cast<CHud *>(this)->EnsureFinishPredictionPathData())
 	{
 		State.m_Valid = true;
-		State.m_Progress = 0.0f;
+		State.m_HasPredictedTime = false;
+		State.m_Progress = maximum(0.0f, m_FinishPredictionLastProgress);
 		State.m_CurrentTimeMs = maximum<int64_t>(0, (int64_t)(Client()->GameTick(g_Config.m_ClDummy) - GameClient()->LastRaceTick()) * 1000 / maximum(1, Client()->GameTickSpeed()));
-		State.m_PredictedFinishTimeMs = State.m_CurrentTimeMs;
+		State.m_PredictedFinishTimeMs = 0;
 		State.m_RemainingTimeMs = 0;
 		return true;
 	}
 
 	const int CurrentTick = Client()->GameTick(g_Config.m_ClDummy);
 	const int RaceStartTick = GameClient()->LastRaceTick();
+	State.m_CurrentTimeMs = maximum<int64_t>(0, (int64_t)(CurrentTick - RaceStartTick) * 1000 / maximum(1, Client()->GameTickSpeed()));
 	const vec2 LocalPos(GameClient()->m_Snap.m_pLocalCharacter->m_X, GameClient()->m_Snap.m_pLocalCharacter->m_Y);
 	const float CurrentDistance = GetFinishPredictionDistanceAtPos(LocalPos);
 	if(CurrentDistance < 0.0f)
-		return false;
+	{
+		State.m_Valid = true;
+		State.m_Progress = maximum(0.0f, m_FinishPredictionLastProgress);
+		return true;
+	}
 
 	if(m_FinishPredictionRaceStartTick != RaceStartTick)
 	{
 		const_cast<CHud *>(this)->m_FinishPredictionRaceStartTick = RaceStartTick;
 		const_cast<CHud *>(this)->m_FinishPredictionRaceStartDistance = maximum(CurrentDistance, GetFinishPredictionStartDistance());
+		const_cast<CHud *>(this)->m_FinishPredictionLastProgress = 0.0f;
 	}
 
 	const float StartDistance = maximum(GetFinishPredictionStartDistance(), CurrentDistance);
 	if(StartDistance <= 0.0f)
-		return false;
+	{
+		State.m_Valid = true;
+		State.m_Progress = maximum(0.0f, m_FinishPredictionLastProgress);
+		return true;
+	}
 
-	State.m_CurrentTimeMs = maximum<int64_t>(0, (int64_t)(CurrentTick - RaceStartTick) * 1000 / maximum(1, Client()->GameTickSpeed()));
 	State.m_Progress = std::clamp(1.0f - CurrentDistance / StartDistance, 0.0f, 1.0f);
 	if(CurrentDistance <= 0.5f)
 		State.m_Progress = 1.0f;
+	const_cast<CHud *>(this)->m_FinishPredictionLastProgress = State.m_Progress;
 
 	const int64_t CurrentPacePrediction = State.m_Progress > 0.001f ? (int64_t)(State.m_CurrentTimeMs / maximum(State.m_Progress, 0.001f)) : -1;
 	const int64_t BestTimeMs = GetFinishPredictionBestTimeMs();
@@ -484,21 +500,36 @@ bool CHud::GetFinishPredictionState(SFinishPredictionState &State, bool ForcePre
 		ReferenceTimeMs = AverageTimeMs;
 
 	if(State.m_Progress >= 0.999f)
+	{
 		State.m_PredictedFinishTimeMs = State.m_CurrentTimeMs;
+		State.m_HasPredictedTime = true;
+	}
 	else if(CurrentPacePrediction > 0 && ReferenceTimeMs > 0)
 	{
 		const float Blend = std::clamp(State.m_Progress * 0.85f + 0.15f, 0.15f, 0.92f);
 		State.m_PredictedFinishTimeMs = (int64_t)mix((float)ReferenceTimeMs, (float)CurrentPacePrediction, Blend);
+		State.m_HasPredictedTime = true;
 	}
 	else if(CurrentPacePrediction > 0)
+	{
 		State.m_PredictedFinishTimeMs = CurrentPacePrediction;
+		State.m_HasPredictedTime = true;
+	}
 	else if(ReferenceTimeMs > 0)
+	{
 		State.m_PredictedFinishTimeMs = ReferenceTimeMs;
+		State.m_HasPredictedTime = true;
+	}
 	else
-		return false;
+		State.m_PredictedFinishTimeMs = 0;
 
-	State.m_PredictedFinishTimeMs = maximum(State.m_PredictedFinishTimeMs, State.m_CurrentTimeMs);
-	State.m_RemainingTimeMs = maximum<int64_t>(0, State.m_PredictedFinishTimeMs - State.m_CurrentTimeMs);
+	if(State.m_HasPredictedTime)
+	{
+		State.m_PredictedFinishTimeMs = maximum(State.m_PredictedFinishTimeMs, State.m_CurrentTimeMs);
+		State.m_RemainingTimeMs = maximum<int64_t>(0, State.m_PredictedFinishTimeMs - State.m_CurrentTimeMs);
+	}
+	else
+		State.m_RemainingTimeMs = 0;
 	State.m_Valid = true;
 	return true;
 }
@@ -2690,7 +2721,7 @@ CUIRect CHud::GetFinishPredictionRect(bool ForcePreview) const
 	const float Gap = 1.5f * Scale;
 	const bool ShowTime = g_Config.m_BcFinishPredictionShowTime != 0;
 	const bool ShowRemaining = g_Config.m_BcFinishPredictionTimeMode == 0;
-	const bool ShowPercentage = g_Config.m_BcFinishPredictionShowPercentage != 0;
+	const bool ShowPercentage = g_Config.m_BcFinishPredictionShowPercentage != 0 || !State.m_HasPredictedTime;
 	const bool ShowMillis = g_Config.m_BcFinishPredictionShowMillis != 0;
 	if(!ShowTime && !ShowPercentage)
 		return {0.0f, 0.0f, 0.0f, 0.0f};
@@ -2731,7 +2762,7 @@ void CHud::RenderFinishPrediction(bool ForcePreview)
 	const int Corners = HudLayout::BackgroundCorners(IGraphics::CORNER_ALL, Rect.x, Rect.y, Rect.w, Rect.h, m_Width, m_Height);
 	const bool ShowTime = g_Config.m_BcFinishPredictionShowTime != 0;
 	const bool ShowRemaining = g_Config.m_BcFinishPredictionTimeMode == 0;
-	const bool ShowPercentage = g_Config.m_BcFinishPredictionShowPercentage != 0;
+	const bool ShowPercentage = g_Config.m_BcFinishPredictionShowPercentage != 0 || !State.m_HasPredictedTime;
 	const bool ShowMillis = g_Config.m_BcFinishPredictionShowMillis != 0;
 
 	if(Layout.m_BackgroundEnabled)
