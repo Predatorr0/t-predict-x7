@@ -24,6 +24,7 @@ extern "C" {
 }
 
 #include <cmath>
+#include <limits>
 
 static constexpr int SAMPLE_INDEX_USED = -2;
 static constexpr int SAMPLE_INDEX_FULL = -1;
@@ -511,9 +512,9 @@ bool CSound::DecodeWV(CSample &Sample, const void *pData, unsigned DataSize, con
 			return false;
 		}
 
-		if(BitsPerSample != 16)
+		if(BitsPerSample <= 0 || BitsPerSample > 32)
 		{
-			log_error("sound/wv", "Bits per sample is %d, not 16. Filename='%s'", BitsPerSample, pContextName);
+			log_error("sound/wv", "Unsupported bits per sample %d. Filename='%s'", BitsPerSample, pContextName);
 			s_pWVBuffer = nullptr;
 			return false;
 		}
@@ -532,7 +533,14 @@ bool CSound::DecodeWV(CSample &Sample, const void *pData, unsigned DataSize, con
 		int *pSrc = pBuffer;
 		short *pDst = Sample.m_pData;
 		for(int i = 0; i < NumSamples * NumChannels; i++)
-			*pDst++ = (short)*pSrc++;
+		{
+			int SampleValue = *pSrc++;
+			if(BitsPerSample > 16)
+				SampleValue >>= BitsPerSample - 16;
+			else if(BitsPerSample < 16)
+				SampleValue <<= 16 - BitsPerSample;
+			*pDst++ = (short)std::clamp(SampleValue, (int)std::numeric_limits<short>::min(), (int)std::numeric_limits<short>::max());
+		}
 
 		free(pBuffer);
 #ifdef CONF_WAVPACK_CLOSE_FILE
