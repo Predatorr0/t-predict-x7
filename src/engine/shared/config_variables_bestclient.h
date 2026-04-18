@@ -78,12 +78,12 @@ MACRO_CONFIG_INT(BcUseShortKogServerName, bc_use_short_kog_server_name, 0, 0, 1,
 MACRO_CONFIG_INT(BcStreamerFlags, bc_streamer_flags, 64, 0, 127, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Bitmask of BestClient streamer mode options")
 
 // Fast input
-MACRO_CONFIG_INT(BcFastInputMode, bc_fast_input_mode, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fast input mode (0 = fast input, 1 = delta input, 2 = gamma input)")
-MACRO_CONFIG_INT(BcFastInputDeltaInput, bc_fast_input_delta_input, 0, 0, 500, CFGFLAG_CLIENT | CFGFLAG_SAVE, "")
-MACRO_CONFIG_INT(BcFastInputGammaInput, bc_fast_input_gamma_input, 0, 0, 600, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Gamma input amount in 0.01 ticks (UI shows 0-6.00M)")
+MACRO_CONFIG_INT(BcFastInputMode, bc_fast_input_mode, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Fast input mode (0 = fast input, 1 = best input)")
+MACRO_CONFIG_INT(BcBestInputOffset, bc_best_input_offset, 0, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Best input prediction offset in 0.01 ticks (0-10.00 ticks)")
+MACRO_CONFIG_INT(BcBestInputSmoothing, bc_best_input_smoothing, 0, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Best input smoothing amount (0-100%)")
+MACRO_CONFIG_INT(BcBestInputLatencyComp, bc_best_input_latency_comp, 0, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Best input latency compensation (0-200%)")
+MACRO_CONFIG_INT(BcBestInputOthers, bc_best_input_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply best input to other tees")
 MACRO_CONFIG_INT(BcFastInputAutoMargin, bc_fast_input_auto_margin, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Automatically adjusts prediction margin in real time for fast input, latency and connection stability")
-MACRO_CONFIG_INT(BcDeltaInputOthers, bc_delta_input_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply delta input to other tees")
-MACRO_CONFIG_INT(BcGammaInputOthers, bc_gamma_input_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply gamma input to other tees")
 MACRO_CONFIG_INT(BcSnapTap, bc_snap_tap, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable Snap Tap for opposite left/right inputs")
 MACRO_CONFIG_INT(BcSnapTapDelay, bc_snap_tap_delay, 0, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Snap Tap direction switch delay in milliseconds (0 = off)")
 

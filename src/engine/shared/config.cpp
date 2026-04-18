@@ -532,12 +532,12 @@ void CConfigManager::Con_TcFastInputDeltaInputLegacy(IConsole::IResult *pResult,
 	if(pResult->NumArguments())
 	{
 		char aCmd[64];
-		str_format(aCmd, sizeof(aCmd), "bc_fast_input_delta_input %d", pResult->GetInteger(0));
+		str_format(aCmd, sizeof(aCmd), "bc_best_input_offset %d", pResult->GetInteger(0));
 		pConfigManager->m_pConsole->ExecuteLine(aCmd, pResult->m_ClientId);
 	}
 	else
 	{
-		pConfigManager->m_pConsole->ExecuteLine("bc_fast_input_delta_input", pResult->m_ClientId);
+		pConfigManager->m_pConsole->ExecuteLine("bc_best_input_offset", pResult->m_ClientId);
 	}
 }
 
@@ -547,12 +547,12 @@ void CConfigManager::Con_TcDeltaInputOthersLegacy(IConsole::IResult *pResult, vo
 	if(pResult->NumArguments())
 	{
 		char aCmd[64];
-		str_format(aCmd, sizeof(aCmd), "bc_delta_input_others %d", pResult->GetInteger(0));
+		str_format(aCmd, sizeof(aCmd), "bc_best_input_others %d", pResult->GetInteger(0));
 		pConfigManager->m_pConsole->ExecuteLine(aCmd, pResult->m_ClientId);
 	}
 	else
 	{
-		pConfigManager->m_pConsole->ExecuteLine("bc_delta_input_others", pResult->m_ClientId);
+		pConfigManager->m_pConsole->ExecuteLine("bc_best_input_others", pResult->m_ClientId);
 	}
 }
 

@@ -201,8 +201,8 @@ bool CControls::IsSnapTapActive() const
 bool CControls::UseGammaInputMovement() const
 {
 	return g_Config.m_TcFastInput != 0 &&
-		g_Config.m_BcFastInputMode == 2 &&
-		BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput) > 0;
+		g_Config.m_BcFastInputMode == 1 &&
+		g_Config.m_BcBestInputOffset > 0;
 }
 
 void CControls::UpdateSnapTapState(int Dummy, bool LeftPressed, bool RightPressed)

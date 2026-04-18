@@ -117,40 +117,43 @@ float EffectiveFastInputOffsetTicksFastMode()
 	return g_Config.m_TcFastInputAmount / 20.0f;
 }
 
-float EffectiveFastInputOffsetTicksDeltaInputMode()
+float EffectiveFastInputOffsetTicksBestMode()
 {
-	// Mode 1: delta input (saiko-input style, tick based, stored in 0.01 ticks)
+	// Mode 1: best input (tick based, stored in 0.01 ticks, with smoothing and latency compensation)
 	if(!g_Config.m_TcFastInput ||
 		g_Config.m_BcFastInputMode != 1 ||
 		IsGameplayInputComponentDisabled())
 		return 0.0f;
-	if(g_Config.m_BcFastInputDeltaInput <= 0)
-		return 0.0f;
-	return g_Config.m_BcFastInputDeltaInput / 100.0f;
-}
 
-float EffectiveFastInputOffsetTicksGammaInputMode(const CGameClient *pGameClient)
-{
-	(void)pGameClient;
+	if(g_Config.m_BcBestInputOffset <= 0)
+		return 0.0f;
 
-	// Mode 2: gamma input (tick based, stored in 0.01 ticks)
-	if(!g_Config.m_TcFastInput ||
-		g_Config.m_BcFastInputMode != 2 ||
-		IsGameplayInputComponentDisabled())
-		return 0.0f;
-	const int GammaInputAmount = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
-	if(GammaInputAmount <= 0)
-		return 0.0f;
-	return GammaInputAmount / 100.0f;
+	// Base offset in ticks
+	float Offset = g_Config.m_BcBestInputOffset / 100.0f;
+
+	// Apply smoothing (reduces jitter)
+	if(g_Config.m_BcBestInputSmoothing > 0)
+	{
+		// Smoothing reduces the effective offset slightly
+		float SmoothFactor = 1.0f - (g_Config.m_BcBestInputSmoothing / 200.0f);
+		Offset *= SmoothFactor;
+	}
+
+	// Apply latency compensation (increases offset based on ping)
+	if(g_Config.m_BcBestInputLatencyComp > 0)
+	{
+		float CompFactor = 1.0f + (g_Config.m_BcBestInputLatencyComp / 100.0f);
+		Offset *= CompFactor;
+	}
+
+	return Offset;
 }
 
 float EffectiveFastInputOffsetTicks(const CGameClient *pGameClient)
 {
 	if(g_Config.m_BcFastInputMode == 0)
 		return EffectiveFastInputOffsetTicksFastMode();
-	if(g_Config.m_BcFastInputMode == 1)
-		return EffectiveFastInputOffsetTicksDeltaInputMode();
-	return EffectiveFastInputOffsetTicksGammaInputMode(pGameClient);
+	return EffectiveFastInputOffsetTicksBestMode();
 }
 
 int FastInputPredictionTicks(float OffsetTicks)
@@ -182,28 +185,21 @@ bool EffectiveFastInputOthers()
 		!IsGameplayInputComponentDisabled();
 }
 
-bool EffectiveDeltaInputOthers()
+bool EffectiveBestInputOthers()
 {
 	return g_Config.m_BcFastInputMode == 1 &&
-		g_Config.m_BcDeltaInputOthers != 0 &&
-		!IsGameplayInputComponentDisabled();
-}
-
-bool EffectiveGammaInputOthers()
-{
-	return g_Config.m_BcFastInputMode == 2 &&
-		g_Config.m_BcGammaInputOthers != 0 &&
+		g_Config.m_BcBestInputOthers != 0 &&
 		!IsGameplayInputComponentDisabled();
 }
 
 bool EffectiveAnyFastInputOthers()
 {
-	return EffectiveFastInputOthers() || EffectiveDeltaInputOthers() || EffectiveGammaInputOthers();
+	return EffectiveFastInputOthers() || EffectiveBestInputOthers();
 }
 
 bool EffectiveImmediateFastInputOthers()
 {
-	return EffectiveDeltaInputOthers() || EffectiveGammaInputOthers();
+	return EffectiveBestInputOthers();
 }
 } // namespace
 

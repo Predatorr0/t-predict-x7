@@ -1769,122 +1769,123 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
 
 				static CButtonContainer s_FastInputModeFast;
-				static CButtonContainer s_FastInputModeDeltaInput;
-				static CButtonContainer s_FastInputModeGammaInput;
-				const int OldMode = g_Config.m_BcFastInputMode;
+				static CButtonContainer s_FastInputModeBest;
 
 				Expand.HSplitTop(LineSize, &Button, &Expand);
 				{
-					CUIRect Left, RightRest, Middle, Right;
-					Button.VSplitLeft((Button.w - 4.0f) / 3.0f, &Left, &RightRest);
-					RightRest.VSplitLeft(2.0f, nullptr, &RightRest);
-					RightRest.VSplitLeft((RightRest.w - 2.0f) / 2.0f, &Middle, &Right);
-					Right.VSplitLeft(2.0f, nullptr, &Right);
+					CUIRect Left, Right;
+					Button.VSplitMid(&Left, &Right, 2.0f);
 					Left.HMargin(2.0f, &Left);
-					Middle.HMargin(2.0f, &Middle);
 					Right.HMargin(2.0f, &Right);
 
 					if(DoButton_Menu(&s_FastInputModeFast, BCLocalize("Fast input"), g_Config.m_BcFastInputMode == 0, &Left, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
 						g_Config.m_BcFastInputMode = 0;
-					if(DoButton_Menu(&s_FastInputModeDeltaInput, BCLocalize("Delta input"), g_Config.m_BcFastInputMode == 1, &Middle, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+					if(DoButton_Menu(&s_FastInputModeBest, BCLocalize("Best input"), g_Config.m_BcFastInputMode == 1, &Right, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
 						g_Config.m_BcFastInputMode = 1;
-					if(DoButton_Menu(&s_FastInputModeGammaInput, BCLocalize("Gamma input"), g_Config.m_BcFastInputMode == 2, &Right, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
-						g_Config.m_BcFastInputMode = 2;
-				}
-
-				if(g_Config.m_BcFastInputMode != OldMode)
-				{
-					if(g_Config.m_BcFastInputMode == 1 && g_Config.m_BcFastInputDeltaInput <= 0)
-					{
-						if(OldMode == 2 && g_Config.m_BcFastInputGammaInput > 0)
-							g_Config.m_BcFastInputDeltaInput = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
-						else if(g_Config.m_TcFastInputAmount > 0)
-							g_Config.m_BcFastInputDeltaInput = std::clamp(g_Config.m_TcFastInputAmount * 5, 0, 500);
-					}
-					else if(g_Config.m_BcFastInputMode == 2 && g_Config.m_BcFastInputGammaInput <= 0)
-					{
-						if(OldMode == 1 && g_Config.m_BcFastInputDeltaInput > 0)
-							g_Config.m_BcFastInputGammaInput = BcFastInputGammaEffectiveToUiAmount(g_Config.m_BcFastInputDeltaInput);
-						else if(g_Config.m_TcFastInputAmount > 0)
-							g_Config.m_BcFastInputGammaInput = BcFastInputGammaEffectiveToUiAmount(g_Config.m_TcFastInputAmount * 5);
-					}
-					else if(g_Config.m_BcFastInputMode == 0 && g_Config.m_TcFastInputAmount <= 0)
-					{
-						const int SourceAmount = OldMode == 2 ? BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput) : g_Config.m_BcFastInputDeltaInput;
-						if(SourceAmount > 0)
-							g_Config.m_TcFastInputAmount = std::clamp((SourceAmount + 2) / 5, 0, 40);
-					}
 				}
 
 				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
 				Expand.HSplitTop(LineSize, &Button, &Expand);
+
 				if(g_Config.m_BcFastInputMode == 0)
 				{
+					// Fast Input mode - simple slider
 					DoSliderWithScaledValue(&g_Config.m_TcFastInputAmount, &g_Config.m_TcFastInputAmount, &Button, BCLocalize("Amount"), 0, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
 				}
 				else
 				{
-					const int Min = 0;
-					const bool GammaMode = g_Config.m_BcFastInputMode == 2;
-					if(GammaMode)
+					// Best Input mode - preset buttons
+					CUIRect PresetLabel, PresetButtons;
+					Button.VSplitLeft(Button.w * 0.3f, &PresetLabel, &PresetButtons);
+					Ui()->DoLabel(&PresetLabel, BCLocalize("Presets:"), FontSize, TEXTALIGN_ML);
+
+					CUIRect DeltaBtn, GammaBtn;
+					PresetButtons.VSplitMid(&DeltaBtn, &GammaBtn, 4.0f);
+					DeltaBtn.HMargin(2.0f, &DeltaBtn);
+					GammaBtn.HMargin(2.0f, &GammaBtn);
+
+					static CButtonContainer s_PresetDelta, s_PresetGamma;
+					if(DoButton_Menu(&s_PresetDelta, "Delta", 0, &DeltaBtn))
 					{
-						const int Max = BC_FAST_INPUT_GAMMA_UI_MAX;
-						int *pAmountValue = &g_Config.m_BcFastInputGammaInput;
-						int Value = std::clamp(*pAmountValue, Min, Max);
-
-						const int Increment = std::max(1, (Max - Min) / 35);
-						if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_UP) && Ui()->MouseInside(&Button))
-							Value = std::clamp(Value + Increment, Min, Max);
-						if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_DOWN) && Ui()->MouseInside(&Button))
-							Value = std::clamp(Value - Increment, Min, Max);
-
-						char aBuf[256];
-						str_format(aBuf, sizeof(aBuf), "%s: %.2fM", BCLocalize("Gamma amount"), Value / 100.0f);
-
-						CUIRect AmountLabel, ScrollBar;
-						Button.VSplitMid(&AmountLabel, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
-						const float LabelFontSize = AmountLabel.h * CUi::ms_FontmodHeight * 0.8f;
-						Ui()->DoLabel(&AmountLabel, aBuf, LabelFontSize, TEXTALIGN_ML);
-
-						const float Rel = (Value - Min) / (float)(Max - Min);
-						const float NewRel = Ui()->DoScrollbarH(pAmountValue, &ScrollBar, Rel);
-						Value = (int)(Min + NewRel * (Max - Min) + 0.5f);
-						*pAmountValue = std::clamp(Value, Min, Max);
+						// Apply Delta preset values
+						g_Config.m_BcBestInputOffset = 250; // 2.50 ticks
+						g_Config.m_BcBestInputSmoothing = 20;
+						g_Config.m_BcBestInputLatencyComp = 0;
 					}
-					else
+					if(DoButton_Menu(&s_PresetGamma, "Gamma", 0, &GammaBtn))
 					{
-						const int Max = 500;
-						int *pAmountValue = &g_Config.m_BcFastInputDeltaInput;
-						int Value = std::clamp(*pAmountValue, Min, Max);
+						// Apply Gamma preset values
+						g_Config.m_BcBestInputOffset = 300; // 3.00 ticks
+						g_Config.m_BcBestInputSmoothing = 40;
+						g_Config.m_BcBestInputLatencyComp = 50;
+					}
 
-						const int Increment = std::max(1, (Max - Min) / 35);
-						if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_UP) && Ui()->MouseInside(&Button))
-							Value = std::clamp(Value + Increment, Min, Max);
-						if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_DOWN) && Ui()->MouseInside(&Button))
-							Value = std::clamp(Value - Increment, Min, Max);
+					Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+
+					// Prediction offset slider
+					Expand.HSplitTop(LineSize, &Button, &Expand);
+					{
+						const int Min = 0, Max = 1000;
+						int Value = std::clamp(g_Config.m_BcBestInputOffset, Min, Max);
 
 						char aBuf[256];
-						str_format(aBuf, sizeof(aBuf), "%s: %.2fA", BCLocalize("Amount"), Value / 100.0f);
+						str_format(aBuf, sizeof(aBuf), "%s: %.2f ticks", BCLocalize("Prediction offset"), Value / 100.0f);
 
-						CUIRect AmountLabel, ScrollBar;
-						Button.VSplitMid(&AmountLabel, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
-						const float LabelFontSize = AmountLabel.h * CUi::ms_FontmodHeight * 0.8f;
-						Ui()->DoLabel(&AmountLabel, aBuf, LabelFontSize, TEXTALIGN_ML);
+						CUIRect Label, ScrollBar;
+						Button.VSplitMid(&Label, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
+						Ui()->DoLabel(&Label, aBuf, Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
 
-						const float Rel = (Value - Min) / (float)(Max - Min);
-						const float NewRel = Ui()->DoScrollbarH(pAmountValue, &ScrollBar, Rel);
-						Value = (int)(Min + NewRel * (Max - Min) + 0.5f);
-						*pAmountValue = std::clamp(Value, Min, Max);
+						float Rel = (Value - Min) / (float)(Max - Min);
+						float NewRel = Ui()->DoScrollbarH(&g_Config.m_BcBestInputOffset, &ScrollBar, Rel);
+						g_Config.m_BcBestInputOffset = std::clamp((int)(Min + NewRel * (Max - Min) + 0.5f), Min, Max);
+					}
+
+					Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+
+					// Input smoothing slider
+					Expand.HSplitTop(LineSize, &Button, &Expand);
+					{
+						const int Min = 0, Max = 100;
+						int Value = std::clamp(g_Config.m_BcBestInputSmoothing, Min, Max);
+
+						char aBuf[256];
+						str_format(aBuf, sizeof(aBuf), "%s: %d%%", BCLocalize("Input smoothing"), Value);
+
+						CUIRect Label, ScrollBar;
+						Button.VSplitMid(&Label, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
+						Ui()->DoLabel(&Label, aBuf, Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
+
+						float Rel = (Value - Min) / (float)(Max - Min);
+						float NewRel = Ui()->DoScrollbarH(&g_Config.m_BcBestInputSmoothing, &ScrollBar, Rel);
+						g_Config.m_BcBestInputSmoothing = std::clamp((int)(Min + NewRel * (Max - Min) + 0.5f), Min, Max);
+					}
+
+					Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+
+					// Latency compensation slider
+					Expand.HSplitTop(LineSize, &Button, &Expand);
+					{
+						const int Min = 0, Max = 200;
+						int Value = std::clamp(g_Config.m_BcBestInputLatencyComp, Min, Max);
+
+						char aBuf[256];
+						str_format(aBuf, sizeof(aBuf), "%s: %d%%", BCLocalize("Latency compensation"), Value);
+
+						CUIRect Label, ScrollBar;
+						Button.VSplitMid(&Label, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
+						Ui()->DoLabel(&Label, aBuf, Label.h * CUi::ms_FontmodHeight * 0.8f, TEXTALIGN_ML);
+
+						float Rel = (Value - Min) / (float)(Max - Min);
+						float NewRel = Ui()->DoScrollbarH(&g_Config.m_BcBestInputLatencyComp, &ScrollBar, Rel);
+						g_Config.m_BcBestInputLatencyComp = std::clamp((int)(Min + NewRel * (Max - Min) + 0.5f), Min, Max);
 					}
 				}
 
 				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
 				if(g_Config.m_BcFastInputMode == 0)
 					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInputOthers, BCLocalize("Fast Input others"), &g_Config.m_TcFastInputOthers, &Expand, LineSize);
-				else if(g_Config.m_BcFastInputMode == 1)
-					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcDeltaInputOthers, BCLocalize("Delta input others"), &g_Config.m_BcDeltaInputOthers, &Expand, LineSize);
 				else
-					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcGammaInputOthers, BCLocalize("Gamma input others"), &g_Config.m_BcGammaInputOthers, &Expand, LineSize);
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcBestInputOthers, BCLocalize("Best input others"), &g_Config.m_BcBestInputOthers, &Expand, LineSize);
 			}
 
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClSubTickAiming, BCLocalize("Sub-Tick aiming"), &g_Config.m_ClSubTickAiming, &Content, LineSize);

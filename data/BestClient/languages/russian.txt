@@ -1095,3 +1095,21 @@ Your messages to
 
 Slot %s is empty
 == Слот %s пуст
+
+Best input
+== Лучший инпут
+
+Prediction offset
+== Смещение предсказания
+
+Input smoothing
+== Сглаживание инпута
+
+Latency compensation
+== Компенсация задержки
+
+Best input others
+== Лучший инпут для других
+
+Presets:
+== Пресеты:
