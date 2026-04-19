@@ -272,7 +272,7 @@ bool EffectiveAnyFastInputOthers()
 
 bool EffectiveImmediateFastInputOthers()
 {
-	return EffectiveDeltaInputOthers() || EffectiveGammaInputOthers();
+	return EffectiveDeltaInputOthers() || EffectiveGammaInputOthers() || EffectiveBestInputOthers();
 }
 } // namespace
 
@@ -4843,7 +4843,7 @@ void CGameClient::UpdateRenderedCharacters()
 				if(g_Config.m_ClAntiPingSmooth)
 					Pos = GetSmoothPos(i);
 
-				// Delta/gamma others should feel immediate: prefer direct fast-input position over smoothing layers.
+				// Fast-input others should feel immediate: prefer direct fast-input position over smoothing layers.
 				if(HasFastInput && EffectiveImmediateFastInputOthers())
 					Pos = GetFastInputPos(i);
 				else if(g_Config.m_TcAntiPingImproved && m_aClients[i].m_ValidAntipingSmooth)
