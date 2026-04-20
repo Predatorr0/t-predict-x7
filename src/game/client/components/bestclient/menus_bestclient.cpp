@@ -1779,9 +1779,9 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 					g_Config.m_BcBestInputPreset = Preset;
 					if(Preset == 1)
 					{
-						g_Config.m_BcBestInputOffset = 260;
-						g_Config.m_BcBestInputSmoothing = 40;
-						g_Config.m_BcBestInputLatencyComp = 25;
+						g_Config.m_BcBestInputOffset = 270;
+						g_Config.m_BcBestInputSmoothing = 55;
+						g_Config.m_BcBestInputLatencyComp = 15;
 					}
 					else if(Preset == 2)
 					{

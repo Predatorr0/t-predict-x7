@@ -1488,7 +1488,7 @@ int CGameClient::CurrentPing() const
 CGameClient::SBestInputSettings CGameClient::BestInputSettings() const
 {
 	if(g_Config.m_BcBestInputPreset == 1)
-		return {260, 40, 25};
+		return {270, 55, 15};
 	if(g_Config.m_BcBestInputPreset == 2)
 		return {300, 35, 15};
 	if(g_Config.m_BcBestInputPreset == 3)
