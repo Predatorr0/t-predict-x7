@@ -2,6 +2,7 @@
 #include "irc.h"
 
 #include <base/color.h>
+#include <base/net.h>
 #include <base/log.h>
 #include <base/math.h>
 #include <base/system.h>
@@ -24,6 +25,17 @@
 #include <openssl/err.h>
 #include <openssl/sha.h>
 #include <openssl/ssl.h>
+#elif defined(CONF_FAMILY_WINDOWS)
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+#define SECURITY_WIN32
+#include <security.h>
+#include <schannel.h>
+#include <wincrypt.h>
+#ifdef SendMessage
+#undef SendMessage
+#endif
 #endif
 
 #include <algorithm>
@@ -101,6 +113,373 @@ void Label(ITextRender *pTextRender, CUi *pUi, const CUIRect &Rect, const char *
 	pUi->DoLabel(&Rect, pText, Size, Align);
 	pTextRender->TextColor(pTextRender->DefaultTextColor());
 }
+
+#if !defined(CONF_OPENSSL) && defined(CONF_FAMILY_WINDOWS)
+void NetAddrToSockaddrIn(const NETADDR &Addr, sockaddr_in &SockAddr)
+{
+	mem_zero(&SockAddr, sizeof(SockAddr));
+	SockAddr.sin_family = AF_INET;
+	SockAddr.sin_port = htons(Addr.port);
+	mem_copy(&SockAddr.sin_addr.s_addr, Addr.ip, sizeof(unsigned char) * 4);
+}
+
+void NetAddrToSockaddrIn6(const NETADDR &Addr, sockaddr_in6 &SockAddr)
+{
+	mem_zero(&SockAddr, sizeof(SockAddr));
+	SockAddr.sin6_family = AF_INET6;
+	SockAddr.sin6_port = htons(Addr.port);
+	mem_copy(&SockAddr.sin6_addr.s6_addr, Addr.ip, sizeof(Addr.ip));
+}
+
+class CSchannelSocket
+{
+public:
+	~CSchannelSocket()
+	{
+		Close();
+	}
+
+	bool Connect(const char *pHost, int Port, std::string &Error, std::string &Fingerprint)
+	{
+		NETADDR Addr;
+		if(net_host_lookup(pHost, &Addr, NETTYPE_ALL) != 0)
+		{
+			Error = "Could not resolve IRC host.";
+			return false;
+		}
+		Addr.port = Port;
+
+		m_Socket = socket((Addr.type & NETTYPE_IPV6) ? AF_INET6 : AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if(m_Socket == INVALID_SOCKET)
+		{
+			Error = "Could not create TLS socket.";
+			return false;
+		}
+
+		if(Addr.type & NETTYPE_IPV6)
+		{
+			sockaddr_in6 SockAddr;
+			NetAddrToSockaddrIn6(Addr, SockAddr);
+			if(connect(m_Socket, (sockaddr *)&SockAddr, sizeof(SockAddr)) != 0)
+			{
+				Error = "TLS connection failed.";
+				return false;
+			}
+		}
+		else
+		{
+			sockaddr_in SockAddr;
+			NetAddrToSockaddrIn(Addr, SockAddr);
+			if(connect(m_Socket, (sockaddr *)&SockAddr, sizeof(SockAddr)) != 0)
+			{
+				Error = "TLS connection failed.";
+				return false;
+			}
+		}
+
+		SCHANNEL_CRED Cred{};
+		Cred.dwVersion = SCHANNEL_CRED_VERSION;
+		Cred.dwFlags = SCH_CRED_MANUAL_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_NO_SERVERNAME_CHECK;
+
+		TimeStamp Expiry;
+		SECURITY_STATUS Status = AcquireCredentialsHandleA(nullptr, const_cast<char *>(UNISP_NAME_A), SECPKG_CRED_OUTBOUND, nullptr, &Cred, nullptr, nullptr, &m_CredHandle, &Expiry);
+		if(Status != SEC_E_OK)
+		{
+			Error = "Could not acquire TLS credentials.";
+			return false;
+		}
+		m_HasCredHandle = true;
+
+		DWORD Flags = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
+		DWORD OutFlags = 0;
+		SecBufferDesc OutBufferDesc;
+		SecBuffer OutBuffers[1];
+		OutBufferDesc.ulVersion = SECBUFFER_VERSION;
+		OutBufferDesc.cBuffers = 1;
+		OutBufferDesc.pBuffers = OutBuffers;
+		OutBuffers[0].BufferType = SECBUFFER_TOKEN;
+		OutBuffers[0].pvBuffer = nullptr;
+		OutBuffers[0].cbBuffer = 0;
+
+		Status = InitializeSecurityContextA(&m_CredHandle, nullptr, const_cast<char *>(pHost), Flags, 0, SECURITY_NATIVE_DREP, nullptr, 0, &m_CtxHandle, &OutBufferDesc, &OutFlags, &Expiry);
+		if(Status != SEC_I_CONTINUE_NEEDED)
+		{
+			Error = "TLS handshake failed.";
+			return false;
+		}
+		m_HasCtxHandle = true;
+		if(!SendToken(OutBuffers[0]))
+		{
+			if(OutBuffers[0].pvBuffer)
+				FreeContextBuffer(OutBuffers[0].pvBuffer);
+			Error = "TLS handshake failed.";
+			return false;
+		}
+		if(OutBuffers[0].pvBuffer)
+			FreeContextBuffer(OutBuffers[0].pvBuffer);
+
+		std::vector<unsigned char> vHandshakeData;
+		unsigned char aBuffer[8192];
+		while(true)
+		{
+			const int Received = recv(m_Socket, (char *)aBuffer, sizeof(aBuffer), 0);
+			if(Received <= 0)
+			{
+				Error = "TLS handshake failed.";
+				return false;
+			}
+			vHandshakeData.insert(vHandshakeData.end(), aBuffer, aBuffer + Received);
+
+			while(true)
+			{
+				SecBuffer InBuffers[2];
+				SecBufferDesc InBufferDesc;
+				InBufferDesc.ulVersion = SECBUFFER_VERSION;
+				InBufferDesc.cBuffers = 2;
+				InBufferDesc.pBuffers = InBuffers;
+				InBuffers[0].BufferType = SECBUFFER_TOKEN;
+				InBuffers[0].pvBuffer = vHandshakeData.data();
+				InBuffers[0].cbBuffer = (unsigned long)vHandshakeData.size();
+				InBuffers[1].BufferType = SECBUFFER_EMPTY;
+				InBuffers[1].pvBuffer = nullptr;
+				InBuffers[1].cbBuffer = 0;
+
+				OutBuffers[0].BufferType = SECBUFFER_TOKEN;
+				OutBuffers[0].pvBuffer = nullptr;
+				OutBuffers[0].cbBuffer = 0;
+				Status = InitializeSecurityContextA(&m_CredHandle, &m_CtxHandle, const_cast<char *>(pHost), Flags, 0, SECURITY_NATIVE_DREP, &InBufferDesc, 0, nullptr, &OutBufferDesc, &OutFlags, &Expiry);
+				if(OutBuffers[0].pvBuffer)
+				{
+					if(!SendToken(OutBuffers[0]))
+					{
+						FreeContextBuffer(OutBuffers[0].pvBuffer);
+						Error = "TLS handshake failed.";
+						return false;
+					}
+					FreeContextBuffer(OutBuffers[0].pvBuffer);
+				}
+
+				if(Status == SEC_E_INCOMPLETE_MESSAGE)
+					break;
+
+				if(Status == SEC_E_OK)
+				{
+					if(InBuffers[1].BufferType == SECBUFFER_EXTRA)
+					{
+						const size_t ExtraOffset = vHandshakeData.size() - InBuffers[1].cbBuffer;
+						m_vEncryptedRead.assign(vHandshakeData.begin() + ExtraOffset, vHandshakeData.end());
+					}
+					else
+					{
+						m_vEncryptedRead.clear();
+					}
+
+					if(QueryContextAttributes(&m_CtxHandle, SECPKG_ATTR_STREAM_SIZES, &m_StreamSizes) != SEC_E_OK)
+					{
+						Error = "Could not query TLS stream sizes.";
+						return false;
+					}
+
+					PCCERT_CONTEXT pCertContext = nullptr;
+					if(QueryContextAttributes(&m_CtxHandle, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &pCertContext) != SEC_E_OK || !pCertContext)
+					{
+						Error = "Server did not present a certificate.";
+						return false;
+					}
+					BYTE aHash[32];
+					DWORD HashSize = sizeof(aHash);
+					if(!CertGetCertificateContextProperty(pCertContext, CERT_SHA256_HASH_PROP_ID, aHash, &HashSize))
+					{
+						CertFreeCertificateContext(pCertContext);
+						Error = "Could not read server certificate fingerprint.";
+						return false;
+					}
+					CertFreeCertificateContext(pCertContext);
+					char aHex[65];
+					for(DWORD i = 0; i < HashSize; ++i)
+						str_format(aHex + i * 2, sizeof(aHex) - i * 2, "%02x", aHash[i]);
+					Fingerprint = aHex;
+					return true;
+				}
+
+				if(Status != SEC_I_CONTINUE_NEEDED)
+				{
+					Error = "TLS handshake failed.";
+					return false;
+				}
+
+				if(InBuffers[1].BufferType == SECBUFFER_EXTRA)
+				{
+					const size_t ExtraOffset = vHandshakeData.size() - InBuffers[1].cbBuffer;
+					std::vector<unsigned char> vExtra(vHandshakeData.begin() + ExtraOffset, vHandshakeData.end());
+					vHandshakeData.swap(vExtra);
+				}
+				else
+				{
+					vHandshakeData.clear();
+					break;
+				}
+			}
+		}
+	}
+
+	bool SendPlain(const char *pData, int Size)
+	{
+		if(!m_HasCtxHandle)
+			return false;
+
+		std::vector<unsigned char> vPacket(m_StreamSizes.cbHeader + Size + m_StreamSizes.cbTrailer);
+		mem_copy(vPacket.data() + m_StreamSizes.cbHeader, pData, Size);
+
+		SecBuffer Buffers[4];
+		SecBufferDesc BufferDesc;
+		BufferDesc.ulVersion = SECBUFFER_VERSION;
+		BufferDesc.cBuffers = 4;
+		BufferDesc.pBuffers = Buffers;
+		Buffers[0].BufferType = SECBUFFER_STREAM_HEADER;
+		Buffers[0].pvBuffer = vPacket.data();
+		Buffers[0].cbBuffer = m_StreamSizes.cbHeader;
+		Buffers[1].BufferType = SECBUFFER_DATA;
+		Buffers[1].pvBuffer = vPacket.data() + m_StreamSizes.cbHeader;
+		Buffers[1].cbBuffer = Size;
+		Buffers[2].BufferType = SECBUFFER_STREAM_TRAILER;
+		Buffers[2].pvBuffer = vPacket.data() + m_StreamSizes.cbHeader + Size;
+		Buffers[2].cbBuffer = m_StreamSizes.cbTrailer;
+		Buffers[3].BufferType = SECBUFFER_EMPTY;
+		Buffers[3].pvBuffer = nullptr;
+		Buffers[3].cbBuffer = 0;
+
+		if(EncryptMessage(&m_CtxHandle, 0, &BufferDesc, 0) != SEC_E_OK)
+			return false;
+
+		const int Total = (int)(Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+		int Sent = 0;
+		while(Sent < Total)
+		{
+			const int Result = send(m_Socket, (const char *)vPacket.data() + Sent, Total - Sent, 0);
+			if(Result <= 0)
+				return false;
+			Sent += Result;
+		}
+		return true;
+	}
+
+	bool PollRead(std::string &Out)
+	{
+		fd_set ReadSet;
+		FD_ZERO(&ReadSet);
+		FD_SET(m_Socket, &ReadSet);
+		timeval Timeout{};
+		if(select(0, &ReadSet, nullptr, nullptr, &Timeout) <= 0)
+			return true;
+
+		unsigned char aBuffer[8192];
+		const int Received = recv(m_Socket, (char *)aBuffer, sizeof(aBuffer), 0);
+		if(Received == 0)
+			return false;
+		if(Received < 0)
+			return true;
+		m_vEncryptedRead.insert(m_vEncryptedRead.end(), aBuffer, aBuffer + Received);
+
+		while(!m_vEncryptedRead.empty())
+		{
+			SecBuffer Buffers[4];
+			SecBufferDesc BufferDesc;
+			BufferDesc.ulVersion = SECBUFFER_VERSION;
+			BufferDesc.cBuffers = 4;
+			BufferDesc.pBuffers = Buffers;
+			Buffers[0].BufferType = SECBUFFER_DATA;
+			Buffers[0].pvBuffer = m_vEncryptedRead.data();
+			Buffers[0].cbBuffer = (unsigned long)m_vEncryptedRead.size();
+			Buffers[1].BufferType = SECBUFFER_EMPTY;
+			Buffers[1].pvBuffer = nullptr;
+			Buffers[1].cbBuffer = 0;
+			Buffers[2].BufferType = SECBUFFER_EMPTY;
+			Buffers[2].pvBuffer = nullptr;
+			Buffers[2].cbBuffer = 0;
+			Buffers[3].BufferType = SECBUFFER_EMPTY;
+			Buffers[3].pvBuffer = nullptr;
+			Buffers[3].cbBuffer = 0;
+
+			const SECURITY_STATUS Status = DecryptMessage(&m_CtxHandle, &BufferDesc, 0, nullptr);
+			if(Status == SEC_E_INCOMPLETE_MESSAGE)
+				break;
+			if(Status == SEC_I_CONTEXT_EXPIRED)
+				return false;
+			if(Status != SEC_E_OK && Status != SEC_I_RENEGOTIATE)
+				return false;
+
+			for(const SecBuffer &Buffer : Buffers)
+			{
+				if(Buffer.BufferType == SECBUFFER_DATA && Buffer.cbBuffer > 0)
+					Out.append((const char *)Buffer.pvBuffer, Buffer.cbBuffer);
+			}
+
+			bool HasExtra = false;
+			for(const SecBuffer &Buffer : Buffers)
+			{
+				if(Buffer.BufferType == SECBUFFER_EXTRA)
+				{
+					const size_t ExtraOffset = m_vEncryptedRead.size() - Buffer.cbBuffer;
+					std::vector<unsigned char> vExtra(m_vEncryptedRead.begin() + ExtraOffset, m_vEncryptedRead.end());
+					m_vEncryptedRead.swap(vExtra);
+					HasExtra = true;
+					break;
+				}
+			}
+			if(!HasExtra)
+				m_vEncryptedRead.clear();
+			if(Status == SEC_I_RENEGOTIATE)
+				return false;
+		}
+		return true;
+	}
+
+	void Close()
+	{
+		if(m_HasCtxHandle)
+		{
+			DeleteSecurityContext(&m_CtxHandle);
+			m_HasCtxHandle = false;
+		}
+		if(m_HasCredHandle)
+		{
+			FreeCredentialsHandle(&m_CredHandle);
+			m_HasCredHandle = false;
+		}
+		if(m_Socket != INVALID_SOCKET)
+		{
+			closesocket(m_Socket);
+			m_Socket = INVALID_SOCKET;
+		}
+		m_vEncryptedRead.clear();
+	}
+
+private:
+	bool SendToken(const SecBuffer &Buffer)
+	{
+		const char *pData = (const char *)Buffer.pvBuffer;
+		int Left = (int)Buffer.cbBuffer;
+		while(Left > 0)
+		{
+			const int Result = send(m_Socket, pData, Left, 0);
+			if(Result <= 0)
+				return false;
+			pData += Result;
+			Left -= Result;
+		}
+		return true;
+	}
+
+	SOCKET m_Socket = INVALID_SOCKET;
+	CredHandle m_CredHandle{};
+	CtxtHandle m_CtxHandle{};
+	bool m_HasCredHandle = false;
+	bool m_HasCtxHandle = false;
+	SecPkgContext_StreamSizes m_StreamSizes{};
+	std::vector<unsigned char> m_vEncryptedRead;
+};
+#endif
 }
 
 void CIrcChat::OnInit()
@@ -194,10 +573,7 @@ void CIrcChat::StopConnection()
 
 void CIrcChat::NetworkMain()
 {
-#if !defined(CONF_OPENSSL)
-	QueueEvent("{\"type\":\"client.error\",\"message\":\"OpenSSL support is not enabled.\"}");
-	return;
-#else
+#if defined(CONF_OPENSSL)
 	SSL_library_init();
 	SSL_load_error_strings();
 	const SSL_METHOD *pMethod = TLS_client_method();
@@ -305,6 +681,57 @@ void CIrcChat::NetworkMain()
 	}
 	BIO_free_all(pBio);
 	SSL_CTX_free(pCtx);
+#elif defined(CONF_FAMILY_WINDOWS)
+	CSchannelSocket Socket;
+	std::string Error;
+	std::string Fingerprint;
+	if(!Socket.Connect(g_Config.m_BcIrcHost, g_Config.m_BcIrcPort, Error, Fingerprint))
+	{
+		QueueEvent(std::string("{\"type\":\"client.error\",\"message\":\"") + JsonEscape(Error.c_str()) + "\"}");
+		return;
+	}
+	QueueEvent(std::string("{\"type\":\"client.tls\",\"fingerprint\":\"") + Fingerprint + "\"}");
+
+	std::string ReadBuffer;
+	while(!m_StopThread)
+	{
+		std::vector<std::string> vOutgoing;
+		{
+			std::lock_guard Lock(m_NetMutex);
+			vOutgoing.swap(m_vOutgoing);
+		}
+		for(const std::string &Line : vOutgoing)
+		{
+			std::string WithNewline = Line + "\n";
+			if(!Socket.SendPlain(WithNewline.data(), (int)WithNewline.size()))
+			{
+				QueueEvent("{\"type\":\"client.error\",\"message\":\"Failed to send IRC data.\"}");
+				return;
+			}
+		}
+
+		if(!Socket.PollRead(ReadBuffer))
+		{
+			QueueEvent("{\"type\":\"client.error\",\"message\":\"IRC connection closed.\"}");
+			return;
+		}
+
+		size_t Pos = 0;
+		while((Pos = ReadBuffer.find('\n')) != std::string::npos)
+		{
+			std::string Line = ReadBuffer.substr(0, Pos);
+			ReadBuffer.erase(0, Pos + 1);
+			if(!Line.empty() && Line.back() == '\r')
+				Line.pop_back();
+			QueueEvent(Line);
+		}
+
+		std::unique_lock Lock(m_NetMutex);
+		m_NetCv.wait_for(Lock, 20ms, [&]() { return m_StopThread.load() || !m_vOutgoing.empty(); });
+	}
+#else
+	QueueEvent("{\"type\":\"client.error\",\"message\":\"BestClient IRC server requires TLS, but this build has no TLS backend on this platform.\"}");
+	return;
 #endif
 }
 
