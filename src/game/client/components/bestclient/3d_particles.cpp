@@ -378,36 +378,42 @@ void C3DParticles::OnRender()
 		}
 	}
 
-	if(EnableParticleCollisions)
+	if(EnableParticleCollisions && m_vParticles.size() > 1)
 	{
-		for(size_t i = 0; i < m_vParticles.size(); i++)
-		{
-			for(size_t j = i + 1; j < m_vParticles.size(); j++)
-			{
-				auto &A = m_vParticles[i];
-				auto &B = m_vParticles[j];
-				const vec3 Diff = A.m_Pos - B.m_Pos;
-				const float Radius = (A.m_Size + B.m_Size) * 0.6f;
-				const float RadiusSq = Radius * Radius;
-				const float DistSq = dot(Diff, Diff);
-				if(DistSq > 0.0001f && DistSq < RadiusSq)
-				{
-					const float Dist = sqrtf(DistSq);
-					const vec3 Dir = Diff / Dist;
-					const float Pen = Radius - Dist;
-					const float MassA = maximum(1.0f, A.m_Size);
-					const float MassB = maximum(1.0f, B.m_Size);
-					A.m_Pos += Dir * (Pen * (MassB / (MassA + MassB)));
-					B.m_Pos -= Dir * (Pen * (MassA / (MassA + MassB)));
+		const size_t ParticleCount = m_vParticles.size();
+		const size_t MaxCollisionChecks = 10000;
 
-					const vec3 RelVel = A.m_Vel - B.m_Vel;
-					const float RelAlong = dot(RelVel, Dir);
-					if(RelAlong < 0.0f)
+		if(ParticleCount * (ParticleCount - 1) / 2 <= MaxCollisionChecks)
+		{
+			for(size_t i = 0; i < ParticleCount; i++)
+			{
+				for(size_t j = i + 1; j < ParticleCount; j++)
+				{
+					auto &A = m_vParticles[i];
+					auto &B = m_vParticles[j];
+					const vec3 Diff = A.m_Pos - B.m_Pos;
+					const float Radius = (A.m_Size + B.m_Size) * 0.6f;
+					const float RadiusSq = Radius * Radius;
+					const float DistSq = dot(Diff, Diff);
+					if(DistSq > 0.0001f && DistSq < RadiusSq)
 					{
-						const float Restitution = 0.6f;
-						const float Impulse = (-(1.0f + Restitution) * RelAlong) / (1.0f / MassA + 1.0f / MassB);
-						A.m_Vel += Dir * (Impulse / MassA);
-						B.m_Vel -= Dir * (Impulse / MassB);
+						const float Dist = sqrtf(DistSq);
+						const vec3 Dir = Diff / Dist;
+						const float Pen = Radius - Dist;
+						const float MassA = maximum(1.0f, A.m_Size);
+						const float MassB = maximum(1.0f, B.m_Size);
+						A.m_Pos += Dir * (Pen * (MassB / (MassA + MassB)));
+						B.m_Pos -= Dir * (Pen * (MassA / (MassA + MassB)));
+
+						const vec3 RelVel = A.m_Vel - B.m_Vel;
+						const float RelAlong = dot(RelVel, Dir);
+						if(RelAlong < 0.0f)
+						{
+							const float Restitution = 0.6f;
+							const float Impulse = (-(1.0f + Restitution) * RelAlong) / (1.0f / MassA + 1.0f / MassB);
+							A.m_Vel += Dir * (Impulse / MassA);
+							B.m_Vel -= Dir * (Impulse / MassB);
+						}
 					}
 				}
 			}
