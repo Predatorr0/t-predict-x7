@@ -9,65 +9,32 @@
 #include <engine/graphics.h>
 #include <engine/storage.h>
 
-#if (defined(CONF_FAMILY_WINDOWS) || defined(CONF_PLATFORM_LINUX)) && defined(CONF_BESTCLIENT_CEF)
+#if defined(CONF_FAMILY_WINDOWS) && defined(CONF_BESTCLIENT_CEF)
 
-#include <base/system.h>
+#include <include/capi/cef_app_capi.h>
+#include <include/capi/cef_browser_capi.h>
+#include <include/capi/cef_client_capi.h>
+#include <include/capi/cef_frame_capi.h>
+#include <include/capi/cef_life_span_handler_capi.h>
+#include <include/internal/cef_string.h>
+#include <include/internal/cef_types.h>
+#include <include/internal/cef_types_win.h>
 
-#if defined(CONF_FAMILY_WINDOWS)
-#include <base/windows.h>
-#endif
-
-#include <include/cef_app.h>
-#include <include/cef_browser.h>
-#include <include/cef_client.h>
-#include <include/cef_command_line.h>
-#include <include/cef_life_span_handler.h>
-#if defined(CONF_FAMILY_WINDOWS)
-#include <include/cef_sandbox_win.h>
-#endif
-
-#include <cstdint>
+#include <atomic>
+#include <cstddef>
+#include <cstring>
+#include <cwchar>
 #include <filesystem>
-#include <memory>
-#include <string>
-
-#if defined(CONF_PLATFORM_LINUX)
-#include <limits.h>
-#include <unistd.h>
-#include <X11/Xlib.h>
-#ifdef Status
-#undef Status
-#endif
-#endif
 
 namespace
 {
-class CBestClientCefApp final : public CefApp
-{
-	IMPLEMENT_REFCOUNTING(CBestClientCefApp);
-};
-
-#if defined(CONF_PLATFORM_LINUX)
-int g_CefArgc = 0;
-const char **g_pCefArgv = nullptr;
-#endif
-
 std::filesystem::path GetModulePath()
 {
-#if defined(CONF_FAMILY_WINDOWS)
 	wchar_t aPath[MAX_PATH] = {};
 	const DWORD Length = GetModuleFileNameW(nullptr, aPath, sizeof(aPath) / sizeof(aPath[0]));
 	if(Length == 0 || Length >= sizeof(aPath) / sizeof(aPath[0]))
 		return {};
 	return std::filesystem::path(aPath);
-#else
-	char aPath[PATH_MAX] = {};
-	const ssize_t Length = readlink("/proc/self/exe", aPath, sizeof(aPath) - 1);
-	if(Length <= 0 || static_cast<size_t>(Length) >= sizeof(aPath))
-		return {};
-	aPath[Length] = '\0';
-	return std::filesystem::path(aPath);
-#endif
 }
 
 std::filesystem::path GetModuleDirectory()
@@ -76,82 +43,110 @@ std::filesystem::path GetModuleDirectory()
 	return ModulePath.empty() ? std::filesystem::path() : ModulePath.parent_path();
 }
 
-CefMainArgs MakeCefMainArgs()
+void SetCefWideString(cef_string_t &Target, const wchar_t *pText)
 {
-#if defined(CONF_FAMILY_WINDOWS)
-	return CefMainArgs(GetModuleHandleW(nullptr));
-#else
-	return CefMainArgs(g_CefArgc, const_cast<char **>(g_pCefArgv));
-#endif
+	cef_string_clear(&Target);
+	if(pText != nullptr)
+		cef_string_from_wide(pText, std::wcslen(pText), &Target);
 }
 
-CefWindowHandle NativeWindowHandleFromPointer(void *pHandle)
+void SetCefUtf8String(cef_string_t &Target, const char *pText)
 {
-#if defined(CONF_FAMILY_WINDOWS)
-	return static_cast<CefWindowHandle>(pHandle);
-#else
-	return static_cast<CefWindowHandle>(reinterpret_cast<uintptr_t>(pHandle));
-#endif
+	cef_string_clear(&Target);
+	if(pText != nullptr)
+		cef_string_from_utf8(pText, str_length(pText), &Target);
 }
 
-bool IsValidWindowHandle(CefWindowHandle WindowHandle)
+template<typename T>
+void CefAddRef(T *pObject)
 {
-#if defined(CONF_FAMILY_WINDOWS)
-	return WindowHandle != nullptr;
-#else
-	return WindowHandle != 0;
-#endif
+	if(pObject != nullptr && pObject->base.add_ref != nullptr)
+		pObject->base.add_ref(&pObject->base);
 }
 
-void ClearWindowHandle(CefWindowHandle &WindowHandle)
+template<typename T>
+void CefReleaseRef(T *&pObject)
 {
-#if defined(CONF_FAMILY_WINDOWS)
-	WindowHandle = nullptr;
-#else
-	WindowHandle = 0;
-#endif
-}
-
-void SetCefPath(cef_string_t &Target, const std::filesystem::path &Path)
-{
-	CefString TargetString(&Target);
-#if defined(CONF_FAMILY_WINDOWS)
-	TargetString = Path.native();
-#else
-	TargetString = Path.string();
-#endif
-}
-
-void SetCefUtf8Path(cef_string_t &Target, const char *pPath)
-{
-	CefString TargetString(&Target);
-#if defined(CONF_FAMILY_WINDOWS)
-	TargetString = windows_utf8_to_wide(pPath);
-#else
-	TargetString = pPath;
-#endif
+	if(pObject != nullptr && pObject->base.release != nullptr)
+		pObject->base.release(&pObject->base);
+	pObject = nullptr;
 }
 }
 
 class CBestClientBrowserImpl;
 
-class CBestClientBrowserHandler final : public CefClient, public CefLifeSpanHandler
+struct SBestClientCefClientHandler
 {
-public:
-	explicit CBestClientBrowserHandler(CBestClientBrowserImpl *pOwner) :
-		m_pOwner(pOwner)
-	{
-	}
-
-	CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
-	void OnAfterCreated(CefRefPtr<CefBrowser> pBrowser) override;
-	void OnBeforeClose(CefRefPtr<CefBrowser> pBrowser) override;
-
-private:
-	CBestClientBrowserImpl *m_pOwner;
-
-	IMPLEMENT_REFCOUNTING(CBestClientBrowserHandler);
+	cef_client_t m_Client;
+	cef_life_span_handler_t m_LifeSpan;
+	std::atomic<int> m_RefCount{1};
+	CBestClientBrowserImpl *m_pOwner = nullptr;
 };
+
+
+static SBestClientCefClientHandler *ClientHandlerFromClientBase(cef_base_ref_counted_t *pBase)
+{
+	auto *pClient = reinterpret_cast<cef_client_t *>(reinterpret_cast<char *>(pBase) - offsetof(cef_client_t, base));
+	return reinterpret_cast<SBestClientCefClientHandler *>(reinterpret_cast<char *>(pClient) - offsetof(SBestClientCefClientHandler, m_Client));
+}
+
+static SBestClientCefClientHandler *ClientHandlerFromLifeSpanBase(cef_base_ref_counted_t *pBase)
+{
+	auto *pLifeSpan = reinterpret_cast<cef_life_span_handler_t *>(reinterpret_cast<char *>(pBase) - offsetof(cef_life_span_handler_t, base));
+	return reinterpret_cast<SBestClientCefClientHandler *>(reinterpret_cast<char *>(pLifeSpan) - offsetof(SBestClientCefClientHandler, m_LifeSpan));
+}
+
+static void CEF_CALLBACK ClientAddRef(cef_base_ref_counted_t *pBase)
+{
+	ClientHandlerFromClientBase(pBase)->m_RefCount.fetch_add(1, std::memory_order_relaxed);
+}
+
+static int CEF_CALLBACK ClientRelease(cef_base_ref_counted_t *pBase)
+{
+	SBestClientCefClientHandler *pHandler = ClientHandlerFromClientBase(pBase);
+	if(pHandler->m_RefCount.fetch_sub(1, std::memory_order_acq_rel) == 1)
+	{
+		delete pHandler;
+		return 1;
+	}
+	return 0;
+}
+
+static int CEF_CALLBACK ClientHasOneRef(cef_base_ref_counted_t *pBase)
+{
+	return ClientHandlerFromClientBase(pBase)->m_RefCount.load(std::memory_order_acquire) == 1;
+}
+
+static int CEF_CALLBACK ClientHasAtLeastOneRef(cef_base_ref_counted_t *pBase)
+{
+	return ClientHandlerFromClientBase(pBase)->m_RefCount.load(std::memory_order_acquire) >= 1;
+}
+
+static void CEF_CALLBACK LifeSpanAddRef(cef_base_ref_counted_t *pBase)
+{
+	ClientHandlerFromLifeSpanBase(pBase)->m_RefCount.fetch_add(1, std::memory_order_relaxed);
+}
+
+static int CEF_CALLBACK LifeSpanRelease(cef_base_ref_counted_t *pBase)
+{
+	SBestClientCefClientHandler *pHandler = ClientHandlerFromLifeSpanBase(pBase);
+	if(pHandler->m_RefCount.fetch_sub(1, std::memory_order_acq_rel) == 1)
+	{
+		delete pHandler;
+		return 1;
+	}
+	return 0;
+}
+
+static int CEF_CALLBACK LifeSpanHasOneRef(cef_base_ref_counted_t *pBase)
+{
+	return ClientHandlerFromLifeSpanBase(pBase)->m_RefCount.load(std::memory_order_acquire) == 1;
+}
+
+static int CEF_CALLBACK LifeSpanHasAtLeastOneRef(cef_base_ref_counted_t *pBase)
+{
+	return ClientHandlerFromLifeSpanBase(pBase)->m_RefCount.load(std::memory_order_acquire) >= 1;
+}
 
 class CBestClientBrowserImpl
 {
@@ -168,44 +163,47 @@ public:
 	void OnRender()
 	{
 		if(m_Initialized)
-			CefDoMessageLoopWork();
+			cef_do_message_loop_work();
 
-		if(m_Visible && IsValidWindowHandle(m_hBrowser))
+		if(m_BoundsDirty)
 			ApplyBounds();
 	}
 
 	void OnWindowResize()
 	{
-		if(m_Visible && IsValidWindowHandle(m_hBrowser))
-			ApplyBounds();
+		if(m_Visible && m_pBrowser != nullptr)
+			m_BoundsDirty = true;
 	}
 
 	void Shutdown()
 	{
 		Hide();
-		if(m_pBrowser)
+		if(m_pBrowser != nullptr)
 		{
-			m_pBrowser->GetHost()->CloseBrowser(true);
-			m_pBrowser = nullptr;
-			ClearWindowHandle(m_hBrowser);
+			cef_browser_host_t *pHost = m_pBrowser->get_host(m_pBrowser);
+			if(pHost != nullptr)
+			{
+				pHost->close_browser(pHost, 1);
+				CefReleaseRef(pHost);
+			}
+			CefReleaseRef(m_pBrowser);
 		}
 
-		m_pHandler = nullptr;
+		if(m_pClientHandler != nullptr)
+			ClientRelease(&m_pClientHandler->m_Client.base);
+		m_pClientHandler = nullptr;
+
+		m_hBrowser = nullptr;
+		m_hParent = nullptr;
+		m_BoundsDirty = false;
+		m_HasAppliedBounds = false;
 
 		if(m_Initialized)
 		{
-			CefDoMessageLoopWork();
-			CefShutdown();
+			cef_do_message_loop_work();
+			cef_shutdown();
 			m_Initialized = false;
 		}
-
-#if defined(CONF_PLATFORM_LINUX)
-		if(m_pX11Display != nullptr)
-		{
-			XCloseDisplay(m_pX11Display);
-			m_pX11Display = nullptr;
-		}
-#endif
 	}
 
 	void Show(int X, int Y, int Width, int Height, const char *pUrl)
@@ -213,43 +211,53 @@ public:
 		if(!EnsureInitialized())
 			return;
 
-		m_X = maximum(X, 0);
-		m_Y = maximum(Y, 0);
-		m_Width = maximum(Width, 1);
-		m_Height = maximum(Height, 1);
+		const int NewX = maximum(X, 0);
+		const int NewY = maximum(Y, 0);
+		const int NewWidth = maximum(Width, 1);
+		const int NewHeight = maximum(Height, 1);
+		const bool BoundsChanged = NewX != m_X || NewY != m_Y || NewWidth != m_Width || NewHeight != m_Height;
+		const bool VisibilityChanged = !m_Visible;
+
+		m_X = NewX;
+		m_Y = NewY;
+		m_Width = NewWidth;
+		m_Height = NewHeight;
 		m_Visible = true;
 
 		if(pUrl != nullptr && pUrl[0] != '\0' && str_comp(m_aCurrentUrl, pUrl) != 0)
 		{
 			str_copy(m_aCurrentUrl, pUrl, sizeof(m_aCurrentUrl));
-			if(m_pBrowser)
-				m_pBrowser->GetMainFrame()->LoadURL(m_aCurrentUrl);
+			if(m_pBrowser != nullptr)
+			{
+				cef_frame_t *pFrame = m_pBrowser->get_main_frame(m_pBrowser);
+				if(pFrame != nullptr)
+				{
+					cef_string_t Url = {};
+					SetCefUtf8String(Url, m_aCurrentUrl);
+					pFrame->load_url(pFrame, &Url);
+					cef_string_clear(&Url);
+					CefReleaseRef(pFrame);
+				}
+			}
 		}
 
 		EnsureBrowser();
-		ApplyBounds();
+		if(BoundsChanged || VisibilityChanged || !m_HasAppliedBounds)
+			m_BoundsDirty = true;
 	}
 
 	void Hide()
 	{
+		if(!m_Visible)
+			return;
+
 		m_Visible = false;
-		if(IsValidWindowHandle(m_hBrowser))
-		{
-#if defined(CONF_FAMILY_WINDOWS)
-			ShowWindow(m_hBrowser, SW_HIDE);
-#else
-			if(m_pX11Display != nullptr)
-			{
-				XUnmapWindow(m_pX11Display, m_hBrowser);
-				XFlush(m_pX11Display);
-			}
-#endif
-		}
+		m_BoundsDirty = true;
 	}
 
 	bool IsAvailable() const
 	{
-		return m_Initialized && IsValidWindowHandle(m_hBrowser);
+		return m_Initialized && m_pBrowser != nullptr && m_hBrowser != nullptr;
 	}
 
 	const char *Status() const
@@ -257,21 +265,35 @@ public:
 		return m_aStatus;
 	}
 
-	void OnAfterCreated(CefRefPtr<CefBrowser> pBrowser)
+	void OnAfterCreated(cef_browser_t *pBrowser)
 	{
+		if(pBrowser == nullptr)
+			return;
+
+		CefAddRef(pBrowser);
+		CefReleaseRef(m_pBrowser);
 		m_pBrowser = pBrowser;
-		m_hBrowser = pBrowser->GetHost()->GetWindowHandle();
-		ApplyBounds();
+
+		cef_browser_host_t *pHost = m_pBrowser->get_host(m_pBrowser);
+		if(pHost != nullptr)
+		{
+			m_hBrowser = pHost->get_window_handle(pHost);
+			CefReleaseRef(pHost);
+		}
+
+		m_BoundsDirty = true;
 		str_copy(m_aStatus, "CEF browser is ready", sizeof(m_aStatus));
 		log_info("bestclient-cef", "browser created");
 	}
 
-	void OnBeforeClose(CefRefPtr<CefBrowser> pBrowser)
+	void OnBeforeClose(cef_browser_t *pBrowser)
 	{
-		if(m_pBrowser && pBrowser && m_pBrowser->IsSame(pBrowser))
+		if(m_pBrowser != nullptr && pBrowser != nullptr && m_pBrowser->is_same != nullptr && m_pBrowser->is_same(m_pBrowser, pBrowser))
 		{
-			m_pBrowser = nullptr;
-			ClearWindowHandle(m_hBrowser);
+			CefReleaseRef(m_pBrowser);
+			m_hBrowser = nullptr;
+			m_BoundsDirty = false;
+			m_HasAppliedBounds = false;
 			str_copy(m_aStatus, "CEF browser closed", sizeof(m_aStatus));
 		}
 	}
@@ -285,23 +307,13 @@ private:
 			return false;
 
 		m_InitializationAttempted = true;
-		m_hParent = NativeWindowHandleFromPointer(m_pGraphics->NativeWindowHandle());
-		if(!IsValidWindowHandle(m_hParent))
+		m_hParent = static_cast<cef_window_handle_t>(m_pGraphics->NativeWindowHandle());
+		if(m_hParent == nullptr)
 		{
 			str_copy(m_aStatus, "CEF init failed: missing native window handle", sizeof(m_aStatus));
 			log_error("bestclient-cef", "%s", m_aStatus);
 			return false;
 		}
-
-#if defined(CONF_PLATFORM_LINUX)
-		m_pX11Display = XOpenDisplay(nullptr);
-		if(m_pX11Display == nullptr)
-		{
-			str_copy(m_aStatus, "CEF init failed: unable to open X11 display", sizeof(m_aStatus));
-			log_error("bestclient-cef", "%s", m_aStatus);
-			return false;
-		}
-#endif
 
 		m_pStorage->CreateFolder("BestClient", IStorage::TYPE_SAVE);
 		m_pStorage->CreateFolder("BestClient/cef_cache", IStorage::TYPE_SAVE);
@@ -320,23 +332,33 @@ private:
 			return false;
 		}
 
-		CefMainArgs MainArgs = MakeCefMainArgs();
-		CefSettings Settings;
-		Settings.no_sandbox = true;
-		Settings.multi_threaded_message_loop = false;
-		Settings.external_message_pump = false;
-		Settings.command_line_args_disabled = false;
+		cef_main_args_t MainArgs = {};
+		MainArgs.instance = GetModuleHandleW(nullptr);
 
-		SetCefPath(Settings.browser_subprocess_path, ModulePath);
-		SetCefPath(Settings.resources_dir_path, ModuleDir);
-		SetCefPath(Settings.locales_dir_path, ModuleDir / "locales");
-		SetCefUtf8Path(Settings.cache_path, aCachePath);
-		SetCefUtf8Path(Settings.log_file, aLogPath);
+		cef_settings_t Settings = {};
+		Settings.size = sizeof(Settings);
+		Settings.no_sandbox = 1;
+		Settings.multi_threaded_message_loop = 0;
+		Settings.external_message_pump = 0;
+		Settings.command_line_args_disabled = 0;
+		Settings.log_severity = LOGSEVERITY_VERBOSE;
 
-		CefRefPtr<CBestClientCefApp> pApp(new CBestClientCefApp);
-		if(!CefInitialize(MainArgs, Settings, pApp.get(), nullptr))
+		SetCefWideString(Settings.browser_subprocess_path, ModulePath.c_str());
+		SetCefWideString(Settings.resources_dir_path, ModuleDir.c_str());
+		SetCefWideString(Settings.locales_dir_path, (ModuleDir / L"locales").c_str());
+		SetCefUtf8String(Settings.cache_path, aCachePath);
+		SetCefUtf8String(Settings.log_file, aLogPath);
+
+		const int Initialized = cef_initialize(&MainArgs, &Settings, nullptr, nullptr);
+		cef_string_clear(&Settings.browser_subprocess_path);
+		cef_string_clear(&Settings.resources_dir_path);
+		cef_string_clear(&Settings.locales_dir_path);
+		cef_string_clear(&Settings.cache_path);
+		cef_string_clear(&Settings.log_file);
+
+		if(!Initialized)
 		{
-			str_copy(m_aStatus, "CEF init failed: CefInitialize returned false", sizeof(m_aStatus));
+			str_copy(m_aStatus, "CEF init failed: cef_initialize returned false", sizeof(m_aStatus));
 			log_error("bestclient-cef", "%s", m_aStatus);
 			return false;
 		}
@@ -347,48 +369,128 @@ private:
 		return true;
 	}
 
+	SBestClientCefClientHandler *CreateClientHandler()
+	{
+		auto *pHandler = new SBestClientCefClientHandler();
+		std::memset(&pHandler->m_Client, 0, sizeof(pHandler->m_Client));
+		std::memset(&pHandler->m_LifeSpan, 0, sizeof(pHandler->m_LifeSpan));
+		pHandler->m_pOwner = this;
+
+		pHandler->m_Client.base.size = sizeof(pHandler->m_Client);
+		pHandler->m_Client.base.add_ref = ClientAddRef;
+		pHandler->m_Client.base.release = ClientRelease;
+		pHandler->m_Client.base.has_one_ref = ClientHasOneRef;
+		pHandler->m_Client.base.has_at_least_one_ref = ClientHasAtLeastOneRef;
+		pHandler->m_Client.get_life_span_handler = [](cef_client_t *pSelf) -> cef_life_span_handler_t * {
+			SBestClientCefClientHandler *pClientHandler = reinterpret_cast<SBestClientCefClientHandler *>(reinterpret_cast<char *>(pSelf) - offsetof(SBestClientCefClientHandler, m_Client));
+			LifeSpanAddRef(&pClientHandler->m_LifeSpan.base);
+			return &pClientHandler->m_LifeSpan;
+		};
+
+		pHandler->m_LifeSpan.base.size = sizeof(pHandler->m_LifeSpan);
+		pHandler->m_LifeSpan.base.add_ref = LifeSpanAddRef;
+		pHandler->m_LifeSpan.base.release = LifeSpanRelease;
+		pHandler->m_LifeSpan.base.has_one_ref = LifeSpanHasOneRef;
+		pHandler->m_LifeSpan.base.has_at_least_one_ref = LifeSpanHasAtLeastOneRef;
+		pHandler->m_LifeSpan.on_after_created = [](cef_life_span_handler_t *pSelf, cef_browser_t *pBrowser) {
+			SBestClientCefClientHandler *pClientHandler = reinterpret_cast<SBestClientCefClientHandler *>(reinterpret_cast<char *>(pSelf) - offsetof(SBestClientCefClientHandler, m_LifeSpan));
+			pClientHandler->m_pOwner->OnAfterCreated(pBrowser);
+		};
+		pHandler->m_LifeSpan.do_close = [](cef_life_span_handler_t *pSelf, cef_browser_t *pBrowser) -> int {
+			(void)pSelf;
+			(void)pBrowser;
+			return 0;
+		};
+		pHandler->m_LifeSpan.on_before_close = [](cef_life_span_handler_t *pSelf, cef_browser_t *pBrowser) {
+			SBestClientCefClientHandler *pClientHandler = reinterpret_cast<SBestClientCefClientHandler *>(reinterpret_cast<char *>(pSelf) - offsetof(SBestClientCefClientHandler, m_LifeSpan));
+			pClientHandler->m_pOwner->OnBeforeClose(pBrowser);
+		};
+
+		return pHandler;
+	}
+
 	void EnsureBrowser()
 	{
-		if(m_pBrowser || !IsValidWindowHandle(m_hParent))
+		if(m_pBrowser != nullptr || m_hParent == nullptr)
 			return;
 
-		CefWindowInfo WindowInfo;
-		WindowInfo.SetAsChild(m_hParent, CefRect(m_X, m_Y, m_Width, m_Height));
+		if(m_pClientHandler == nullptr)
+			m_pClientHandler = CreateClientHandler();
 
-		CefBrowserSettings BrowserSettings;
-		m_pHandler = new CBestClientBrowserHandler(this);
-		m_pBrowser = CefBrowserHost::CreateBrowserSync(WindowInfo, m_pHandler, m_aCurrentUrl, BrowserSettings, nullptr, nullptr);
-		if(!m_pBrowser)
+		cef_window_info_t WindowInfo = {};
+		WindowInfo.size = sizeof(WindowInfo);
+		WindowInfo.style = WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_TABSTOP;
+		WindowInfo.parent_window = m_hParent;
+		WindowInfo.bounds.x = m_X;
+		WindowInfo.bounds.y = m_Y;
+		WindowInfo.bounds.width = m_Width;
+		WindowInfo.bounds.height = m_Height;
+		WindowInfo.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
+
+		cef_browser_settings_t BrowserSettings = {};
+		BrowserSettings.size = sizeof(BrowserSettings);
+
+		cef_string_t Url = {};
+		SetCefUtf8String(Url, m_aCurrentUrl);
+		cef_browser_t *pCreatedBrowser = cef_browser_host_create_browser_sync(&WindowInfo, &m_pClientHandler->m_Client, &Url, &BrowserSettings, nullptr, nullptr);
+		cef_string_clear(&Url);
+
+		if(pCreatedBrowser == nullptr)
 		{
 			str_copy(m_aStatus, "CEF browser creation failed", sizeof(m_aStatus));
 			log_error("bestclient-cef", "%s", m_aStatus);
+			return;
 		}
+
+		if(m_pBrowser == nullptr)
+			OnAfterCreated(pCreatedBrowser);
+		CefReleaseRef(pCreatedBrowser);
 	}
 
 	void ApplyBounds()
 	{
-		if(!IsValidWindowHandle(m_hBrowser))
+		if(m_hBrowser == nullptr)
 			return;
 
-#if defined(CONF_FAMILY_WINDOWS)
-		SetWindowPos(m_hBrowser, HWND_TOP, m_X, m_Y, m_Width, m_Height, SWP_NOACTIVATE);
-		ShowWindow(m_hBrowser, m_Visible ? SW_SHOW : SW_HIDE);
-#else
-		if(m_pX11Display != nullptr)
+		const bool RectChanged = !m_HasAppliedBounds || m_LastAppliedX != m_X || m_LastAppliedY != m_Y || m_LastAppliedWidth != m_Width || m_LastAppliedHeight != m_Height;
+		const bool VisibilityChanged = !m_HasAppliedBounds || m_LastAppliedVisible != m_Visible;
+		if(!RectChanged && !VisibilityChanged)
 		{
-			XMoveResizeWindow(m_pX11Display, m_hBrowser, m_X, m_Y, static_cast<unsigned int>(m_Width), static_cast<unsigned int>(m_Height));
-			if(m_Visible)
-				XMapRaised(m_pX11Display, m_hBrowser);
-			else
-				XUnmapWindow(m_pX11Display, m_hBrowser);
-			XFlush(m_pX11Display);
+			m_BoundsDirty = false;
+			return;
 		}
-#endif
-		if(m_pBrowser)
+
+		if(m_Visible)
 		{
-			m_pBrowser->GetHost()->NotifyMoveOrResizeStarted();
-			m_pBrowser->GetHost()->WasResized();
+			SetWindowPos(m_hBrowser, HWND_TOP, m_X, m_Y, m_Width, m_Height, SWP_NOACTIVATE);
+			ShowWindow(m_hBrowser, SW_SHOWNOACTIVATE);
 		}
+		else
+		{
+			ShowWindow(m_hBrowser, SW_HIDE);
+		}
+
+		if(m_pBrowser != nullptr)
+		{
+			cef_browser_host_t *pHost = m_pBrowser->get_host(m_pBrowser);
+			if(pHost != nullptr)
+			{
+				if(RectChanged)
+				{
+					pHost->notify_move_or_resize_started(pHost);
+					pHost->was_resized(pHost);
+				}
+				CefReleaseRef(pHost);
+			}
+		}
+
+		m_LastAppliedX = m_X;
+		m_LastAppliedY = m_Y;
+		m_LastAppliedWidth = m_Width;
+		m_LastAppliedHeight = m_Height;
+		m_LastAppliedVisible = m_Visible;
+		m_HasAppliedBounds = true;
+		m_BoundsDirty = false;
 	}
 
 	IClient *m_pClient;
@@ -397,30 +499,24 @@ private:
 	bool m_InitializationAttempted = false;
 	bool m_Initialized = false;
 	bool m_Visible = false;
+	bool m_BoundsDirty = false;
+	bool m_HasAppliedBounds = false;
 	int m_X = 0;
 	int m_Y = 0;
 	int m_Width = 1;
 	int m_Height = 1;
-	CefWindowHandle m_hParent = {};
-	CefWindowHandle m_hBrowser = {};
-#if defined(CONF_PLATFORM_LINUX)
-	Display *m_pX11Display = nullptr;
-#endif
-	CefRefPtr<CefBrowser> m_pBrowser;
-	CefRefPtr<CBestClientBrowserHandler> m_pHandler;
+	int m_LastAppliedX = 0;
+	int m_LastAppliedY = 0;
+	int m_LastAppliedWidth = 0;
+	int m_LastAppliedHeight = 0;
+	bool m_LastAppliedVisible = false;
+	cef_window_handle_t m_hParent = nullptr;
+	cef_window_handle_t m_hBrowser = nullptr;
+	cef_browser_t *m_pBrowser = nullptr;
+	SBestClientCefClientHandler *m_pClientHandler = nullptr;
 	char m_aCurrentUrl[256];
 	char m_aStatus[256];
 };
-
-void CBestClientBrowserHandler::OnAfterCreated(CefRefPtr<CefBrowser> pBrowser)
-{
-	m_pOwner->OnAfterCreated(pBrowser);
-}
-
-void CBestClientBrowserHandler::OnBeforeClose(CefRefPtr<CefBrowser> pBrowser)
-{
-	m_pOwner->OnBeforeClose(pBrowser);
-}
 
 CBestClientBrowser::CBestClientBrowser(IClient *pClient, IGraphics *pGraphics, IStorage *pStorage) :
 	m_pImpl(new CBestClientBrowserImpl(pClient, pGraphics, pStorage))
@@ -469,17 +565,11 @@ const char *CBestClientBrowser::Status() const
 
 int BestClientCefExecuteSubprocess(int argc, const char **argv)
 {
-#if defined(CONF_FAMILY_WINDOWS)
 	(void)argc;
 	(void)argv;
-	CefMainArgs MainArgs = MakeCefMainArgs();
-#else
-	g_CefArgc = argc;
-	g_pCefArgv = argv;
-	CefMainArgs MainArgs = MakeCefMainArgs();
-#endif
-	CefRefPtr<CBestClientCefApp> pApp(new CBestClientCefApp);
-	return CefExecuteProcess(MainArgs, pApp.get(), nullptr);
+	cef_main_args_t MainArgs = {};
+	MainArgs.instance = GetModuleHandleW(nullptr);
+	return cef_execute_process(&MainArgs, nullptr, nullptr);
 }
 
 #else
@@ -507,7 +597,7 @@ public:
 	}
 	void Hide() {}
 	bool IsAvailable() const { return false; }
-	const char *Status() const { return "CEF is only available in Windows/Linux x86_64 builds with CONF_BESTCLIENT_CEF enabled"; }
+	const char *Status() const { return "CEF is only available in Windows builds with CONF_BESTCLIENT_CEF enabled"; }
 };
 
 CBestClientBrowser::CBestClientBrowser(IClient *pClient, IGraphics *pGraphics, IStorage *pStorage) :

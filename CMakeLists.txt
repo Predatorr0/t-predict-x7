@@ -243,11 +243,6 @@ if(BESTCLIENT_CEF AND CLIENT AND (TARGET_OS STREQUAL "windows" OR TARGET_OS STRE
       IMPORTED_LOCATION "${BESTCLIENT_CEF_ROOT}/Release/libcef.so"
     )
   endif()
-
-  set(CEF_ROOT "${BESTCLIENT_CEF_ROOT}")
-  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${BESTCLIENT_CEF_ROOT}/cmake")
-  find_package(CEF REQUIRED)
-  add_subdirectory("${CEF_LIBCEF_DLL_WRAPPER_PATH}" "${CMAKE_BINARY_DIR}/bestclient_cef_wrapper" EXCLUDE_FROM_ALL)
 endif()
 
 # Set version if not explicitly set
@@ -3207,10 +3202,7 @@ if(CLIENT)
     endif()
   endif()
   if(BESTCLIENT_CEF_ENABLED)
-    list(APPEND LIBS_CLIENT bestclient-cef-binary libcef_dll_wrapper ${CEF_STANDARD_LIBS})
-    if(TARGET_OS STREQUAL "linux")
-      list(APPEND LIBS_CLIENT ${X11_LIBRARIES})
-    endif()
+    list(APPEND LIBS_CLIENT bestclient-cef-binary)
   endif()
 
   if(TARGET_OS STREQUAL "windows")
