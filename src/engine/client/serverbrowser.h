@@ -345,7 +345,7 @@ private:
 
 	std::vector<CCommunity> m_vCommunities;
 	std::unordered_map<NETADDR, CCommunityServer> m_CommunityServersByAddr;
-	std::unordered_map<std::string, std::unordered_set<std::string>> m_BestClientPlayersByServer;
+	std::unordered_map<std::string, std::unordered_map<std::string, bool>> m_BestClientPlayersByServer;
 
 	int m_OwnLocation = CServerInfo::LOC_UNKNOWN;
 

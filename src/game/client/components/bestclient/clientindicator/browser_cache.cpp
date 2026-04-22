@@ -12,10 +12,18 @@
 
 namespace
 {
+using TParsedPlayers = std::unordered_map<std::string, std::unordered_map<std::string, bool>>;
+
 static const char *GetStringField(const json_value &Json, const char *pField)
 {
 	const json_value &Field = Json[pField];
 	return Field.type == json_string ? Field.u.string.ptr : nullptr;
+}
+
+static bool GetBoolField(const json_value &Json, const char *pField)
+{
+	const json_value &Field = Json[pField];
+	return Field.type == json_boolean && Field.u.boolean != 0;
 }
 
 static bool NormalizeServerAddress(const char *pAddress, char *pBuffer, int BufferSize)
@@ -47,7 +55,7 @@ static bool NormalizeServerAddress(const char *pAddress, char *pBuffer, int Buff
 	return true;
 }
 
-static void AddPlayer(std::unordered_map<std::string, std::unordered_set<std::string>> &Map, const char *pServerAddress, const char *pName)
+static void AddPlayer(TParsedPlayers &Map, const char *pServerAddress, const char *pName, bool Developer = false)
 {
 	if(!pServerAddress || !pName || pServerAddress[0] == '\0' || pName[0] == '\0')
 		return;
@@ -56,22 +64,24 @@ static void AddPlayer(std::unordered_map<std::string, std::unordered_set<std::st
 	if(!NormalizeServerAddress(pServerAddress, aNormalizedAddress, sizeof(aNormalizedAddress)))
 		return;
 
-	Map[aNormalizedAddress].insert(pName);
+	bool &ExistingDeveloper = Map[aNormalizedAddress][pName];
+	ExistingDeveloper = ExistingDeveloper || Developer;
 }
 
-static void ParsePlayerObject(std::unordered_map<std::string, std::unordered_set<std::string>> &Map, const char *pServerAddress, const json_value &Player)
+static void ParsePlayerObject(TParsedPlayers &Map, const char *pServerAddress, const json_value &Player)
 {
 	if(Player.type != json_object)
 		return;
+	const bool Developer = GetBoolField(Player, "developer");
 
 	if(const char *pName = GetStringField(Player, "name"))
 	{
-		AddPlayer(Map, pServerAddress, pName);
+		AddPlayer(Map, pServerAddress, pName, Developer);
 		return;
 	}
 	if(const char *pName = GetStringField(Player, "player_name"))
 	{
-		AddPlayer(Map, pServerAddress, pName);
+		AddPlayer(Map, pServerAddress, pName, Developer);
 		return;
 	}
 
@@ -81,7 +91,7 @@ static void ParsePlayerObject(std::unordered_map<std::string, std::unordered_set
 		if(Entry.value->type == json_object)
 		{
 			if(const char *pName = GetStringField(*Entry.value, "name"))
-				AddPlayer(Map, pServerAddress, pName);
+				AddPlayer(Map, pServerAddress, pName, GetBoolField(*Entry.value, "developer"));
 		}
 		else if(Entry.value->type == json_string)
 		{
@@ -94,7 +104,7 @@ static void ParsePlayerObject(std::unordered_map<std::string, std::unordered_set
 	}
 }
 
-static void ParsePlayersValue(std::unordered_map<std::string, std::unordered_set<std::string>> &Map, const char *pServerAddress, const json_value &Players)
+static void ParsePlayersValue(TParsedPlayers &Map, const char *pServerAddress, const json_value &Players)
 {
 	if(!pServerAddress || pServerAddress[0] == '\0')
 		return;
@@ -119,7 +129,7 @@ static void ParsePlayersValue(std::unordered_map<std::string, std::unordered_set
 
 bool CBrowserCache::Load(const json_value &Json)
 {
-	std::unordered_map<std::string, std::unordered_set<std::string>> Parsed;
+	TParsedPlayers Parsed;
 
 	if(Json.type == json_array)
 	{
@@ -164,7 +174,8 @@ bool CBrowserCache::Load(const json_value &Json)
 			IServerBrowser::CBestClientPlayerEntry Entry;
 			mem_zero(&Entry, sizeof(Entry));
 			str_copy(Entry.m_aServerAddress, ServerEntry.first.c_str(), sizeof(Entry.m_aServerAddress));
-			str_copy(Entry.m_aName, Name.c_str(), sizeof(Entry.m_aName));
+			str_copy(Entry.m_aName, Name.first.c_str(), sizeof(Entry.m_aName));
+			Entry.m_Developer = Name.second;
 			m_vPlayers.push_back(Entry);
 		}
 	}

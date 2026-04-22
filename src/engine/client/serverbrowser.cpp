@@ -110,7 +110,8 @@ void CServerBrowser::SetBestClientPlayers(const std::vector<CBestClientPlayerEnt
 	{
 		if(Entry.m_aServerAddress[0] == '\0' || Entry.m_aName[0] == '\0')
 			continue;
-		m_BestClientPlayersByServer[Entry.m_aServerAddress].insert(Entry.m_aName);
+		bool &Developer = m_BestClientPlayersByServer[Entry.m_aServerAddress][Entry.m_aName];
+		Developer = Developer || Entry.m_Developer;
 	}
 
 	for(CServerEntry *pEntry : m_vpServerlist)
@@ -1725,13 +1726,16 @@ void CServerBrowser::UpdateServerBestClients(CServerInfo *pInfo) const
 {
 	pInfo->m_NumBestClientPlayers = 0;
 	pInfo->m_HasBestClientPlayers = false;
+	pInfo->m_NumBestClientDeveloperPlayers = 0;
+	pInfo->m_HasBestClientDeveloperPlayers = false;
 	for(auto &Client : pInfo->m_aClients)
 	{
 		Client.m_BestClient = false;
+		Client.m_BestClientDeveloper = false;
 	}
 
 	const int NumClients = minimum(pInfo->m_NumReceivedClients, (int)MAX_CLIENTS);
-	std::vector<const std::unordered_set<std::string> *> vpAddressMatches;
+	std::vector<const std::unordered_map<std::string, bool> *> vpAddressMatches;
 	vpAddressMatches.reserve(pInfo->m_NumAddresses);
 	for(int AddressIndex = 0; AddressIndex < pInfo->m_NumAddresses; ++AddressIndex)
 	{
@@ -1748,14 +1752,24 @@ void CServerBrowser::UpdateServerBestClients(CServerInfo *pInfo) const
 	for(int ClientIndex = 0; ClientIndex < NumClients; ++ClientIndex)
 	{
 		CServerInfo::CClient &Client = pInfo->m_aClients[ClientIndex];
-		Client.m_BestClient = std::any_of(vpAddressMatches.begin(), vpAddressMatches.end(), [&](const std::unordered_set<std::string> *pPlayers) {
-			return pPlayers->find(Client.m_aName) != pPlayers->end();
-		});
+		for(const auto *pPlayers : vpAddressMatches)
+		{
+			const auto PlayerIt = pPlayers->find(Client.m_aName);
+			if(PlayerIt == pPlayers->end())
+				continue;
+			Client.m_BestClient = true;
+			Client.m_BestClientDeveloper = Client.m_BestClientDeveloper || PlayerIt->second;
+		}
 		if(Client.m_BestClient)
+		{
 			pInfo->m_NumBestClientPlayers++;
+			if(Client.m_BestClientDeveloper)
+				pInfo->m_NumBestClientDeveloperPlayers++;
+		}
 	}
 
 	pInfo->m_HasBestClientPlayers = pInfo->m_NumBestClientPlayers > 0;
+	pInfo->m_HasBestClientDeveloperPlayers = pInfo->m_NumBestClientDeveloperPlayers > 0;
 }
 
 void CServerBrowser::ValidateServerlistType()

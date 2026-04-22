@@ -27,9 +27,9 @@
 
 static constexpr ColorRGBA HIGHLIGHTED_TEXT_COLOR = ColorRGBA(0.4f, 0.4f, 1.0f, 1.0f);
 
-static void RenderBestClientIcon(IGraphics *pGraphics, const CUIRect &Rect, ColorRGBA Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f))
+static void RenderBestClientIcon(IGraphics *pGraphics, const CUIRect &Rect, ColorRGBA Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), bool Developer = false)
 {
-	pGraphics->TextureSet(g_pData->m_aImages[IMAGE_BCICON].m_Id);
+	pGraphics->TextureSet(g_pData->m_aImages[Developer ? IMAGE_BCDEVICON : IMAGE_BCICON].m_Id);
 	pGraphics->QuadsBegin();
 	pGraphics->SetColor(Color);
 	pGraphics->QuadsSetSubset(0.0f, 0.0f, 1.0f, 1.0f);
@@ -242,8 +242,9 @@ void CMenus::RenderServerbrowserServerList(CUIRect View, bool &WasListboxItemAct
 			COL_NAME,
 			COL_GAMETYPE,
 			COL_MAP,
-			COL_FRIENDS,
+			COL_BESTCLIENT_DEV,
 			COL_BESTCLIENT,
+			COL_FRIENDS,
 			COL_PLAYERS,
 			COL_PING,
 		};
@@ -260,6 +261,7 @@ void CMenus::RenderServerbrowserServerList(CUIRect View, bool &WasListboxItemAct
 		UI_ELEM_MAP_2,
 		UI_ELEM_MAP_3,
 			UI_ELEM_FINISH_ICON,
+			UI_ELEM_BESTCLIENT_DEV_ICON,
 			UI_ELEM_PLAYERS,
 			UI_ELEM_FRIEND_ICON,
 			UI_ELEM_BESTCLIENT_ICON,
@@ -276,8 +278,9 @@ void CMenus::RenderServerbrowserServerList(CUIRect View, bool &WasListboxItemAct
 			{COL_NAME, IServerBrowser::SORT_NAME, Localizable("Name"), 0, 50.0f, {0}},
 			{COL_GAMETYPE, IServerBrowser::SORT_GAMETYPE, Localizable("Type"), 1, 50.0f, {0}},
 			{COL_MAP, IServerBrowser::SORT_MAP, Localizable("Map"), 1, 120.0f + (Headers.w - 480) / 8, {0}},
-			{COL_FRIENDS, IServerBrowser::SORT_NUMFRIENDS, "", 1, 20.0f, {0}},
+			{COL_BESTCLIENT_DEV, -1, "", 1, 20.0f, {0}},
 			{COL_BESTCLIENT, IServerBrowser::SORT_NUMBESTCLIENT, "", 1, 20.0f, {0}},
+			{COL_FRIENDS, IServerBrowser::SORT_NUMFRIENDS, "", 1, 20.0f, {0}},
 			{COL_PLAYERS, IServerBrowser::SORT_NUMPLAYERS, Localizable("Players"), 1, 60.0f, {0}},
 			{-1, -1, "", 1, 4.0f, {0}},
 			{COL_PING, IServerBrowser::SORT_PING, Localizable("Ping"), 1, 40.0f, {0}},
@@ -569,6 +572,43 @@ void CMenus::RenderServerbrowserServerList(CUIRect View, bool &WasListboxItemAct
 				if(!Printed)
 					Ui()->DoLabelStreamed(*pUiElement->Rect(UI_ELEM_MAP_1), &Button, pItem->m_aMap, FontSize, TEXTALIGN_ML, Props);
 			}
+				else if(Id == COL_BESTCLIENT_DEV)
+				{
+					const bool HasRegularBestClientPlayers = pItem->m_NumBestClientPlayers > pItem->m_NumBestClientDeveloperPlayers;
+					if(pItem->m_HasBestClientDeveloperPlayers && HasRegularBestClientPlayers)
+					{
+						const CUIRect Icon = CenterSquareIcon(Button, 2.0f);
+						RenderBestClientIcon(Graphics(), Icon, ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), true);
+
+						if(pItem->m_NumBestClientDeveloperPlayers > 1)
+						{
+							str_format(aTemp, sizeof(aTemp), "%d", pItem->m_NumBestClientDeveloperPlayers);
+							TextRender()->TextColor(1.0f, 0.9f, 0.55f, 1.0f);
+							Ui()->DoLabel(&Button, aTemp, 9.0f, TEXTALIGN_MC);
+							TextRender()->TextColor(TextRender()->DefaultTextColor());
+						}
+					}
+				}
+				else if(Id == COL_BESTCLIENT)
+				{
+					if(pItem->m_HasBestClientPlayers)
+					{
+						const bool HasDeveloperPlayers = pItem->m_HasBestClientDeveloperPlayers;
+						const int NumRegularBestClientPlayers = maximum(0, pItem->m_NumBestClientPlayers - pItem->m_NumBestClientDeveloperPlayers);
+						const bool OnlyDevelopers = HasDeveloperPlayers && NumRegularBestClientPlayers == 0;
+						const CUIRect Icon = CenterSquareIcon(Button, 2.0f);
+						RenderBestClientIcon(Graphics(), Icon, ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), OnlyDevelopers);
+
+						const int CounterValue = OnlyDevelopers ? pItem->m_NumBestClientDeveloperPlayers : NumRegularBestClientPlayers;
+						if(CounterValue > 1)
+						{
+							str_format(aTemp, sizeof(aTemp), "%d", CounterValue);
+							TextRender()->TextColor(1.0f, 0.9f, 0.55f, 1.0f);
+							Ui()->DoLabel(&Button, aTemp, 9.0f, TEXTALIGN_MC);
+							TextRender()->TextColor(TextRender()->DefaultTextColor());
+						}
+					}
+				}
 				else if(Id == COL_FRIENDS)
 				{
 					if(pItem->m_FriendState != IFriends::FRIEND_NO)
@@ -581,22 +621,6 @@ void CMenus::RenderServerbrowserServerList(CUIRect View, bool &WasListboxItemAct
 						TextRender()->TextColor(0.94f, 0.8f, 0.8f, 1.0f);
 						Ui()->DoLabel(&Button, aTemp, 9.0f, TEXTALIGN_MC);
 						TextRender()->TextColor(TextRender()->DefaultTextColor());
-						}
-					}
-				}
-				else if(Id == COL_BESTCLIENT)
-				{
-					if(pItem->m_HasBestClientPlayers)
-					{
-						const CUIRect Icon = CenterSquareIcon(Button, 2.0f);
-						RenderBestClientIcon(Graphics(), Icon);
-
-						if(pItem->m_NumBestClientPlayers > 1)
-						{
-							str_format(aTemp, sizeof(aTemp), "%d", pItem->m_NumBestClientPlayers);
-							TextRender()->TextColor(1.0f, 0.9f, 0.55f, 1.0f);
-							Ui()->DoLabel(&Button, aTemp, 9.0f, TEXTALIGN_MC);
-							TextRender()->TextColor(TextRender()->DefaultTextColor());
 						}
 					}
 				}
@@ -1583,7 +1607,7 @@ void CMenus::RenderServerbrowserInfoScoreboard(CUIRect View, const CServerInfo *
 				BestClientIcon.h = BestClientIconSize;
 				BestClientIcon.x = minimum(NameCursor.m_X + BestClientIconSpacing, Name.x + Name.w - BestClientIcon.w);
 				BestClientIcon.y = Name.y + (Name.h - BestClientIcon.h) / 2.0f;
-				RenderBestClientIcon(Graphics(), BestClientIcon);
+				RenderBestClientIcon(Graphics(), BestClientIcon, ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), CurrentClient.m_BestClientDeveloper);
 			}
 
 				// clan
@@ -1734,7 +1758,7 @@ void CMenus::RenderServerbrowserBestClient(CUIRect View)
 		BestClientIcon.h = BestClientIconSize;
 		BestClientIcon.x = minimum(NameCursor.m_X + BestClientIconSpacing, Name.x + Name.w - BestClientIcon.w);
 		BestClientIcon.y = Name.y + (Name.h - BestClientIcon.h) / 2.0f;
-		RenderBestClientIcon(Graphics(), BestClientIcon);
+		RenderBestClientIcon(Graphics(), BestClientIcon, ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f), Client.m_BestClientDeveloper);
 		Ui()->DoLabel(&Clan, Client.m_aClan, FontSize - 2.0f, TEXTALIGN_ML);
 	}
 

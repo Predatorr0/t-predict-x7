@@ -84,6 +84,7 @@ public:
 		bool m_aUseCustomSkinColor7[protocol7::NUM_SKINPARTS];
 		int m_aCustomSkinColor7[protocol7::NUM_SKINPARTS];
 		bool m_BestClient;
+		bool m_BestClientDeveloper;
 	};
 
 	int m_ServerIndex;
@@ -126,6 +127,8 @@ public:
 	bool m_RequiresLogin;
 	int m_NumBestClientPlayers;
 	bool m_HasBestClientPlayers;
+	int m_NumBestClientDeveloperPlayers;
+	bool m_HasBestClientDeveloperPlayers;
 
 	static int EstimateLatency(int Loc1, int Loc2);
 	static bool ParseLocation(int *pResult, const char *pString);
@@ -337,6 +340,7 @@ public:
 	{
 		char m_aServerAddress[MAX_SERVER_ADDRESSES * NETADDR_MAXSTRSIZE];
 		char m_aName[MAX_NAME_LENGTH];
+		bool m_Developer;
 	};
 
 	static constexpr const char *COMMUNITY_DDNET = "ddnet";

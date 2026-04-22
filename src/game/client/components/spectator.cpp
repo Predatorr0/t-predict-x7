@@ -20,9 +20,9 @@
 
 namespace
 {
-void RenderBestClientIcon(IGraphics *pGraphics, const CUIRect &Rect)
+void RenderBestClientIcon(IGraphics *pGraphics, const CUIRect &Rect, bool Developer = false)
 {
-	pGraphics->TextureSet(g_pData->m_aImages[IMAGE_BCICON].m_Id);
+	pGraphics->TextureSet(g_pData->m_aImages[Developer ? IMAGE_BCDEVICON : IMAGE_BCICON].m_Id);
 	pGraphics->QuadsBegin();
 	pGraphics->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
 	pGraphics->QuadsSetSubset(0.0f, 0.0f, 1.0f, 1.0f);
@@ -556,7 +556,7 @@ void CSpectator::OnRender()
 				Height / 2.0f + y + BoxMove + (LineHeight - BestClientIconSize) / 2.0f,
 				BestClientIconSize,
 				BestClientIconSize};
-			RenderBestClientIcon(Graphics(), IconRect);
+			RenderBestClientIcon(Graphics(), IconRect, GameClient()->m_ClientIndicator.IsPlayerDeveloper(pInfo->m_ClientId));
 		}
 		if(g_Config.m_ClShowIds)
 		{

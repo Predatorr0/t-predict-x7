@@ -31,6 +31,7 @@ public:
 
 	bool IsPlayerBestClient(int ClientId) const;
 	bool IsPlayerBClient(int ClientId) { return IsPlayerBestClient(ClientId); }
+	bool IsPlayerDeveloper(int ClientId) const;
 
 	void RefreshBrowserCache(bool Force);
 	void RefreshToken(bool Force);
@@ -48,6 +49,7 @@ private:
 	int64_t m_LastPresenceStartAttempt = 0;
 	int64_t m_LastBrowserRefreshTick = 0;
 	int64_t m_LastTokenRefreshTick = 0;
+	int64_t m_NextPresenceBrowserRefreshTick = 0;
 	int64_t m_LastPresencePollTick = 0;
 	int64_t m_LastRegistrationSyncTick = 0;
 	int64_t m_LastPerfReportTick = 0;
@@ -57,6 +59,7 @@ private:
 	int64_t m_UpdateSamples = 0;
 	CUuid m_ClientInstanceId = UUID_ZEROED;
 	std::unordered_set<int> m_RegisteredClientIds;
+	std::unordered_set<int> m_DeveloperClientIds;
 	CPresenceCache m_PresenceCache;
 
 	std::shared_ptr<CHttpRequest> m_pBrowserTask = nullptr;
@@ -73,6 +76,7 @@ private:
 	void ProcessIncomingPackets(bool Force = false);
 	void SyncLocalRegistrations(bool Force = false);
 	void SendPresencePacket(int ClientId, int PacketType);
+	void SendDevAuthPacket(int ClientId);
 	void SendLeaveForAll();
 	const char *CurrentGameServerAddress();
 	const char *PlayerNameForClient(int ClientId) const;
@@ -85,6 +89,7 @@ private:
 	void ResetTokenState();
 	void ClearBrowserSnapshot();
 	void ApplyBrowserSnapshot();
+	void SchedulePresenceBrowserRefresh();
 	bool HasPendingNetworkTask() const;
 	bool IsBrowserSnapshotEnabled() const;
 	bool IsPresenceEnabled() const;

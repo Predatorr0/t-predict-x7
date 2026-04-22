@@ -1017,8 +1017,25 @@ set_glob(RUST_MASTERSRV GLOB "rs;toml" src/mastersrv/src
   main.rs
 )
 
+set_glob(RUST_CLIENTINDICATORSRV GLOB_RECURSE "rs;toml;lock;example;md;sh;service" src/clientindicatorsrv
+  .env.example
+  Cargo.lock
+  Cargo.toml
+  README.md
+  bestclient-indicator-server.service
+  run.sh
+  src/main.rs
+)
+
 add_library(rust-bridge-shared EXCLUDE_FROM_ALL OBJECT ${RUST_BRIDGE_SHARED})
 list(APPEND TARGETS_OWN rust-bridge-shared)
+
+add_custom_target(bestclient-indicator-server
+  COMMAND ${CMAKE_COMMAND} -E env CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=${PROJECT_BINARY_DIR}/clientindicatorsrv ${RUST_CARGO} build --release --locked --manifest-path "${PROJECT_SOURCE_DIR}/src/clientindicatorsrv/Cargo.toml"
+  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+  USES_TERMINAL
+  DEPENDS ${RUST_CLIENTINDICATORSRV}
+)
 
 if(TARGET_OS STREQUAL "android")
   set(CARGO_BUILD_DIR "${CARGO_NDK_TARGET}/")
@@ -1352,6 +1369,7 @@ set(EXPECTED_DATA
   autoexec_server.cfg
   background_noise.png
   blob.png
+  BestClient/bc_dev_icon.png
   BestClient/bc_icon.png
   BestClient/builtinscripts/sayemoticon.chai
   BestClient/combo/combo1.wv

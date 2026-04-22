@@ -5,6 +5,34 @@
 
 namespace BestClientIndicator
 {
+namespace
+{
+bool ConstantTimeDigestEqual(const SHA256_DIGEST &Left, const SHA256_DIGEST &Right)
+{
+	unsigned char Diff = 0;
+	for(int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
+		Diff |= Left.data[i] ^ Right.data[i];
+	return Diff == 0;
+}
+
+std::string TrimString(const char *pValue)
+{
+	if(!pValue)
+		return {};
+
+	const int Length = str_length(pValue);
+	int Start = 0;
+	while(Start < Length && str_isspace(pValue[Start]))
+		++Start;
+
+	int End = Length;
+	while(End > Start && str_isspace(pValue[End - 1]))
+		--End;
+
+	return std::string(pValue + Start, End - Start);
+}
+}
+
 void WriteU8(std::vector<uint8_t> &vOut, uint8_t Value)
 {
 	vOut.push_back(Value);
@@ -155,20 +183,79 @@ bool ValidateProof(const char *pSharedToken, const uint8_t *pPacketData, int Pac
 	const SHA256_DIGEST Expected = ComputeProof(pSharedToken, pPacketData, PayloadSize);
 	SHA256_DIGEST Actual{};
 	mem_copy(Actual.data, pPacketData + PayloadSize, sizeof(Actual.data));
-	return Actual == Expected;
+	return ConstantTimeDigestEqual(Actual, Expected);
+}
+
+SHA256_DIGEST ComputeHmacSha256(const char *pSecret, const uint8_t *pPacketData, int PacketDataSize)
+{
+	constexpr int HMAC_BLOCK_SIZE = 64;
+	unsigned char aKey[HMAC_BLOCK_SIZE] = {};
+	if(pSecret && pSecret[0] != '\0')
+	{
+		const int SecretLength = str_length(pSecret);
+		if(SecretLength > HMAC_BLOCK_SIZE)
+		{
+			const SHA256_DIGEST HashedKey = sha256(pSecret, SecretLength);
+			mem_copy(aKey, HashedKey.data, sizeof(HashedKey.data));
+		}
+		else
+		{
+			mem_copy(aKey, pSecret, SecretLength);
+		}
+	}
+
+	unsigned char aInnerPad[HMAC_BLOCK_SIZE];
+	unsigned char aOuterPad[HMAC_BLOCK_SIZE];
+	for(int i = 0; i < HMAC_BLOCK_SIZE; ++i)
+	{
+		aInnerPad[i] = aKey[i] ^ 0x36;
+		aOuterPad[i] = aKey[i] ^ 0x5c;
+	}
+
+	SHA256_CTX Inner;
+	sha256_init(&Inner);
+	sha256_update(&Inner, aInnerPad, sizeof(aInnerPad));
+	if(pPacketData && PacketDataSize > 0)
+		sha256_update(&Inner, pPacketData, PacketDataSize);
+	const SHA256_DIGEST InnerDigest = sha256_finish(&Inner);
+
+	SHA256_CTX Outer;
+	sha256_init(&Outer);
+	sha256_update(&Outer, aOuterPad, sizeof(aOuterPad));
+	sha256_update(&Outer, InnerDigest.data, sizeof(InnerDigest.data));
+	return sha256_finish(&Outer);
+}
+
+void AppendHmacSha256(std::vector<uint8_t> &vPacket, const char *pSecret)
+{
+	const SHA256_DIGEST Proof = ComputeHmacSha256(pSecret, vPacket.data(), (int)vPacket.size());
+	WriteRaw(vPacket, Proof.data, sizeof(Proof.data));
+}
+
+bool ValidateHmacSha256(const char *pSecret, const uint8_t *pPacketData, int PacketDataSize)
+{
+	if(!pSecret || pSecret[0] == '\0' || !pPacketData || PacketDataSize < CLIENT_PACKET_HMAC_SIZE)
+		return false;
+
+	const int PayloadSize = PacketDataSize - CLIENT_PACKET_HMAC_SIZE;
+	const SHA256_DIGEST Expected = ComputeHmacSha256(pSecret, pPacketData, PayloadSize);
+	SHA256_DIGEST Actual{};
+	mem_copy(Actual.data, pPacketData + PayloadSize, sizeof(Actual.data));
+	return ConstantTimeDigestEqual(Actual, Expected);
 }
 
 bool ParseAddress(const char *pAddress, int DefaultPort, NETADDR &Out)
 {
-	if(!pAddress || pAddress[0] == '\0')
+	const std::string Address = TrimString(pAddress);
+	if(Address.empty())
 		return false;
-	if(net_addr_from_url(&Out, pAddress, nullptr, 0) == 0 || net_addr_from_str(&Out, pAddress) == 0)
+	if(net_addr_from_url(&Out, Address.c_str(), nullptr, 0) == 0 || net_addr_from_str(&Out, Address.c_str()) == 0)
 	{
 		if(Out.port == 0)
 			Out.port = DefaultPort;
 		return true;
 	}
-	if(net_host_lookup(pAddress, &Out, NETTYPE_ALL) == 0)
+	if(net_host_lookup(Address.c_str(), &Out, NETTYPE_ALL) == 0)
 	{
 		if(Out.port == 0)
 			Out.port = DefaultPort;
@@ -220,6 +307,29 @@ bool ReadClientPresencePacket(const uint8_t *pData, int DataSize, CClientPresenc
 	return Offset + CLIENT_PACKET_PROOF_SIZE == DataSize;
 }
 
+bool ReadDevAuthPacket(const uint8_t *pData, int DataSize, CClientPresencePacket &Out)
+{
+	int Offset = 0;
+	EPacketType Type;
+	if(!ReadHeader(pData, DataSize, Type, Offset) || Type != PACKET_DEV_AUTH)
+		return false;
+
+	int16_t ClientId = -1;
+	if(!ReadUuid(pData, DataSize, Offset, Out.m_ClientInstanceId) ||
+		!ReadUuid(pData, DataSize, Offset, Out.m_Nonce) ||
+		!ReadU64(pData, DataSize, Offset, Out.m_Timestamp) ||
+		!ReadString(pData, DataSize, Offset, Out.m_ServerAddress) ||
+		!ReadString(pData, DataSize, Offset, Out.m_PlayerName) ||
+		!ReadS16(pData, DataSize, Offset, ClientId))
+	{
+		return false;
+	}
+
+	Out.m_Type = Type;
+	Out.m_ClientId = ClientId;
+	return Offset + CLIENT_PACKET_HMAC_SIZE == DataSize;
+}
+
 bool ReadPeerStatePacket(const uint8_t *pData, int DataSize, CPeerState &Out)
 {
 	return ReadPeerPacketCommon(pData, DataSize, Out, PACKET_PEER_STATE);
@@ -253,6 +363,68 @@ bool ReadPeerListPacket(const uint8_t *pData, int DataSize, CPeerList &Out)
 	return Offset == DataSize;
 }
 
+bool ReadPeerDevStatePacket(const uint8_t *pData, int DataSize, CPeerState &Out)
+{
+	int Offset = 0;
+	EPacketType Type;
+	if(!ReadHeader(pData, DataSize, Type, Offset) || Type != PACKET_PEER_DEV_STATE)
+		return false;
+	int16_t ClientId = -1;
+	uint8_t Developer = 0;
+	if(!ReadString(pData, DataSize, Offset, Out.m_ServerAddress) ||
+		!ReadString(pData, DataSize, Offset, Out.m_PlayerName) ||
+		!ReadS16(pData, DataSize, Offset, ClientId) ||
+		!ReadU8(pData, DataSize, Offset, Developer))
+	{
+		return false;
+	}
+	Out.m_ClientId = ClientId;
+	Out.m_Developer = Developer != 0;
+	return Offset == DataSize;
+}
+
+bool ReadPeerDevListPacket(const uint8_t *pData, int DataSize, CPeerList &Out)
+{
+	int Offset = 0;
+	EPacketType Type;
+	if(!ReadHeader(pData, DataSize, Type, Offset) || Type != PACKET_PEER_DEV_LIST)
+		return false;
+
+	uint16_t Count = 0;
+	if(!ReadString(pData, DataSize, Offset, Out.m_ServerAddress) || !ReadU16(pData, DataSize, Offset, Count))
+		return false;
+
+	Out.m_vClientIds.clear();
+	Out.m_vClientIds.reserve(Count);
+	for(uint16_t i = 0; i < Count; ++i)
+	{
+		int16_t ClientId = -1;
+		if(!ReadS16(pData, DataSize, Offset, ClientId))
+			return false;
+		Out.m_vClientIds.push_back(ClientId);
+	}
+	return Offset == DataSize;
+}
+
+bool ReadDevAuthResultPacket(const uint8_t *pData, int DataSize, CDevAuthResult &Out)
+{
+	int Offset = 0;
+	EPacketType Type;
+	if(!ReadHeader(pData, DataSize, Type, Offset) || Type != PACKET_DEV_AUTH_RESULT)
+		return false;
+	int16_t ClientId = -1;
+	uint8_t Success = 0;
+	if(!ReadString(pData, DataSize, Offset, Out.m_ServerAddress) ||
+		!ReadS16(pData, DataSize, Offset, ClientId) ||
+		!ReadU8(pData, DataSize, Offset, Success))
+	{
+		return false;
+	}
+	Out.m_ClientId = ClientId;
+	Out.m_Success = Success != 0;
+	return Offset == DataSize;
+}
+
 void WritePeerStatePacket(std::vector<uint8_t> &vOut, EPacketType Type, const char *pServerAddress, const char *pPlayerName, int ClientId)
 {
 	vOut.clear();
@@ -270,5 +442,34 @@ void WritePeerListPacket(std::vector<uint8_t> &vOut, const char *pServerAddress,
 	WriteU16(vOut, (uint16_t)vClientIds.size());
 	for(const int ClientId : vClientIds)
 		WriteS16(vOut, ClientId);
+}
+
+void WritePeerDevStatePacket(std::vector<uint8_t> &vOut, const char *pServerAddress, const char *pPlayerName, int ClientId, bool Developer)
+{
+	vOut.clear();
+	WriteHeader(vOut, PACKET_PEER_DEV_STATE);
+	WriteString(vOut, pServerAddress);
+	WriteString(vOut, pPlayerName);
+	WriteS16(vOut, ClientId);
+	WriteU8(vOut, Developer ? 1 : 0);
+}
+
+void WritePeerDevListPacket(std::vector<uint8_t> &vOut, const char *pServerAddress, const std::vector<int> &vClientIds)
+{
+	vOut.clear();
+	WriteHeader(vOut, PACKET_PEER_DEV_LIST);
+	WriteString(vOut, pServerAddress);
+	WriteU16(vOut, (uint16_t)vClientIds.size());
+	for(const int ClientId : vClientIds)
+		WriteS16(vOut, ClientId);
+}
+
+void WriteDevAuthResultPacket(std::vector<uint8_t> &vOut, const char *pServerAddress, int ClientId, bool Success)
+{
+	vOut.clear();
+	WriteHeader(vOut, PACKET_DEV_AUTH_RESULT);
+	WriteString(vOut, pServerAddress);
+	WriteS16(vOut, ClientId);
+	WriteU8(vOut, Success ? 1 : 0);
 }
 }
