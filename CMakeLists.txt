@@ -1389,6 +1389,8 @@ set(EXPECTED_DATA
   BestClient/fonts/Nunito-Black.ttf
   BestClient/fonts/Rubik-Regular.ttf
   BestClient/gui_logo.png
+  BestClient/keystrokes/mouse.png
+  BestClient/keystrokes/wasd.png
   BestClient/languages/arabic.txt
   BestClient/languages/azerbaijani.txt
   BestClient/languages/belarusian.txt

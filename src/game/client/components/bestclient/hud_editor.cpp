@@ -8,154 +8,158 @@
 #include <base/math.h>
 #include <base/str.h>
 
-#include <cmath>
-
 #include <engine/graphics.h>
 #include <engine/keys.h>
-#include <engine/storage.h>
 #include <engine/shared/config.h>
+#include <engine/storage.h>
 
 #include <game/client/components/chat.h>
 #include <game/client/components/voting.h>
 #include <game/client/gameclient.h>
 #include <game/localization.h>
 
+#include <cmath>
+
 namespace
 {
-constexpr float SNAP_THRESHOLD = 6.0f;
-constexpr float SETTINGS_POPUP_WIDTH = 210.0f;
-constexpr float SETTINGS_POPUP_HEIGHT = 132.0f;
+	constexpr float SNAP_THRESHOLD = 6.0f;
+	constexpr float SETTINGS_POPUP_WIDTH = 210.0f;
+	constexpr float SETTINGS_POPUP_HEIGHT = 132.0f;
 
-bool IsMusicPlayerEnabled(const CGameClient *pGameClient)
-{
-	return g_Config.m_BcMusicPlayer != 0 &&
-	       !pGameClient->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER);
-}
-
-bool IsEditorModule(HudLayout::EModule Module)
-{
-	return Module == HudLayout::MODULE_MUSIC_PLAYER ||
-	       Module == HudLayout::MODULE_SCORE ||
-	       Module == HudLayout::MODULE_FINISH_PREDICTION ||
-	       Module == HudLayout::MODULE_SPECTATOR_COUNT ||
-	       Module == HudLayout::MODULE_MOVEMENT_INFO ||
-	       Module == HudLayout::MODULE_CHAT ||
-	       Module == HudLayout::MODULE_VOICE_TALKERS ||
-	       Module == HudLayout::MODULE_VOICE_STATUS ||
-	       Module == HudLayout::MODULE_VOTES ||
-	       Module == HudLayout::MODULE_LOCAL_TIME ||
-	       Module == HudLayout::MODULE_FROZEN_HUD;
-}
-
-bool IsLivePreviewModule(HudLayout::EModule Module)
-{
-	return Module == HudLayout::MODULE_MUSIC_PLAYER ||
-		Module == HudLayout::MODULE_SCORE ||
-		Module == HudLayout::MODULE_FINISH_PREDICTION ||
-		Module == HudLayout::MODULE_SPECTATOR_COUNT ||
-		Module == HudLayout::MODULE_MOVEMENT_INFO ||
-		Module == HudLayout::MODULE_CHAT ||
-		Module == HudLayout::MODULE_VOTES ||
-		Module == HudLayout::MODULE_LOCAL_TIME ||
-		Module == HudLayout::MODULE_VOICE_TALKERS ||
-		Module == HudLayout::MODULE_VOICE_STATUS ||
-		Module == HudLayout::MODULE_FROZEN_HUD;
-}
-
-bool PointInRect(vec2 Point, const CUIRect &Rect)
-{
-	return Point.x >= Rect.x && Point.x <= Rect.x + Rect.w &&
-	       Point.y >= Rect.y && Point.y <= Rect.y + Rect.h;
-}
-
-void DrawRoundedRectOutline(IGraphics *pGraphics, const CUIRect &Rect, int Corners, float Rounding, ColorRGBA Color)
-{
-	if(Rect.w <= 0.0f || Rect.h <= 0.0f || Color.a <= 0.0f)
-		return;
-
-	const float Radius = std::clamp(Rounding, 0.0f, minimum(Rect.w, Rect.h) * 0.5f);
-	if(Radius <= 0.01f || Corners == IGraphics::CORNER_NONE)
+	bool IsMusicPlayerEnabled(const CGameClient *pGameClient)
 	{
-		Rect.DrawOutline(Color);
-		return;
+		return g_Config.m_BcMusicPlayer != 0 &&
+		       !pGameClient->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER);
 	}
 
-	constexpr int SegmentsPerCorner = 8;
-	IGraphics::CLineItem aLines[SegmentsPerCorner * 4 + 4];
-	int NumLines = 0;
+	bool IsEditorModule(HudLayout::EModule Module)
+	{
+		return Module == HudLayout::MODULE_MUSIC_PLAYER ||
+		       Module == HudLayout::MODULE_SCORE ||
+		       Module == HudLayout::MODULE_FINISH_PREDICTION ||
+		       Module == HudLayout::MODULE_KEYSTROKES_KEYBOARD ||
+		       Module == HudLayout::MODULE_KEYSTROKES_MOUSE ||
+		       Module == HudLayout::MODULE_SPECTATOR_COUNT ||
+		       Module == HudLayout::MODULE_MOVEMENT_INFO ||
+		       Module == HudLayout::MODULE_CHAT ||
+		       Module == HudLayout::MODULE_VOICE_TALKERS ||
+		       Module == HudLayout::MODULE_VOICE_STATUS ||
+		       Module == HudLayout::MODULE_VOTES ||
+		       Module == HudLayout::MODULE_LOCAL_TIME ||
+		       Module == HudLayout::MODULE_FROZEN_HUD;
+	}
 
-	auto AddLine = [&](vec2 From, vec2 To) {
-		aLines[NumLines++] = IGraphics::CLineItem(From, To);
-	};
+	bool IsLivePreviewModule(HudLayout::EModule Module)
+	{
+		return Module == HudLayout::MODULE_MUSIC_PLAYER ||
+		       Module == HudLayout::MODULE_SCORE ||
+		       Module == HudLayout::MODULE_FINISH_PREDICTION ||
+		       Module == HudLayout::MODULE_KEYSTROKES_KEYBOARD ||
+		       Module == HudLayout::MODULE_KEYSTROKES_MOUSE ||
+		       Module == HudLayout::MODULE_SPECTATOR_COUNT ||
+		       Module == HudLayout::MODULE_MOVEMENT_INFO ||
+		       Module == HudLayout::MODULE_CHAT ||
+		       Module == HudLayout::MODULE_VOTES ||
+		       Module == HudLayout::MODULE_LOCAL_TIME ||
+		       Module == HudLayout::MODULE_VOICE_TALKERS ||
+		       Module == HudLayout::MODULE_VOICE_STATUS ||
+		       Module == HudLayout::MODULE_FROZEN_HUD;
+	}
 
-	auto AddArc = [&](vec2 Center, float StartAngle, float EndAngle) {
-		vec2 Prev = vec2(
-			Center.x + std::cos(StartAngle) * Radius,
-			Center.y + std::sin(StartAngle) * Radius);
-		for(int i = 1; i <= SegmentsPerCorner; ++i)
+	bool PointInRect(vec2 Point, const CUIRect &Rect)
+	{
+		return Point.x >= Rect.x && Point.x <= Rect.x + Rect.w &&
+		       Point.y >= Rect.y && Point.y <= Rect.y + Rect.h;
+	}
+
+	void DrawRoundedRectOutline(IGraphics *pGraphics, const CUIRect &Rect, int Corners, float Rounding, ColorRGBA Color)
+	{
+		if(Rect.w <= 0.0f || Rect.h <= 0.0f || Color.a <= 0.0f)
+			return;
+
+		const float Radius = std::clamp(Rounding, 0.0f, minimum(Rect.w, Rect.h) * 0.5f);
+		if(Radius <= 0.01f || Corners == IGraphics::CORNER_NONE)
 		{
-			const float T = i / (float)SegmentsPerCorner;
-			const float Angle = mix(StartAngle, EndAngle, T);
-			const vec2 Cur(
-				Center.x + std::cos(Angle) * Radius,
-				Center.y + std::sin(Angle) * Radius);
-			AddLine(Prev, Cur);
-			Prev = Cur;
+			Rect.DrawOutline(Color);
+			return;
 		}
-	};
 
-	const bool TopLeftRounded = (Corners & IGraphics::CORNER_TL) != 0;
-	const bool TopRightRounded = (Corners & IGraphics::CORNER_TR) != 0;
-	const bool BottomLeftRounded = (Corners & IGraphics::CORNER_BL) != 0;
-	const bool BottomRightRounded = (Corners & IGraphics::CORNER_BR) != 0;
-	const float Left = Rect.x;
-	const float Right = Rect.x + Rect.w;
-	const float Top = Rect.y;
-	const float Bottom = Rect.y + Rect.h;
+		constexpr int SegmentsPerCorner = 8;
+		IGraphics::CLineItem aLines[SegmentsPerCorner * 4 + 4];
+		int NumLines = 0;
 
-	AddLine(
-		vec2(Left + (TopLeftRounded ? Radius : 0.0f), Top),
-		vec2(Right - (TopRightRounded ? Radius : 0.0f), Top));
-	if(TopRightRounded)
-		AddArc(vec2(Right - Radius, Top + Radius), -pi / 2.0f, 0.0f);
+		auto AddLine = [&](vec2 From, vec2 To) {
+			aLines[NumLines++] = IGraphics::CLineItem(From, To);
+		};
 
-	AddLine(
-		vec2(Right, Top + (TopRightRounded ? Radius : 0.0f)),
-		vec2(Right, Bottom - (BottomRightRounded ? Radius : 0.0f)));
-	if(BottomRightRounded)
-		AddArc(vec2(Right - Radius, Bottom - Radius), 0.0f, pi / 2.0f);
+		auto AddArc = [&](vec2 Center, float StartAngle, float EndAngle) {
+			vec2 Prev = vec2(
+				Center.x + std::cos(StartAngle) * Radius,
+				Center.y + std::sin(StartAngle) * Radius);
+			for(int i = 1; i <= SegmentsPerCorner; ++i)
+			{
+				const float T = i / (float)SegmentsPerCorner;
+				const float Angle = mix(StartAngle, EndAngle, T);
+				const vec2 Cur(
+					Center.x + std::cos(Angle) * Radius,
+					Center.y + std::sin(Angle) * Radius);
+				AddLine(Prev, Cur);
+				Prev = Cur;
+			}
+		};
 
-	AddLine(
-		vec2(Right - (BottomRightRounded ? Radius : 0.0f), Bottom),
-		vec2(Left + (BottomLeftRounded ? Radius : 0.0f), Bottom));
-	if(BottomLeftRounded)
-		AddArc(vec2(Left + Radius, Bottom - Radius), pi / 2.0f, pi);
+		const bool TopLeftRounded = (Corners & IGraphics::CORNER_TL) != 0;
+		const bool TopRightRounded = (Corners & IGraphics::CORNER_TR) != 0;
+		const bool BottomLeftRounded = (Corners & IGraphics::CORNER_BL) != 0;
+		const bool BottomRightRounded = (Corners & IGraphics::CORNER_BR) != 0;
+		const float Left = Rect.x;
+		const float Right = Rect.x + Rect.w;
+		const float Top = Rect.y;
+		const float Bottom = Rect.y + Rect.h;
 
-	AddLine(
-		vec2(Left, Bottom - (BottomLeftRounded ? Radius : 0.0f)),
-		vec2(Left, Top + (TopLeftRounded ? Radius : 0.0f)));
-	if(TopLeftRounded)
-		AddArc(vec2(Left + Radius, Top + Radius), pi, 3.0f * pi / 2.0f);
+		AddLine(
+			vec2(Left + (TopLeftRounded ? Radius : 0.0f), Top),
+			vec2(Right - (TopRightRounded ? Radius : 0.0f), Top));
+		if(TopRightRounded)
+			AddArc(vec2(Right - Radius, Top + Radius), -pi / 2.0f, 0.0f);
 
-	pGraphics->TextureClear();
-	pGraphics->LinesBegin();
-	pGraphics->SetColor(Color);
-	pGraphics->LinesDraw(aLines, NumLines);
-	pGraphics->LinesEnd();
-}
+		AddLine(
+			vec2(Right, Top + (TopRightRounded ? Radius : 0.0f)),
+			vec2(Right, Bottom - (BottomRightRounded ? Radius : 0.0f)));
+		if(BottomRightRounded)
+			AddArc(vec2(Right - Radius, Bottom - Radius), 0.0f, pi / 2.0f);
 
-CUIRect ClampToBounds(CUIRect Rect, float Width, float Height)
-{
-	Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, Width - Rect.w));
-	Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, Height - Rect.h));
-	return Rect;
-}
+		AddLine(
+			vec2(Right - (BottomRightRounded ? Radius : 0.0f), Bottom),
+			vec2(Left + (BottomLeftRounded ? Radius : 0.0f), Bottom));
+		if(BottomLeftRounded)
+			AddArc(vec2(Left + Radius, Bottom - Radius), pi / 2.0f, pi);
 
-float ChatInputBottomExtra(const CChat &Chat)
-{
-	const float ScaledFontSize = Chat.FontSize() * (8.0f / 6.0f);
-	return maximum(2.25f * ScaledFontSize, maximum(ScaledFontSize + 4.0f, 16.0f));
-}
+		AddLine(
+			vec2(Left, Bottom - (BottomLeftRounded ? Radius : 0.0f)),
+			vec2(Left, Top + (TopLeftRounded ? Radius : 0.0f)));
+		if(TopLeftRounded)
+			AddArc(vec2(Left + Radius, Top + Radius), pi, 3.0f * pi / 2.0f);
+
+		pGraphics->TextureClear();
+		pGraphics->LinesBegin();
+		pGraphics->SetColor(Color);
+		pGraphics->LinesDraw(aLines, NumLines);
+		pGraphics->LinesEnd();
+	}
+
+	CUIRect ClampToBounds(CUIRect Rect, float Width, float Height)
+	{
+		Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, Width - Rect.w));
+		Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, Height - Rect.h));
+		return Rect;
+	}
+
+	float ChatInputBottomExtra(const CChat &Chat)
+	{
+		const float ScaledFontSize = Chat.FontSize() * (8.0f / 6.0f);
+		return maximum(2.25f * ScaledFontSize, maximum(ScaledFontSize + 4.0f, 16.0f));
+	}
 } // namespace
 
 void CHudEditor::OnConsoleInit()
@@ -308,6 +312,12 @@ CUIRect CHudEditor::GetFallbackModuleRect(HudLayout::EModule Module) const
 	case HudLayout::MODULE_FINISH_PREDICTION:
 		Rect = GameClient()->m_Hud.GetFinishPredictionHudEditorRect();
 		break;
+	case HudLayout::MODULE_KEYSTROKES_KEYBOARD:
+		Rect = GameClient()->m_Hud.GetKeystrokesKeyboardHudEditorRect();
+		break;
+	case HudLayout::MODULE_KEYSTROKES_MOUSE:
+		Rect = GameClient()->m_Hud.GetKeystrokesMouseHudEditorRect();
+		break;
 	case HudLayout::MODULE_MINI_VOTE:
 		Rect = {Layout.m_X, Layout.m_Y, 70.0f, 35.0f};
 		break;
@@ -383,6 +393,14 @@ CHudEditor::SModuleVisual CHudEditor::GetModuleVisual(HudLayout::EModule Module)
 		Visual.m_Rect = GameClient()->m_Hud.GetFinishPredictionHudEditorRect();
 		Visual.m_Rounding = 5.0f * std::clamp(HudLayout::Get(HudLayout::MODULE_FINISH_PREDICTION, Width, Height).m_Scale / 100.0f, 0.25f, 3.0f);
 		break;
+	case HudLayout::MODULE_KEYSTROKES_KEYBOARD:
+		Visual.m_Rect = GameClient()->m_Hud.GetKeystrokesKeyboardHudEditorRect();
+		Visual.m_Rounding = 4.0f;
+		break;
+	case HudLayout::MODULE_KEYSTROKES_MOUSE:
+		Visual.m_Rect = GameClient()->m_Hud.GetKeystrokesMouseHudEditorRect();
+		Visual.m_Rounding = 4.0f;
+		break;
 	case HudLayout::MODULE_SPECTATOR_COUNT:
 		Visual.m_Rect = GameClient()->m_Hud.GetSpectatorCountHudEditorRect();
 		Visual.m_Rounding = 5.0f * std::clamp(HudLayout::Get(HudLayout::MODULE_SPECTATOR_COUNT, Width, Height).m_Scale / 100.0f, 0.25f, 3.0f);
@@ -428,6 +446,8 @@ void CHudEditor::CollectModuleVisuals(SModuleVisual *pOut, int &Count) const
 	AddModule(HudLayout::MODULE_MUSIC_PLAYER);
 	AddModule(HudLayout::MODULE_SCORE);
 	AddModule(HudLayout::MODULE_FINISH_PREDICTION);
+	AddModule(HudLayout::MODULE_KEYSTROKES_KEYBOARD);
+	AddModule(HudLayout::MODULE_KEYSTROKES_MOUSE);
 	AddModule(HudLayout::MODULE_SPECTATOR_COUNT);
 	AddModule(HudLayout::MODULE_MOVEMENT_INFO);
 	AddModule(HudLayout::MODULE_CHAT);
@@ -881,6 +901,8 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 	const bool MusicPlayerHasLiveRect = IsMusicPlayerEnabled(GameClient()) && GameClient()->m_MusicPlayer.HudReservation().m_Visible;
 	GameClient()->m_MusicPlayer.RenderHudEditor(!MusicPlayerHasLiveRect);
 	GameClient()->m_Hud.RenderScoreHudPreview();
+	GameClient()->m_Hud.RenderKeystrokesKeyboardPreview();
+	GameClient()->m_Hud.RenderKeystrokesMousePreview();
 	GameClient()->m_Hud.RenderSpectatorCountPreview();
 	GameClient()->m_Hud.RenderMovementInformationPreview();
 	GameClient()->m_Chat.RenderHud(true);
@@ -922,7 +944,7 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 	CUIRect ResetRect = {8.0f, 8.0f, 66.0f, 16.0f};
 	const bool ResetHovered = PointInRect(MousePos, ResetRect);
 	const ColorRGBA ResetColor = m_PressedOnReset ? ColorRGBA(0.95f, 0.48f, 0.48f, 0.90f) :
-					 (ResetHovered ? ColorRGBA(0.95f, 0.48f, 0.48f, 0.55f) : ColorRGBA(0.95f, 0.48f, 0.48f, 0.36f));
+							(ResetHovered ? ColorRGBA(0.95f, 0.48f, 0.48f, 0.55f) : ColorRGBA(0.95f, 0.48f, 0.48f, 0.36f));
 	Graphics()->DrawRect(ResetRect.x, ResetRect.y, ResetRect.w, ResetRect.h, ResetColor, IGraphics::CORNER_ALL, 4.0f);
 	Ui()->DoLabel(&ResetRect, Localize("Reset All"), 6.5f, TEXTALIGN_MC);
 

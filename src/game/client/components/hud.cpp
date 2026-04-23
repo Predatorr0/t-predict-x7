@@ -9,11 +9,14 @@
 #include "voting.h"
 
 #include <base/color.h>
+#include <base/log.h>
 #include <base/time.h>
 
 #include <engine/font_icons.h>
 #include <engine/graphics.h>
+#include <engine/keys.h>
 #include <engine/shared/config.h>
+#include <engine/storage.h>
 #include <engine/textrender.h>
 
 #include <generated/client_data.h>
@@ -23,79 +26,372 @@
 #include <game/client/components/scoreboard.h>
 #include <game/client/gameclient.h>
 #include <game/client/prediction/entities/character.h>
-#include <game/mapitems.h>
 #include <game/layers.h>
 #include <game/localization.h>
+#include <game/mapitems.h>
 
 #include <algorithm>
-#include <cstdint>
+#include <array>
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <queue>
 
 namespace
 {
-void FormatSpeedrunTime(int64_t RemainingMilliseconds, char *pBuf, size_t BufSize)
-{
-	const int RemainingHours = (int)(RemainingMilliseconds / (60 * 60 * 1000));
-	const int RemainingMinutes = (int)((RemainingMilliseconds / (60 * 1000)) % 60);
-	const int RemainingSeconds = (int)((RemainingMilliseconds / 1000) % 60);
-	const int Milliseconds = (int)(RemainingMilliseconds % 1000);
-	if(RemainingHours > 0)
-		str_format(pBuf, BufSize, "%02d:%02d:%02d.%03d", RemainingHours, RemainingMinutes, RemainingSeconds, Milliseconds);
-	else
-		str_format(pBuf, BufSize, "%02d:%02d.%03d", RemainingMinutes, RemainingSeconds, Milliseconds);
-}
+	constexpr float KEYSTROKES_ATLAS_SCALE = 0.16f;
+	constexpr float KEYSTROKES_DEFAULT_GAP = 4.0f;
+	constexpr int KEYSTROKES_WHEEL_HIGHLIGHT_MS = 150;
+	constexpr int INPUT_OVERLAY_INNER_BORDER = 3;
+	constexpr int KEYSTROKES_KEYBOARD_ATLAS_WIDTH = 1725;
+	constexpr int KEYSTROKES_KEYBOARD_ATLAS_HEIGHT = 1050;
+	constexpr int KEYSTROKES_MOUSE_ATLAS_WIDTH = 715;
+	constexpr int KEYSTROKES_MOUSE_ATLAS_HEIGHT = 353;
 
-void FormatPredictionTime(int64_t Milliseconds, bool ShowMillis, char *pBuf, size_t BufSize)
-{
-	const int64_t TimeCentiseconds = maximum<int64_t>(0, (Milliseconds + 5) / 10);
-	str_time(TimeCentiseconds, ShowMillis ? ETimeFormat::HOURS_CENTISECS : ETimeFormat::HOURS, pBuf, BufSize);
-}
-
-struct SFrozenHudState
-{
-	int m_NumInTeam = 0;
-	int m_NumFrozen = 0;
-	int m_LocalTeamId = 0;
-	bool m_ShowHud = false;
-};
-
-SFrozenHudState GetFrozenHudState(const CGameClient *pGameClient, bool ForcePreview)
-{
-	SFrozenHudState State;
-	if(!pGameClient->m_GameInfo.m_EntitiesDDRace && !ForcePreview)
-		return State;
-
-	if(pGameClient->m_Snap.m_LocalClientId >= 0 && pGameClient->m_Snap.m_SpecInfo.m_SpectatorId >= 0)
+	enum class EKeystrokesInputKind
 	{
-		if(pGameClient->m_Snap.m_SpecInfo.m_Active == 1 && pGameClient->m_Snap.m_SpecInfo.m_SpectatorId != -1)
-			State.m_LocalTeamId = pGameClient->m_Teams.Team(pGameClient->m_Snap.m_SpecInfo.m_SpectatorId);
+		NONE,
+		KEY,
+		MOUSE_BUTTON,
+		WHEEL,
+		MOUSE_MOVE,
+	};
+
+	struct SKeystrokesElement
+	{
+		EKeystrokesInputKind m_InputKind;
+		int m_KeyPrimary;
+		int m_KeySecondary;
+		int m_MouseButton;
+		int m_WheelDir;
+		int m_MapX;
+		int m_MapY;
+		int m_MapW;
+		int m_MapH;
+		int m_PosX;
+		int m_PosY;
+		int m_ZLevel;
+		int m_MouseType;
+		int m_MouseRadius;
+		bool m_ActiveOnly;
+	};
+
+	struct SKeystrokesOverlayPreset
+	{
+		int m_OverlayWidth;
+		int m_OverlayHeight;
+		int m_PressedOffsetY;
+		int m_AtlasWidth;
+		int m_AtlasHeight;
+		const SKeystrokesElement *m_pElements;
+		int m_NumElements;
+	};
+
+	template<typename T, size_t N>
+	constexpr int ArrayCount(const T (&)[N])
+	{
+		return (int)N;
+	}
+
+	constexpr ColorRGBA KEYSTROKES_ACTIVE_COLOR = ColorRGBA(1.0f, 0.9f, 0.2f, 1.0f);
+	constexpr float KEYSTROKES_INACTIVE_ALPHA = 0.65f;
+
+	constexpr SKeystrokesElement KeyboardElement(int PrimaryKey, int SecondaryKey, int MapX, int MapY, int MapW, int MapH, int PosX, int PosY, int ZLevel = 1)
+	{
+		return {EKeystrokesInputKind::KEY, PrimaryKey, SecondaryKey, 0, 0, MapX, MapY, MapW, MapH, PosX, PosY, ZLevel, 0, 0, false};
+	}
+
+	constexpr SKeystrokesElement StaticElement(int MapX, int MapY, int MapW, int MapH, int PosX, int PosY, int ZLevel = 1)
+	{
+		return {EKeystrokesInputKind::NONE, 0, 0, 0, 0, MapX, MapY, MapW, MapH, PosX, PosY, ZLevel, 0, 0, false};
+	}
+
+	constexpr SKeystrokesElement MouseButtonElement(int MouseButton, int MapX, int MapY, int MapW, int MapH, int PosX, int PosY, bool ActiveOnly = false, int ZLevel = 1)
+	{
+		return {EKeystrokesInputKind::MOUSE_BUTTON, 0, 0, MouseButton, 0, MapX, MapY, MapW, MapH, PosX, PosY, ZLevel, 0, 0, ActiveOnly};
+	}
+
+	constexpr SKeystrokesElement WheelElement(int WheelDir, int MapX, int MapY, int MapW, int MapH, int PosX, int PosY, bool ActiveOnly = false, int ZLevel = 1)
+	{
+		return {EKeystrokesInputKind::WHEEL, 0, 0, 0, WheelDir, MapX, MapY, MapW, MapH, PosX, PosY, ZLevel, 0, 0, ActiveOnly};
+	}
+
+	constexpr SKeystrokesElement MouseMoveElement(int MouseType, int MapX, int MapY, int MapW, int MapH, int PosX, int PosY, int MouseRadius, int ZLevel = 1)
+	{
+		return {EKeystrokesInputKind::MOUSE_MOVE, 0, 0, 0, 0, MapX, MapY, MapW, MapH, PosX, PosY, ZLevel, MouseType, MouseRadius, false};
+	}
+
+	const SKeystrokesElement gs_aKeyboardMinimalElements[] = {
+		KeyboardElement(KEY_Q, 0, 1, 1, 157, 128, 137, 0),
+		KeyboardElement(KEY_W, 0, 161, 1, 157, 128, 274, 0),
+		KeyboardElement(KEY_E, 0, 321, 1, 157, 128, 411, 0),
+		KeyboardElement(KEY_LSHIFT, KEY_RSHIFT, 481, 1, 157, 128, 0, 133),
+		KeyboardElement(KEY_A, 0, 641, 1, 157, 128, 137, 133),
+		KeyboardElement(KEY_S, 0, 801, 1, 157, 128, 274, 133),
+		KeyboardElement(KEY_D, 0, 961, 1, 157, 128, 411, 133),
+		KeyboardElement(KEY_LCTRL, KEY_RCTRL, 1121, 1, 157, 128, 0, 266),
+		KeyboardElement(KEY_SPACE, 0, 1301, 1, 421, 128, 137, 266),
+	};
+
+	const SKeystrokesElement gs_aKeyboardFullElements[] = {
+		KeyboardElement(KEY_Q, 0, 1, 1, 157, 128, 137, 0),
+		KeyboardElement(KEY_W, 0, 161, 1, 157, 128, 274, 0),
+		KeyboardElement(KEY_E, 0, 321, 1, 157, 128, 411, 0),
+		KeyboardElement(KEY_TAB, 0, 1, 263, 157, 128, 0, 0),
+		KeyboardElement(KEY_LSHIFT, KEY_RSHIFT, 481, 1, 157, 128, 0, 133),
+		KeyboardElement(KEY_A, 0, 641, 1, 157, 128, 137, 133),
+		KeyboardElement(KEY_S, 0, 801, 1, 157, 128, 274, 133),
+		KeyboardElement(KEY_D, 0, 961, 1, 157, 128, 411, 133),
+		KeyboardElement(KEY_R, 0, 161, 263, 157, 128, 548, 0),
+		KeyboardElement(KEY_F, 0, 321, 263, 157, 128, 548, 133),
+		KeyboardElement(KEY_LCTRL, KEY_RCTRL, 1121, 1, 157, 128, 0, 266),
+		KeyboardElement(KEY_SPACE, 0, 1301, 1, 421, 128, 137, 266),
+	};
+
+	const SKeystrokesOverlayPreset gs_aKeyboardPresets[] = {
+		{568, 394, 130, KEYSTROKES_KEYBOARD_ATLAS_WIDTH, KEYSTROKES_KEYBOARD_ATLAS_HEIGHT, gs_aKeyboardMinimalElements, ArrayCount(gs_aKeyboardMinimalElements)},
+		{705, 394, 130, KEYSTROKES_KEYBOARD_ATLAS_WIDTH, KEYSTROKES_KEYBOARD_ATLAS_HEIGHT, gs_aKeyboardFullElements, ArrayCount(gs_aKeyboardFullElements)},
+	};
+
+	const SKeystrokesElement gs_aMouseArrowElements[] = {
+		StaticElement(328, 1, 283, 242, 2, 179),
+		StaticElement(1, 1, 139, 174, 2, 0),
+		StaticElement(143, 1, 139, 174, 146, 0),
+		StaticElement(285, 246, 48, 95, 117, 79),
+		StaticElement(285, 1, 40, 62, 0, 210),
+		StaticElement(284, 1, 41, 62, 11, 273),
+		MouseMoveElement(1, 614, 1, 100, 100, 95, 238, 50),
+		MouseButtonElement(1, 1, 178, 139, 174, 2, 0, true, 2),
+		MouseButtonElement(2, 143, 178, 139, 174, 146, 0, true, 2),
+		MouseButtonElement(3, 336, 246, 48, 95, 117, 79, true, 2),
+		WheelElement(1, 387, 246, 48, 95, 117, 79, true, 2),
+		WheelElement(2, 438, 246, 48, 95, 117, 79, true, 2),
+		MouseButtonElement(5, 285, 66, 40, 62, 0, 210, true, 2),
+		MouseButtonElement(4, 285, 66, 40, 62, 11, 273, true, 2),
+	};
+
+	const SKeystrokesElement gs_aMouseDotElements[] = {
+		StaticElement(328, 1, 283, 242, 2, 179),
+		StaticElement(1, 1, 139, 174, 2, 0),
+		StaticElement(143, 1, 139, 174, 146, 0),
+		StaticElement(285, 246, 48, 95, 117, 79),
+		StaticElement(285, 1, 40, 62, 0, 210),
+		StaticElement(284, 1, 41, 62, 11, 273),
+		StaticElement(614, 104, 100, 100, 91, 245),
+		MouseMoveElement(0, 614, 207, 20, 20, 132, 284, 50),
+		MouseButtonElement(1, 1, 178, 139, 174, 2, 0, true, 2),
+		MouseButtonElement(2, 143, 178, 139, 174, 146, 0, true, 2),
+		MouseButtonElement(3, 336, 246, 48, 95, 117, 79, true, 2),
+		WheelElement(1, 387, 246, 48, 95, 117, 79, true, 2),
+		WheelElement(2, 438, 246, 48, 95, 117, 79, true, 2),
+		MouseButtonElement(5, 285, 66, 40, 62, 0, 210, true, 2),
+		MouseButtonElement(4, 285, 66, 40, 62, 11, 273, true, 2),
+	};
+
+	const SKeystrokesElement gs_aMouseDotDotElements[] = {
+		StaticElement(328, 1, 283, 242, 1, 179),
+		StaticElement(1, 1, 139, 174, 2, 0),
+		StaticElement(143, 1, 139, 174, 146, 0),
+		StaticElement(285, 246, 48, 95, 117, 79),
+		StaticElement(285, 1, 40, 62, 0, 210),
+		StaticElement(284, 1, 41, 62, 11, 273),
+		StaticElement(493, 245, 100, 100, 91, 245),
+		MouseMoveElement(0, 614, 207, 20, 20, 132, 284, 50),
+		MouseButtonElement(1, 1, 178, 139, 174, 2, 0, true, 2),
+		MouseButtonElement(2, 143, 178, 139, 174, 146, 0, true, 2),
+		MouseButtonElement(3, 336, 246, 48, 95, 117, 79, true, 2),
+		WheelElement(1, 387, 246, 48, 95, 117, 79, true, 2),
+		WheelElement(2, 438, 246, 48, 95, 117, 79, true, 2),
+		MouseButtonElement(5, 285, 66, 40, 62, 0, 210, true, 2),
+		MouseButtonElement(4, 285, 66, 40, 62, 11, 273, true, 2),
+	};
+
+	const SKeystrokesElement gs_aMouseDotNoBoxElements[] = {
+		StaticElement(328, 1, 283, 242, 1, 179),
+		StaticElement(1, 1, 139, 174, 2, 0),
+		StaticElement(143, 1, 139, 174, 146, 0),
+		StaticElement(285, 246, 48, 95, 117, 79),
+		StaticElement(285, 1, 40, 62, 0, 210),
+		StaticElement(284, 1, 41, 62, 11, 273),
+		StaticElement(614, 244, 100, 100, 91, 245),
+		MouseMoveElement(0, 614, 207, 20, 20, 132, 284, 50),
+		MouseButtonElement(1, 1, 178, 139, 174, 2, 0, true, 2),
+		MouseButtonElement(2, 143, 178, 139, 174, 146, 0, true, 2),
+		MouseButtonElement(3, 336, 246, 48, 95, 117, 79, true, 2),
+		WheelElement(1, 387, 246, 48, 95, 117, 79, true, 2),
+		WheelElement(2, 438, 246, 48, 95, 117, 79, true, 2),
+		MouseButtonElement(5, 285, 66, 40, 62, 0, 210, true, 2),
+		MouseButtonElement(4, 285, 66, 40, 62, 11, 273, true, 2),
+	};
+
+	const SKeystrokesElement gs_aMouseNoMovementElements[] = {
+		StaticElement(328, 1, 283, 242, 2, 179),
+		MouseButtonElement(1, 1, 1, 139, 174, 2, 0),
+		MouseButtonElement(2, 143, 1, 139, 174, 146, 0),
+		WheelElement(0, 285, 246, 48, 95, 117, 79),
+		MouseButtonElement(5, 285, 1, 40, 62, 0, 210),
+		MouseButtonElement(4, 284, 1, 41, 62, 11, 273),
+	};
+
+	const SKeystrokesOverlayPreset gs_aMousePresets[] = {
+		{285, 421, 0, KEYSTROKES_MOUSE_ATLAS_WIDTH, KEYSTROKES_MOUSE_ATLAS_HEIGHT, gs_aMouseDotElements, ArrayCount(gs_aMouseDotElements)},
+		{285, 421, 0, KEYSTROKES_MOUSE_ATLAS_WIDTH, KEYSTROKES_MOUSE_ATLAS_HEIGHT, gs_aMouseArrowElements, ArrayCount(gs_aMouseArrowElements)},
+		{285, 421, 0, KEYSTROKES_MOUSE_ATLAS_WIDTH, KEYSTROKES_MOUSE_ATLAS_HEIGHT, gs_aMouseDotDotElements, ArrayCount(gs_aMouseDotDotElements)},
+		{285, 421, 0, KEYSTROKES_MOUSE_ATLAS_WIDTH, KEYSTROKES_MOUSE_ATLAS_HEIGHT, gs_aMouseDotNoBoxElements, ArrayCount(gs_aMouseDotNoBoxElements)},
+		{285, 421, 0, KEYSTROKES_MOUSE_ATLAS_WIDTH, KEYSTROKES_MOUSE_ATLAS_HEIGHT, gs_aMouseNoMovementElements, ArrayCount(gs_aMouseNoMovementElements)},
+	};
+
+	const SKeystrokesOverlayPreset &GetKeystrokesKeyboardPreset(int Preset)
+	{
+		return gs_aKeyboardPresets[std::clamp(Preset, 0, ArrayCount(gs_aKeyboardPresets) - 1)];
+	}
+
+	const SKeystrokesOverlayPreset &GetKeystrokesMousePreset(int Preset)
+	{
+		return gs_aMousePresets[std::clamp(Preset, 0, ArrayCount(gs_aMousePresets) - 1)];
+	}
+
+	bool IsKeystrokesPressed(IInput *pInput, int PrimaryKey, int SecondaryKey = 0)
+	{
+		return (PrimaryKey > 0 && pInput->KeyIsPressed(PrimaryKey)) ||
+		       (SecondaryKey > 0 && pInput->KeyIsPressed(SecondaryKey));
+	}
+
+	bool IsKeystrokesMouseButtonPressed(IInput *pInput, int MouseButton)
+	{
+		return MouseButton > 0 && pInput->NativeMousePressed(MouseButton);
+	}
+
+	bool IsKeystrokesWheelActive(int WheelDir, int64_t Now, int64_t WheelUpEndTime, int64_t WheelDownEndTime)
+	{
+		switch(WheelDir)
+		{
+		case 1:
+			return WheelUpEndTime > Now;
+		case 2:
+			return WheelDownEndTime > Now;
+		default:
+			return WheelUpEndTime > Now || WheelDownEndTime > Now;
+		}
+	}
+
+	float GetKeystrokesScale(const HudLayout::SModuleLayout &Layout)
+	{
+		return std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f) * KEYSTROKES_ATLAS_SCALE;
+	}
+
+	IGraphics::CTextureHandle LoadKeystrokesTexture(IGraphics *pGraphics, IStorage *pStorage, const char *pPrimaryPath, const char *pFilename, const char *pDirectory)
+	{
+		IGraphics::CTextureHandle Texture = pGraphics->LoadTexture(pPrimaryPath, IStorage::TYPE_ALL);
+		if(Texture.IsValid() && !Texture.IsNullTexture())
+			return Texture;
+
+		char aAbsolutePath[IO_MAX_PATH_LENGTH];
+		if(pStorage->FindFile(pFilename, pDirectory, IStorage::TYPE_ALL, aAbsolutePath, sizeof(aAbsolutePath)))
+		{
+			Texture = pGraphics->LoadTexture(aAbsolutePath, IStorage::TYPE_ALL_OR_ABSOLUTE);
+			if(Texture.IsValid() && !Texture.IsNullTexture())
+				return Texture;
+		}
+
+		return pGraphics->LoadTexture(pPrimaryPath, IStorage::TYPE_ALL_OR_ABSOLUTE);
+	}
+
+	void DrawKeystrokesSprite(
+		IGraphics *pGraphics,
+		IGraphics::CTextureHandle Texture,
+		int AtlasWidth,
+		int AtlasHeight,
+		int MapX,
+		int MapY,
+		int MapW,
+		int MapH,
+		float X,
+		float Y,
+		float W,
+		float H,
+		ColorRGBA Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f),
+		float Rotation = 0.0f)
+	{
+		if(!Texture.IsValid() || Texture.IsNullTexture() || W <= 0.0f || H <= 0.0f)
+			return;
+
+		pGraphics->TextureSet(Texture);
+		pGraphics->QuadsBegin();
+		pGraphics->SetColor(Color);
+		pGraphics->QuadsSetSubset(
+			MapX / (float)AtlasWidth,
+			MapY / (float)AtlasHeight,
+			(MapX + MapW) / (float)AtlasWidth,
+			(MapY + MapH) / (float)AtlasHeight);
+		pGraphics->QuadsSetRotation(Rotation);
+		IGraphics::CQuadItem Quad(X + W * 0.5f, Y + H * 0.5f, W, H);
+		pGraphics->QuadsDraw(&Quad, 1);
+		pGraphics->QuadsSetRotation(0.0f);
+		pGraphics->QuadsEnd();
+	}
+
+	void FormatSpeedrunTime(int64_t RemainingMilliseconds, char *pBuf, size_t BufSize)
+	{
+		const int RemainingHours = (int)(RemainingMilliseconds / (60 * 60 * 1000));
+		const int RemainingMinutes = (int)((RemainingMilliseconds / (60 * 1000)) % 60);
+		const int RemainingSeconds = (int)((RemainingMilliseconds / 1000) % 60);
+		const int Milliseconds = (int)(RemainingMilliseconds % 1000);
+		if(RemainingHours > 0)
+			str_format(pBuf, BufSize, "%02d:%02d:%02d.%03d", RemainingHours, RemainingMinutes, RemainingSeconds, Milliseconds);
 		else
-			State.m_LocalTeamId = pGameClient->m_Teams.Team(pGameClient->m_Snap.m_LocalClientId);
+			str_format(pBuf, BufSize, "%02d:%02d.%03d", RemainingMinutes, RemainingSeconds, Milliseconds);
 	}
 
-	for(int i = 0; i < MAX_CLIENTS; i++)
+	void FormatPredictionTime(int64_t Milliseconds, bool ShowMillis, char *pBuf, size_t BufSize)
 	{
-		if(!pGameClient->m_Snap.m_apPlayerInfos[i])
-			continue;
-		if(pGameClient->m_Teams.Team(i) != State.m_LocalTeamId)
-			continue;
-
-		State.m_NumInTeam++;
-		if(pGameClient->m_aClients[i].m_FreezeEnd > 0 || pGameClient->m_aClients[i].m_DeepFrozen)
-			State.m_NumFrozen++;
+		const int64_t TimeCentiseconds = maximum<int64_t>(0, (Milliseconds + 5) / 10);
+		str_time(TimeCentiseconds, ShowMillis ? ETimeFormat::HOURS_CENTISECS : ETimeFormat::HOURS, pBuf, BufSize);
 	}
 
-	State.m_ShowHud = ForcePreview || (g_Config.m_TcShowFrozenHud > 0 && !pGameClient->m_Scoreboard.IsActive() && !(State.m_LocalTeamId == 0 && g_Config.m_TcFrozenHudTeamOnly));
-	if(ForcePreview && State.m_NumInTeam <= 0)
+	struct SFrozenHudState
 	{
-		State.m_NumInTeam = 8;
-		State.m_NumFrozen = 3;
+		int m_NumInTeam = 0;
+		int m_NumFrozen = 0;
+		int m_LocalTeamId = 0;
+		bool m_ShowHud = false;
+	};
+
+	SFrozenHudState GetFrozenHudState(const CGameClient *pGameClient, bool ForcePreview)
+	{
+		SFrozenHudState State;
+		if(!pGameClient->m_GameInfo.m_EntitiesDDRace && !ForcePreview)
+			return State;
+
+		if(pGameClient->m_Snap.m_LocalClientId >= 0 && pGameClient->m_Snap.m_SpecInfo.m_SpectatorId >= 0)
+		{
+			if(pGameClient->m_Snap.m_SpecInfo.m_Active == 1 && pGameClient->m_Snap.m_SpecInfo.m_SpectatorId != -1)
+				State.m_LocalTeamId = pGameClient->m_Teams.Team(pGameClient->m_Snap.m_SpecInfo.m_SpectatorId);
+			else
+				State.m_LocalTeamId = pGameClient->m_Teams.Team(pGameClient->m_Snap.m_LocalClientId);
+		}
+
+		for(int i = 0; i < MAX_CLIENTS; i++)
+		{
+			if(!pGameClient->m_Snap.m_apPlayerInfos[i])
+				continue;
+			if(pGameClient->m_Teams.Team(i) != State.m_LocalTeamId)
+				continue;
+
+			State.m_NumInTeam++;
+			if(pGameClient->m_aClients[i].m_FreezeEnd > 0 || pGameClient->m_aClients[i].m_DeepFrozen)
+				State.m_NumFrozen++;
+		}
+
+		State.m_ShowHud = ForcePreview || (g_Config.m_TcShowFrozenHud > 0 && !pGameClient->m_Scoreboard.IsActive() && !(State.m_LocalTeamId == 0 && g_Config.m_TcFrozenHudTeamOnly));
+		if(ForcePreview && State.m_NumInTeam <= 0)
+		{
+			State.m_NumInTeam = 8;
+			State.m_NumFrozen = 3;
+		}
+		return State;
 	}
-	return State;
-}
 }
 
 CHud::CHud()
@@ -104,6 +400,8 @@ CHud::CHud()
 	m_DDRaceEffectsTextContainerIndex.Reset();
 	m_PlayerAngleTextContainerIndex.Reset();
 	m_PlayerPrevAngle = -INFINITY;
+	m_KeystrokesKeyboardTexture = IGraphics::CTextureHandle();
+	m_KeystrokesMouseTexture = IGraphics::CTextureHandle();
 
 	for(int i = 0; i < 2; i++)
 	{
@@ -170,6 +468,8 @@ void CHud::OnReset()
 	m_FinishPredictionLastProgress = 0.0f;
 	m_FinishPredictionSmoothedFinishTimeMs = -1;
 	m_FinishPredictionLastPredictTick = -1;
+	m_KeystrokesWheelUpEndTime = 0;
+	m_KeystrokesWheelDownEndTime = 0;
 
 	ResetHudContainers();
 }
@@ -244,8 +544,14 @@ bool CHud::RebuildFinishPredictionPathData()
 		int m_Cost;
 	};
 	static const SFinishPredictionDir s_aDirs[] = {
-		{{1, 0}, 10}, {{-1, 0}, 10}, {{0, 1}, 10}, {{0, -1}, 10},
-		{{1, 1}, 14}, {{1, -1}, 14}, {{-1, 1}, 14}, {{-1, -1}, 14},
+		{{1, 0}, 10},
+		{{-1, 0}, 10},
+		{{0, 1}, 10},
+		{{0, -1}, 10},
+		{{1, 1}, 14},
+		{{1, -1}, 14},
+		{{-1, 1}, 14},
+		{{-1, -1}, 14},
 	};
 	while(!PriorityQueue.empty())
 	{
@@ -612,6 +918,12 @@ bool CHud::GetFinishPredictionState(SFinishPredictionState &State, bool ForcePre
 void CHud::OnInit()
 {
 	OnReset();
+	m_KeystrokesKeyboardTexture = LoadKeystrokesTexture(Graphics(), Storage(), "BestClient/keystrokes/wasd.png", "wasd.png", "BestClient/keystrokes");
+	m_KeystrokesMouseTexture = LoadKeystrokesTexture(Graphics(), Storage(), "BestClient/keystrokes/mouse.png", "mouse.png", "BestClient/keystrokes");
+	if(m_KeystrokesKeyboardTexture.IsNullTexture())
+		log_warn("keystrokes", "Failed to load keyboard keystrokes texture");
+	if(m_KeystrokesMouseTexture.IsNullTexture())
+		log_warn("keystrokes", "Failed to load mouse keystrokes texture");
 
 	Graphics()->SetColor(1.0, 1.0, 1.0, 1.0);
 
@@ -793,9 +1105,9 @@ void CHud::RenderScoreHud(bool ForcePreview)
 			if(GameClient()->m_Snap.m_pGameInfoObj->m_GameFlags & GAMEFLAG_FLAGS)
 			{
 				const int BlinkTimer = (GameClient()->m_aFlagDropTick[t] != 0 &&
-								(Client()->GameTick(g_Config.m_ClDummy) - GameClient()->m_aFlagDropTick[t]) / Client()->GameTickSpeed() >= 25) ?
-								10 :
-								20;
+							       (Client()->GameTick(g_Config.m_ClDummy) - GameClient()->m_aFlagDropTick[t]) / Client()->GameTickSpeed() >= 25) ?
+							       10 :
+							       20;
 				if(aFlagCarrier[t] == FLAG_ATSTAND || (aFlagCarrier[t] == FLAG_TAKEN && ((Client()->GameTick(g_Config.m_ClDummy) / BlinkTimer) & 1)))
 				{
 					Graphics()->TextureSet(t == TEAM_RED ? GameClient()->m_GameSkin.m_SpriteFlagRed : GameClient()->m_GameSkin.m_SpriteFlagBlue);
@@ -2383,9 +2695,9 @@ void CHud::RenderMovementInformation(bool ForcePreview)
 		Graphics()->DrawRect(Rect.x, Rect.y, Rect.w, Rect.h, BackgroundColor, Corners, 5.0f * Scale);
 
 	const bool HasPlayerBelow = State.m_ShowDummyCoordIndicator &&
-		State.m_ClientId != SPEC_FREEVIEW &&
-		State.m_HasValidClientId &&
-		HasPlayerBelowOnSameX(State.m_ClientId, State.m_Info);
+				    State.m_ClientId != SPEC_FREEVIEW &&
+				    State.m_HasValidClientId &&
+				    HasPlayerBelowOnSameX(State.m_ClientId, State.m_Info);
 
 	float y = Rect.y + LineSpacer * 2.0f;
 	const float LeftX = Rect.x + 2.0f * Scale;
@@ -2778,6 +3090,38 @@ CUIRect CHud::GetLocalTimeHudEditorRect() const
 	return GetLocalTimeRect(true);
 }
 
+CUIRect CHud::GetFinishPredictionAnchorRect() const
+{
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_FINISH_PREDICTION, m_Width, m_Height);
+	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+	const float TitleFontSize = 5.25f * Scale;
+	const float ProgressFontSize = 4.75f * Scale;
+	const float PaddingX = 6.0f * Scale;
+	const float PaddingY = 4.0f * Scale;
+	const float Gap = 1.5f * Scale;
+	bool ShowTime = g_Config.m_BcFinishPredictionShowTime != 0;
+	bool ShowPercentage = g_Config.m_BcFinishPredictionShowPercentage != 0;
+	if(!ShowTime && !ShowPercentage)
+	{
+		ShowTime = true;
+		ShowPercentage = true;
+	}
+
+	char aSampleTopLine[64];
+	char aProgress[32];
+	str_format(aSampleTopLine, sizeof(aSampleTopLine), "%s %s", Localize("Finish"), "00:00:00.00");
+	str_copy(aProgress, "100.0%", sizeof(aProgress));
+
+	const float TopWidth = ShowTime ? TextRender()->TextWidth(TitleFontSize, aSampleTopLine, -1, -1.0f) : 0.0f;
+	const float ProgressWidth = ShowPercentage ? TextRender()->TextWidth(ProgressFontSize, aProgress, -1, -1.0f) : 0.0f;
+	const float RectWidth = maximum(TopWidth, ProgressWidth) + PaddingX * 2.0f;
+	const float RectHeight = PaddingY * 2.0f + (ShowTime ? TitleFontSize : 0.0f) + (ShowTime && ShowPercentage ? Gap : 0.0f) + (ShowPercentage ? ProgressFontSize : 0.0f);
+	CUIRect Rect = {Layout.m_X, Layout.m_Y, RectWidth, RectHeight};
+	Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, m_Width - Rect.w));
+	Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, m_Height - Rect.h));
+	return Rect;
+}
+
 CUIRect CHud::GetFinishPredictionRect(bool ForcePreview) const
 {
 	if(!HudLayout::IsEnabled(HudLayout::MODULE_FINISH_PREDICTION))
@@ -2814,6 +3158,247 @@ CUIRect CHud::GetFinishPredictionRect(bool ForcePreview) const
 	Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, m_Width - Rect.w));
 	Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, m_Height - Rect.h));
 	return Rect;
+}
+
+CUIRect CHud::GetKeystrokesKeyboardRectInternal(bool ForcePreview, bool IgnoreModuleEnabled) const
+{
+	if(!IgnoreModuleEnabled && (!HudLayout::IsEnabled(HudLayout::MODULE_KEYSTROKES_KEYBOARD) || g_Config.m_BcKeystrokesKeyboard == 0))
+		return {0.0f, 0.0f, 0.0f, 0.0f};
+
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_KEYSTROKES_KEYBOARD, m_Width, m_Height);
+	const auto &Preset = GetKeystrokesKeyboardPreset(g_Config.m_BcKeystrokesKeyboardPreset);
+	const float Scale = GetKeystrokesScale(Layout);
+	const float Width = Preset.m_OverlayWidth * Scale;
+	const float Height = Preset.m_OverlayHeight * Scale;
+
+	HudLayout::SModuleRect RawRect;
+	if(!HudLayout::HasRuntimeOverride(HudLayout::MODULE_KEYSTROKES_KEYBOARD))
+	{
+		const CUIRect FinishRect = GetFinishPredictionAnchorRect();
+		RawRect = {FinishRect.x, FinishRect.y + FinishRect.h + KEYSTROKES_DEFAULT_GAP, Width, Height, 0.0f};
+	}
+	else
+	{
+		RawRect = {Layout.m_X, Layout.m_Y, Width, Height, 0.0f};
+	}
+
+	const auto Rect = HudLayout::ClampRectToScreen(RawRect, m_Width, m_Height);
+	(void)ForcePreview;
+	return {Rect.m_X, Rect.m_Y, Rect.m_W, Rect.m_H};
+}
+
+CUIRect CHud::GetKeystrokesKeyboardRect(bool ForcePreview) const
+{
+	return GetKeystrokesKeyboardRectInternal(ForcePreview, false);
+}
+
+void CHud::RenderKeystrokesKeyboardInternal(bool ForcePreview, bool IgnoreModuleEnabled)
+{
+	const CUIRect Rect = GetKeystrokesKeyboardRectInternal(ForcePreview, IgnoreModuleEnabled);
+	if(Rect.w <= 0.0f || Rect.h <= 0.0f)
+		return;
+
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_KEYSTROKES_KEYBOARD, m_Width, m_Height);
+	const auto &Preset = GetKeystrokesKeyboardPreset(g_Config.m_BcKeystrokesKeyboardPreset);
+	const float Scale = GetKeystrokesScale(Layout);
+	for(int i = 0; i < Preset.m_NumElements; ++i)
+	{
+		const auto &Element = Preset.m_pElements[i];
+		const bool Active = !ForcePreview && IsKeystrokesPressed(Input(), Element.m_KeyPrimary, Element.m_KeySecondary);
+		int MapY = Element.m_MapY;
+		bool UsePressedAtlas = Active && Preset.m_PressedOffsetY > 0;
+		if(UsePressedAtlas)
+		{
+			const int Candidate = MapY + Preset.m_PressedOffsetY;
+			if(Candidate + Element.m_MapH <= Preset.m_AtlasHeight)
+				MapY = Candidate;
+			else
+				UsePressedAtlas = false;
+		}
+		ColorRGBA DrawColor(1.0f, 1.0f, 1.0f, Active ? 1.0f : KEYSTROKES_INACTIVE_ALPHA);
+		if(Active && !UsePressedAtlas)
+			DrawColor = KEYSTROKES_ACTIVE_COLOR;
+
+		DrawKeystrokesSprite(
+			Graphics(),
+			m_KeystrokesKeyboardTexture,
+			Preset.m_AtlasWidth,
+			Preset.m_AtlasHeight,
+			Element.m_MapX,
+			MapY,
+			Element.m_MapW,
+			Element.m_MapH,
+			Rect.x + Element.m_PosX * Scale,
+			Rect.y + Element.m_PosY * Scale,
+			Element.m_MapW * Scale,
+			Element.m_MapH * Scale,
+			DrawColor);
+	}
+}
+
+void CHud::RenderKeystrokesKeyboard(bool ForcePreview)
+{
+	RenderKeystrokesKeyboardInternal(ForcePreview, false);
+}
+
+CUIRect CHud::GetKeystrokesMouseRectInternal(bool ForcePreview, bool IgnoreModuleEnabled) const
+{
+	if(!IgnoreModuleEnabled && (!HudLayout::IsEnabled(HudLayout::MODULE_KEYSTROKES_MOUSE) || g_Config.m_BcKeystrokesMouse == 0))
+		return {0.0f, 0.0f, 0.0f, 0.0f};
+
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_KEYSTROKES_MOUSE, m_Width, m_Height);
+	const auto &Preset = GetKeystrokesMousePreset(g_Config.m_BcKeystrokesMousePreset);
+	const float Scale = GetKeystrokesScale(Layout);
+	const float Width = Preset.m_OverlayWidth * Scale;
+	const float Height = Preset.m_OverlayHeight * Scale;
+
+	HudLayout::SModuleRect RawRect;
+	if(!HudLayout::HasRuntimeOverride(HudLayout::MODULE_KEYSTROKES_MOUSE))
+	{
+		const CUIRect KeyboardRect = GetKeystrokesKeyboardRectInternal(ForcePreview, true);
+		RawRect = {KeyboardRect.x + KeyboardRect.w + KEYSTROKES_DEFAULT_GAP, KeyboardRect.y, Width, Height, 0.0f};
+	}
+	else
+	{
+		RawRect = {Layout.m_X, Layout.m_Y, Width, Height, 0.0f};
+	}
+
+	const auto Rect = HudLayout::ClampRectToScreen(RawRect, m_Width, m_Height);
+	return {Rect.m_X, Rect.m_Y, Rect.m_W, Rect.m_H};
+}
+
+CUIRect CHud::GetKeystrokesMouseRect(bool ForcePreview) const
+{
+	return GetKeystrokesMouseRectInternal(ForcePreview, false);
+}
+
+void CHud::RenderKeystrokesMouseInternal(bool ForcePreview, bool IgnoreModuleEnabled)
+{
+	const CUIRect Rect = GetKeystrokesMouseRectInternal(ForcePreview, IgnoreModuleEnabled);
+	if(Rect.w <= 0.0f || Rect.h <= 0.0f)
+		return;
+
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_KEYSTROKES_MOUSE, m_Width, m_Height);
+	const auto &Preset = GetKeystrokesMousePreset(g_Config.m_BcKeystrokesMousePreset);
+	const float Scale = GetKeystrokesScale(Layout);
+	const int64_t Now = time_get();
+	if(!ForcePreview)
+	{
+		if(Input()->KeyPress(KEY_MOUSE_WHEEL_UP))
+			m_KeystrokesWheelUpEndTime = Now + time_freq() * KEYSTROKES_WHEEL_HIGHLIGHT_MS / 1000;
+		if(Input()->KeyPress(KEY_MOUSE_WHEEL_DOWN))
+			m_KeystrokesWheelDownEndTime = Now + time_freq() * KEYSTROKES_WHEEL_HIGHLIGHT_MS / 1000;
+	}
+
+	vec2 AimOffset(0.0f, 0.0f);
+	float AimRotation = 0.0f;
+	bool MouseMoved = false;
+	if(!ForcePreview)
+	{
+		vec2 Aim = GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy];
+		const float MaxDistance = maximum(GameClient()->m_Controls.GetMaxMouseDistance(), 0.001f);
+		float Length = length(Aim);
+		if(Length > 0.001f)
+		{
+			MouseMoved = true;
+			AimRotation = std::atan2(Aim.y, Aim.x) + pi / 2.0f;
+			Aim /= MaxDistance;
+			Length = length(Aim);
+			if(Length > 1.0f)
+				Aim /= Length;
+			AimOffset = Aim;
+		}
+	}
+
+	for(int i = 0; i < Preset.m_NumElements; ++i)
+	{
+		const auto &Element = Preset.m_pElements[i];
+		bool Active = false;
+		switch(Element.m_InputKind)
+		{
+		case EKeystrokesInputKind::NONE:
+			Active = true;
+			break;
+		case EKeystrokesInputKind::KEY:
+			Active = !ForcePreview && IsKeystrokesPressed(Input(), Element.m_KeyPrimary, Element.m_KeySecondary);
+			break;
+		case EKeystrokesInputKind::MOUSE_BUTTON:
+			Active = !ForcePreview && IsKeystrokesMouseButtonPressed(Input(), Element.m_MouseButton);
+			break;
+		case EKeystrokesInputKind::WHEEL:
+			Active = !ForcePreview && IsKeystrokesWheelActive(Element.m_WheelDir, Now, m_KeystrokesWheelUpEndTime, m_KeystrokesWheelDownEndTime);
+			break;
+		case EKeystrokesInputKind::MOUSE_MOVE:
+			Active = !ForcePreview && MouseMoved;
+			break;
+		}
+
+		if(Element.m_ActiveOnly && !Active)
+			continue;
+
+		int MapY = Element.m_MapY;
+		bool UsePressedAtlas = false;
+		if(Active && !Element.m_ActiveOnly && Preset.m_PressedOffsetY > 0 &&
+			(Element.m_InputKind == EKeystrokesInputKind::KEY || Element.m_InputKind == EKeystrokesInputKind::MOUSE_BUTTON))
+		{
+			const int Candidate = MapY + Preset.m_PressedOffsetY;
+			if(Candidate + Element.m_MapH <= Preset.m_AtlasHeight)
+			{
+				MapY = Candidate;
+				UsePressedAtlas = true;
+			}
+		}
+
+		float Alpha = Active ? 1.0f : KEYSTROKES_INACTIVE_ALPHA;
+		if(Element.m_InputKind == EKeystrokesInputKind::NONE)
+			Alpha = 1.0f;
+		if(Element.m_InputKind == EKeystrokesInputKind::WHEEL)
+			Alpha = Active ? 1.0f : 0.0f;
+		if(Element.m_ActiveOnly)
+			Alpha = Active ? 1.0f : 0.0f;
+		if(Alpha <= 0.0f)
+			continue;
+
+		ColorRGBA DrawColor(1.0f, 1.0f, 1.0f, Alpha);
+		if(Active && !UsePressedAtlas &&
+			(Element.m_InputKind == EKeystrokesInputKind::MOUSE_BUTTON || Element.m_InputKind == EKeystrokesInputKind::WHEEL))
+		{
+			DrawColor = KEYSTROKES_ACTIVE_COLOR;
+			DrawColor.a *= Alpha;
+		}
+
+		const float X = Rect.x + Element.m_PosX * Scale;
+		const float Y = Rect.y + Element.m_PosY * Scale;
+		vec2 Offset(0.0f, 0.0f);
+		float Rotation = 0.0f;
+		if(Element.m_InputKind == EKeystrokesInputKind::MOUSE_MOVE)
+		{
+			Offset = AimOffset * (Element.m_MouseRadius * Scale);
+			if(Element.m_MouseType == 1)
+				Rotation = AimRotation;
+		}
+
+		DrawKeystrokesSprite(
+			Graphics(),
+			m_KeystrokesMouseTexture,
+			Preset.m_AtlasWidth,
+			Preset.m_AtlasHeight,
+			Element.m_MapX,
+			MapY,
+			Element.m_MapW,
+			Element.m_MapH,
+			X + Offset.x,
+			Y + Offset.y,
+			Element.m_MapW * Scale,
+			Element.m_MapH * Scale,
+			DrawColor,
+			Rotation);
+	}
+}
+
+void CHud::RenderKeystrokesMouse(bool ForcePreview)
+{
+	RenderKeystrokesMouseInternal(ForcePreview, false);
 }
 
 void CHud::RenderFinishPrediction(bool ForcePreview)
@@ -2876,6 +3461,26 @@ void CHud::RenderFinishPredictionPreview()
 CUIRect CHud::GetFinishPredictionHudEditorRect() const
 {
 	return GetFinishPredictionRect(true);
+}
+
+CUIRect CHud::GetKeystrokesKeyboardHudEditorRect() const
+{
+	return GetKeystrokesKeyboardRectInternal(true, true);
+}
+
+void CHud::RenderKeystrokesKeyboardPreview()
+{
+	RenderKeystrokesKeyboardInternal(true, true);
+}
+
+CUIRect CHud::GetKeystrokesMouseHudEditorRect() const
+{
+	return GetKeystrokesMouseRectInternal(true, true);
+}
+
+void CHud::RenderKeystrokesMousePreview()
+{
+	RenderKeystrokesMouseInternal(true, true);
 }
 
 CUIRect CHud::GetScoreHudEditorRect() const
@@ -3048,7 +3653,14 @@ void CHud::OnRender()
 			(g_Config.m_BcSpeedrunTimer || m_SpeedrunTimerExpiredTick > 0))
 			RenderSpeedrunTimer();
 		if(!(FocusModeActive && HideUIInFocusMode))
+		{
 			RenderFinishPrediction();
+			if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_KEYSTROKES))
+			{
+				RenderKeystrokesKeyboard();
+				RenderKeystrokesMouse();
+			}
+		}
 		if(g_Config.m_ClShowhudTimer)
 			RenderGameTimer();
 		RenderPauseNotification();
@@ -3068,14 +3680,14 @@ void CHud::OnRender()
 			RenderConnectionWarning();
 		RenderTeambalanceWarning();
 		GameClient()->m_Voting.Render();
-			if(g_Config.m_ClShowRecord)
-				RenderRecord();
+		if(g_Config.m_ClShowRecord)
+			RenderRecord();
 
-			GameClient()->m_VoiceChat.RenderHudMuteStatusIndicator(m_Width, m_Height);
-			GameClient()->m_VoiceChat.RenderHudTalkingIndicator(m_Width, m_Height);
-			GameClient()->m_BestClient.RenderHookCombo();
-		}
-		RenderCursor();
+		GameClient()->m_VoiceChat.RenderHudMuteStatusIndicator(m_Width, m_Height);
+		GameClient()->m_VoiceChat.RenderHudTalkingIndicator(m_Width, m_Height);
+		GameClient()->m_BestClient.RenderHookCombo();
+	}
+	RenderCursor();
 }
 
 void CHud::RenderSpeedrunTimer()

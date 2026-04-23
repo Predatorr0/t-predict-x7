@@ -153,6 +153,10 @@ bc_jelly_tee_others
 bc_jelly_tee_strength
 bc_killfeed_animation
 bc_killfeed_animation_ms
+bc_keystrokes_keyboard
+bc_keystrokes_keyboard_preset
+bc_keystrokes_mouse
+bc_keystrokes_mouse_preset
 bc_delta_input_others
 bc_magic_particles
 bc_magic_particles_alpha_delay

@@ -19,6 +19,7 @@
 #include <game/client/components/media_decoder.h>
 #include <game/client/components/menu_background.h>
 #include <game/client/components/menus.h>
+#include <game/client/components/hud_layout.h>
 #include <game/client/components/sounds.h>
 #include <game/client/gameclient.h>
 #include <game/client/skin.h>
@@ -81,6 +82,7 @@ static const SBestClientComponentEntry gs_aBestClientComponentEntries[] = {
 	{CBestClient::COMPONENT_VISUALS_AFTERIMAGE, "Afterimage", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_CRYSTAL_LASER, "Crystal Laser", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_MUSIC_PLAYER, "Music Player", COMPONENTS_GROUP_VISUALS},
+	{CBestClient::COMPONENT_VISUALS_KEYSTROKES, "Keystrokes", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_MEDIA_BACKGROUND, "Media Background", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_ANIMATIONS, "Animations", COMPONENTS_GROUP_VISUALS},
 	{CBestClient::COMPONENT_VISUALS_ASPECT_RATIO, "Aspect Ratio", COMPONENTS_GROUP_VISUALS},
@@ -1147,6 +1149,78 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 		}
 
+		// Keystrokes (right column block)
+		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_KEYSTROKES))
+		{
+			const float ContentHeight = MarginSmall * 4.0f + LineSize * 6.0f;
+			CUIRect Content, Label, Button;
+			BeginBlock(Column, ContentHeight, Content);
+
+			Content.HSplitTop(LineSize, &Label, &Content);
+			Ui()->DoLabel(&Label, BCLocalize("Keystrokes"), HeadlineFontSize, TEXTALIGN_ML);
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcKeystrokesKeyboard, BCLocalize("Show keyboard HUD"), &g_Config.m_BcKeystrokesKeyboard, &Content, LineSize);
+			if(g_Config.m_BcKeystrokesKeyboard && !HudLayout::IsEnabled(HudLayout::MODULE_KEYSTROKES_KEYBOARD))
+				HudLayout::SetEnabled(HudLayout::MODULE_KEYSTROKES_KEYBOARD, true);
+			Content.HSplitTop(LineSize, &Button, &Content);
+			{
+				static CButtonContainer s_KeyboardPresetMinimal;
+				static CButtonContainer s_KeyboardPresetFull;
+				CUIRect Left, Right;
+				Button.VSplitMid(&Left, &Right, 2.0f);
+				Left.HMargin(2.0f, &Left);
+				Right.HMargin(2.0f, &Right);
+				if(DoButton_Menu(&s_KeyboardPresetMinimal, BCLocalize("Minimal"), g_Config.m_BcKeystrokesKeyboardPreset == 0, &Left, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+					g_Config.m_BcKeystrokesKeyboardPreset = 0;
+				if(DoButton_Menu(&s_KeyboardPresetFull, BCLocalize("Full"), g_Config.m_BcKeystrokesKeyboardPreset == 1, &Right, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+					g_Config.m_BcKeystrokesKeyboardPreset = 1;
+			}
+
+			Content.HSplitTop(MarginSmall, nullptr, &Content);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcKeystrokesMouse, BCLocalize("Show mouse HUD"), &g_Config.m_BcKeystrokesMouse, &Content, LineSize);
+			if(g_Config.m_BcKeystrokesMouse && !HudLayout::IsEnabled(HudLayout::MODULE_KEYSTROKES_MOUSE))
+				HudLayout::SetEnabled(HudLayout::MODULE_KEYSTROKES_MOUSE, true);
+			Content.HSplitTop(LineSize, &Button, &Content);
+			{
+				static CButtonContainer s_MousePresetDot;
+				static CButtonContainer s_MousePresetArrow;
+				static CButtonContainer s_MousePresetDotDot;
+				CUIRect DotButton, Rest, ArrowButton, DotDotButton;
+				const float Spacing = 2.0f;
+				const float ButtonWidth = (Button.w - Spacing * 2.0f) / 3.0f;
+				Button.VSplitLeft(ButtonWidth, &DotButton, &Rest);
+				Rest.VSplitLeft(Spacing, nullptr, &Rest);
+				Rest.VSplitLeft(ButtonWidth, &ArrowButton, &Rest);
+				Rest.VSplitLeft(Spacing, nullptr, &Rest);
+				DotDotButton = Rest;
+				DotButton.HMargin(2.0f, &DotButton);
+				ArrowButton.HMargin(2.0f, &ArrowButton);
+				DotDotButton.HMargin(2.0f, &DotDotButton);
+				if(DoButton_Menu(&s_MousePresetDot, "Dot", g_Config.m_BcKeystrokesMousePreset == 0, &DotButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+					g_Config.m_BcKeystrokesMousePreset = 0;
+				if(DoButton_Menu(&s_MousePresetArrow, "Arrow", g_Config.m_BcKeystrokesMousePreset == 1, &ArrowButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+					g_Config.m_BcKeystrokesMousePreset = 1;
+				if(DoButton_Menu(&s_MousePresetDotDot, "Dot Dot", g_Config.m_BcKeystrokesMousePreset == 2, &DotDotButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+					g_Config.m_BcKeystrokesMousePreset = 2;
+			}
+
+			Content.HSplitTop(LineSize, &Button, &Content);
+			{
+				static CButtonContainer s_MousePresetDotNoBox;
+				static CButtonContainer s_MousePresetNoMovement;
+				CUIRect Left, Right;
+				Button.VSplitMid(&Left, &Right, 2.0f);
+				Left.HMargin(2.0f, &Left);
+				Right.HMargin(2.0f, &Right);
+				if(DoButton_Menu(&s_MousePresetDotNoBox, BCLocalize("Dot No Box"), g_Config.m_BcKeystrokesMousePreset == 3, &Left, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+					g_Config.m_BcKeystrokesMousePreset = 3;
+				if(DoButton_Menu(&s_MousePresetNoMovement, BCLocalize("No movement"), g_Config.m_BcKeystrokesMousePreset == 4, &Right, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+					g_Config.m_BcKeystrokesMousePreset = 4;
+			}
+			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+		}
+
 		// Camera Drift (right column block)
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_VISUALS_CAMERA_DRIFT))
 		{
@@ -1744,7 +1818,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const bool BestInputMode = g_Config.m_BcFastInputMode == 3;
 			const float FastInputExtraTargetHeight = BestInputMode ? (MarginSmall * 8.0f + LineSize * 8.0f) : (MarginSmall * 3.0f + LineSize * 3.0f);
 			const float ContentHeight = LineSize + MarginSmall + LineSize * 3.0f +
-				FastInputExtraTargetHeight * s_FastInputPhase;
+						    FastInputExtraTargetHeight * s_FastInputPhase;
 
 			CUIRect Content, Label, Button, Visible;
 			BeginBlock(Column, ContentHeight, Content);
@@ -2023,39 +2097,39 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 					Expand.HSplitTop(MarginSmall, nullptr, &Expand);
 					Expand.HSplitTop(LineSize, &Button, &Expand);
 					{
-					static CButtonContainer s_aInterpolationButtons[3];
-					static const char *s_apInterpolationNames[] = {
-						"Linear",
-						"Cubic",
-						"Smooth",
-					};
-					static const int s_aInterpolationValues[] = {1, 2, 3};
+						static CButtonContainer s_aInterpolationButtons[3];
+						static const char *s_apInterpolationNames[] = {
+							"Linear",
+							"Cubic",
+							"Smooth",
+						};
+						static const int s_aInterpolationValues[] = {1, 2, 3};
 
-					CUIRect ButtonsRect = Button;
-					const float Spacing = 2.0f;
-					const float InterpolationButtonWidth = (ButtonsRect.w - Spacing * 2.0f) / 3.0f;
-					for(int i = 0; i < 3; ++i)
-					{
-						CUIRect InterpolationButton;
-						if(i < 2)
+						CUIRect ButtonsRect = Button;
+						const float Spacing = 2.0f;
+						const float InterpolationButtonWidth = (ButtonsRect.w - Spacing * 2.0f) / 3.0f;
+						for(int i = 0; i < 3; ++i)
 						{
-							ButtonsRect.VSplitLeft(InterpolationButtonWidth, &InterpolationButton, &ButtonsRect);
-							ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
+							CUIRect InterpolationButton;
+							if(i < 2)
+							{
+								ButtonsRect.VSplitLeft(InterpolationButtonWidth, &InterpolationButton, &ButtonsRect);
+								ButtonsRect.VSplitLeft(Spacing, nullptr, &ButtonsRect);
 							}
 							else
 								InterpolationButton = ButtonsRect;
-						InterpolationButton.HMargin(2.0f, &InterpolationButton);
+							InterpolationButton.HMargin(2.0f, &InterpolationButton);
 
-						int Corners = IGraphics::CORNER_NONE;
-						if(i == 0)
-							Corners = IGraphics::CORNER_L;
-						else if(i == 2)
-							Corners = IGraphics::CORNER_R;
+							int Corners = IGraphics::CORNER_NONE;
+							if(i == 0)
+								Corners = IGraphics::CORNER_L;
+							else if(i == 2)
+								Corners = IGraphics::CORNER_R;
 
-						if(DoButton_Menu(&s_aInterpolationButtons[i], BCLocalize(s_apInterpolationNames[i]), g_Config.m_BcBestInputInterpolation == s_aInterpolationValues[i], &InterpolationButton, BUTTONFLAG_LEFT, nullptr, Corners))
-							g_Config.m_BcBestInputInterpolation = s_aInterpolationValues[i];
+							if(DoButton_Menu(&s_aInterpolationButtons[i], BCLocalize(s_apInterpolationNames[i]), g_Config.m_BcBestInputInterpolation == s_aInterpolationValues[i], &InterpolationButton, BUTTONFLAG_LEFT, nullptr, Corners))
+								g_Config.m_BcBestInputInterpolation = s_aInterpolationValues[i];
+						}
 					}
-				}
 				}
 
 				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
@@ -2079,8 +2153,8 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			const float SnapTapExtraTargetHeight = MarginSmall + LineSize;
 			const float SnapTapBlockedHintHeight = IsSnapTapBlocked ? (MarginSmall + LineSize) : 0.0f;
 			const float SnapTapContentHeight = LineSize + MarginSmall + LineSize +
-				SnapTapBlockedHintHeight +
-				SnapTapExtraTargetHeight * s_SnapTapPhase;
+							   SnapTapBlockedHintHeight +
+							   SnapTapExtraTargetHeight * s_SnapTapPhase;
 
 			BeginBlock(Column, SnapTapContentHeight, Content);
 			Content.HSplitTop(LineSize, &Label, &Content);
@@ -2267,13 +2341,13 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 			const float WheelPreviewHeight = 96.0f;
 			const float ContentHeight = LineSize + MarginSmall +
-				WheelPreviewHeight + MarginSmall +
-				LineSize + MarginSmall +
-				LineSize + MarginSmall +
-				LineSize + MarginSmall +
-				LineSize + MarginSmall +
-				LineSize * 0.8f + MarginSmall +
-				LineSize;
+						    WheelPreviewHeight + MarginSmall +
+						    LineSize + MarginSmall +
+						    LineSize + MarginSmall +
+						    LineSize + MarginSmall +
+						    LineSize + MarginSmall +
+						    LineSize * 0.8f + MarginSmall +
+						    LineSize;
 
 			CUIRect Content, Label, Button;
 			BeginBlock(Column, ContentHeight, Content);
@@ -2906,7 +2980,6 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 	{
 		RenderSettingsBestClientInfo(MainView);
 	}
-
 }
 
 void CMenus::ComponentsEditorSyncFromConfig()
