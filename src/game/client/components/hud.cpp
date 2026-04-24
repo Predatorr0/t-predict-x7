@@ -40,10 +40,10 @@
 
 namespace
 {
-	constexpr float KEYSTROKES_ATLAS_SCALE = 0.16f;
+	constexpr float KEYSTROKES_ATLAS_SCALE = 0.14f;
 	constexpr float KEYSTROKES_DEFAULT_GAP = 4.0f;
 	constexpr int KEYSTROKES_WHEEL_HIGHLIGHT_MS = 150;
-	constexpr int INPUT_OVERLAY_INNER_BORDER = 3;
+	constexpr int INPUT_OVERLAY_TEXTURE_SPACE = 3;
 	constexpr int KEYSTROKES_KEYBOARD_ATLAS_WIDTH = 1725;
 	constexpr int KEYSTROKES_KEYBOARD_ATLAS_HEIGHT = 1050;
 	constexpr int KEYSTROKES_MOUSE_ATLAS_WIDTH = 715;
@@ -93,9 +93,6 @@ namespace
 	{
 		return (int)N;
 	}
-
-	constexpr ColorRGBA KEYSTROKES_ACTIVE_COLOR = ColorRGBA(1.0f, 0.9f, 0.2f, 1.0f);
-	constexpr float KEYSTROKES_INACTIVE_ALPHA = 0.65f;
 
 	constexpr SKeystrokesElement KeyboardElement(int PrimaryKey, int SecondaryKey, int MapX, int MapY, int MapW, int MapH, int PosX, int PosY, int ZLevel = 1)
 	{
@@ -149,9 +146,17 @@ namespace
 		KeyboardElement(KEY_SPACE, 0, 1301, 1, 421, 128, 137, 266),
 	};
 
+	const SKeystrokesElement gs_aKeyboardMicroElements[] = {
+		KeyboardElement(KEY_A, 0, 641, 1, 157, 128, 30, 0),
+		KeyboardElement(KEY_S, 0, 801, 1, 157, 128, 167, 0),
+		KeyboardElement(KEY_D, 0, 961, 1, 157, 128, 304, 0),
+		KeyboardElement(KEY_SPACE, 0, 1301, 1, 421, 128, 5, 133),
+	};
+
 	const SKeystrokesOverlayPreset gs_aKeyboardPresets[] = {
 		{568, 394, 130, KEYSTROKES_KEYBOARD_ATLAS_WIDTH, KEYSTROKES_KEYBOARD_ATLAS_HEIGHT, gs_aKeyboardMinimalElements, ArrayCount(gs_aKeyboardMinimalElements)},
 		{705, 394, 130, KEYSTROKES_KEYBOARD_ATLAS_WIDTH, KEYSTROKES_KEYBOARD_ATLAS_HEIGHT, gs_aKeyboardFullElements, ArrayCount(gs_aKeyboardFullElements)},
+		{461, 261, 130, KEYSTROKES_KEYBOARD_ATLAS_WIDTH, KEYSTROKES_KEYBOARD_ATLAS_HEIGHT, gs_aKeyboardMicroElements, ArrayCount(gs_aKeyboardMicroElements)},
 	};
 
 	const SKeystrokesElement gs_aMouseArrowElements[] = {
@@ -161,7 +166,7 @@ namespace
 		StaticElement(285, 246, 48, 95, 117, 79),
 		StaticElement(285, 1, 40, 62, 0, 210),
 		StaticElement(284, 1, 41, 62, 11, 273),
-		MouseMoveElement(1, 614, 1, 100, 100, 95, 238, 50),
+		MouseMoveElement(1, 614, 1, 100, 100, 110, 235, 0),
 		MouseButtonElement(1, 1, 178, 139, 174, 2, 0, true, 2),
 		MouseButtonElement(2, 143, 178, 139, 174, 146, 0, true, 2),
 		MouseButtonElement(3, 336, 246, 48, 95, 117, 79, true, 2),
@@ -172,15 +177,15 @@ namespace
 	};
 
 	const SKeystrokesElement gs_aMouseDotElements[] = {
-		StaticElement(328, 1, 283, 242, 2, 179),
-		StaticElement(1, 1, 139, 174, 2, 0),
+		StaticElement(328, 1, 283, 242, 1, 179),
+		StaticElement(1, 1, 139, 174, 0, 0),
 		StaticElement(143, 1, 139, 174, 146, 0),
 		StaticElement(285, 246, 48, 95, 117, 79),
 		StaticElement(285, 1, 40, 62, 0, 210),
 		StaticElement(284, 1, 41, 62, 11, 273),
 		StaticElement(614, 104, 100, 100, 91, 245),
 		MouseMoveElement(0, 614, 207, 20, 20, 132, 284, 50),
-		MouseButtonElement(1, 1, 178, 139, 174, 2, 0, true, 2),
+		MouseButtonElement(1, 1, 178, 139, 174, 0, 0, true, 2),
 		MouseButtonElement(2, 143, 178, 139, 174, 146, 0, true, 2),
 		MouseButtonElement(3, 336, 246, 48, 95, 117, 79, true, 2),
 		WheelElement(1, 387, 246, 48, 95, 117, 79, true, 2),
@@ -191,14 +196,14 @@ namespace
 
 	const SKeystrokesElement gs_aMouseDotDotElements[] = {
 		StaticElement(328, 1, 283, 242, 1, 179),
-		StaticElement(1, 1, 139, 174, 2, 0),
+		StaticElement(1, 1, 139, 174, 0, 0),
 		StaticElement(143, 1, 139, 174, 146, 0),
 		StaticElement(285, 246, 48, 95, 117, 79),
 		StaticElement(285, 1, 40, 62, 0, 210),
 		StaticElement(284, 1, 41, 62, 11, 273),
 		StaticElement(493, 245, 100, 100, 91, 245),
 		MouseMoveElement(0, 614, 207, 20, 20, 132, 284, 50),
-		MouseButtonElement(1, 1, 178, 139, 174, 2, 0, true, 2),
+		MouseButtonElement(1, 1, 178, 139, 174, 0, 0, true, 2),
 		MouseButtonElement(2, 143, 178, 139, 174, 146, 0, true, 2),
 		MouseButtonElement(3, 336, 246, 48, 95, 117, 79, true, 2),
 		WheelElement(1, 387, 246, 48, 95, 117, 79, true, 2),
@@ -209,14 +214,14 @@ namespace
 
 	const SKeystrokesElement gs_aMouseDotNoBoxElements[] = {
 		StaticElement(328, 1, 283, 242, 1, 179),
-		StaticElement(1, 1, 139, 174, 2, 0),
+		StaticElement(1, 1, 139, 174, 0, 0),
 		StaticElement(143, 1, 139, 174, 146, 0),
 		StaticElement(285, 246, 48, 95, 117, 79),
 		StaticElement(285, 1, 40, 62, 0, 210),
 		StaticElement(284, 1, 41, 62, 11, 273),
 		StaticElement(614, 244, 100, 100, 91, 245),
 		MouseMoveElement(0, 614, 207, 20, 20, 132, 284, 50),
-		MouseButtonElement(1, 1, 178, 139, 174, 2, 0, true, 2),
+		MouseButtonElement(1, 1, 178, 139, 174, 0, 0, true, 2),
 		MouseButtonElement(2, 143, 178, 139, 174, 146, 0, true, 2),
 		MouseButtonElement(3, 336, 246, 48, 95, 117, 79, true, 2),
 		WheelElement(1, 387, 246, 48, 95, 117, 79, true, 2),
@@ -3239,15 +3244,12 @@ void CHud::RenderKeystrokesKeyboardInternal(bool ForcePreview, bool IgnoreModule
 		bool UsePressedAtlas = Active && Preset.m_PressedOffsetY > 0;
 		if(UsePressedAtlas)
 		{
-			const int Candidate = MapY + Preset.m_PressedOffsetY;
+			const int Candidate = MapY + Element.m_MapH + INPUT_OVERLAY_TEXTURE_SPACE;
 			if(Candidate + Element.m_MapH <= Preset.m_AtlasHeight)
 				MapY = Candidate;
 			else
 				UsePressedAtlas = false;
 		}
-		ColorRGBA DrawColor(1.0f, 1.0f, 1.0f, Active ? 1.0f : KEYSTROKES_INACTIVE_ALPHA);
-		if(Active && !UsePressedAtlas)
-			DrawColor = KEYSTROKES_ACTIVE_COLOR;
 
 		DrawKeystrokesSprite(
 			Graphics(),
@@ -3262,7 +3264,7 @@ void CHud::RenderKeystrokesKeyboardInternal(bool ForcePreview, bool IgnoreModule
 			Rect.y + Element.m_PosY * Scale,
 			Element.m_MapW * Scale,
 			Element.m_MapH * Scale,
-			DrawColor);
+			ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
 	}
 }
 
@@ -3367,19 +3369,15 @@ void CHud::RenderKeystrokesMouseInternal(bool ForcePreview, bool IgnoreModuleEna
 			continue;
 
 		int MapY = Element.m_MapY;
-		bool UsePressedAtlas = false;
-		if(Active && !Element.m_ActiveOnly && Preset.m_PressedOffsetY > 0 &&
-			(Element.m_InputKind == EKeystrokesInputKind::KEY || Element.m_InputKind == EKeystrokesInputKind::MOUSE_BUTTON))
+		if(Active && !Element.m_ActiveOnly &&
+			((Element.m_InputKind == EKeystrokesInputKind::KEY && Preset.m_PressedOffsetY > 0) || Element.m_InputKind == EKeystrokesInputKind::MOUSE_BUTTON))
 		{
-			const int Candidate = MapY + Preset.m_PressedOffsetY;
+			const int Candidate = MapY + Element.m_MapH + INPUT_OVERLAY_TEXTURE_SPACE;
 			if(Candidate + Element.m_MapH <= Preset.m_AtlasHeight)
-			{
 				MapY = Candidate;
-				UsePressedAtlas = true;
-			}
 		}
 
-		float Alpha = Active ? 1.0f : KEYSTROKES_INACTIVE_ALPHA;
+		float Alpha = 1.0f;
 		if(Element.m_InputKind == EKeystrokesInputKind::NONE)
 			Alpha = 1.0f;
 		if(Element.m_InputKind == EKeystrokesInputKind::WHEEL)
@@ -3390,12 +3388,6 @@ void CHud::RenderKeystrokesMouseInternal(bool ForcePreview, bool IgnoreModuleEna
 			continue;
 
 		ColorRGBA DrawColor(1.0f, 1.0f, 1.0f, Alpha);
-		if(Active && !UsePressedAtlas &&
-			(Element.m_InputKind == EKeystrokesInputKind::MOUSE_BUTTON || Element.m_InputKind == EKeystrokesInputKind::WHEEL))
-		{
-			DrawColor = KEYSTROKES_ACTIVE_COLOR;
-			DrawColor.a *= Alpha;
-		}
 
 		const float X = Rect.x + Element.m_PosX * Scale;
 		const float Y = Rect.y + Element.m_PosY * Scale;
@@ -3403,9 +3395,10 @@ void CHud::RenderKeystrokesMouseInternal(bool ForcePreview, bool IgnoreModuleEna
 		float Rotation = 0.0f;
 		if(Element.m_InputKind == EKeystrokesInputKind::MOUSE_MOVE)
 		{
-			Offset = AimOffset * (Element.m_MouseRadius * Scale);
 			if(Element.m_MouseType == 1)
 				Rotation = AimRotation;
+			else
+				Offset = AimOffset * (Element.m_MouseRadius * Scale);
 		}
 
 		DrawKeystrokesSprite(

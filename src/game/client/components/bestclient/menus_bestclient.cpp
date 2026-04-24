@@ -1167,14 +1167,24 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			{
 				static CButtonContainer s_KeyboardPresetMinimal;
 				static CButtonContainer s_KeyboardPresetFull;
-				CUIRect Left, Right;
-				Button.VSplitMid(&Left, &Right, 2.0f);
-				Left.HMargin(2.0f, &Left);
-				Right.HMargin(2.0f, &Right);
-				if(DoButton_Menu(&s_KeyboardPresetMinimal, BCLocalize("Minimal"), g_Config.m_BcKeystrokesKeyboardPreset == 0, &Left, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+				static CButtonContainer s_KeyboardPresetMicro;
+				CUIRect MinimalButton, Rest, FullButton, MicroButton;
+				const float Spacing = 2.0f;
+				const float ButtonWidth = (Button.w - Spacing * 2.0f) / 3.0f;
+				Button.VSplitLeft(ButtonWidth, &MinimalButton, &Rest);
+				Rest.VSplitLeft(Spacing, nullptr, &Rest);
+				Rest.VSplitLeft(ButtonWidth, &FullButton, &Rest);
+				Rest.VSplitLeft(Spacing, nullptr, &Rest);
+				MicroButton = Rest;
+				MinimalButton.HMargin(2.0f, &MinimalButton);
+				FullButton.HMargin(2.0f, &FullButton);
+				MicroButton.HMargin(2.0f, &MicroButton);
+				if(DoButton_Menu(&s_KeyboardPresetMinimal, BCLocalize("Minimal"), g_Config.m_BcKeystrokesKeyboardPreset == 0, &MinimalButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
 					g_Config.m_BcKeystrokesKeyboardPreset = 0;
-				if(DoButton_Menu(&s_KeyboardPresetFull, BCLocalize("Full"), g_Config.m_BcKeystrokesKeyboardPreset == 1, &Right, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+				if(DoButton_Menu(&s_KeyboardPresetFull, BCLocalize("Full"), g_Config.m_BcKeystrokesKeyboardPreset == 1, &FullButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
 					g_Config.m_BcKeystrokesKeyboardPreset = 1;
+				if(DoButton_Menu(&s_KeyboardPresetMicro, "Micro", g_Config.m_BcKeystrokesKeyboardPreset == 2, &MicroButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+					g_Config.m_BcKeystrokesKeyboardPreset = 2;
 			}
 
 			Content.HSplitTop(MarginSmall, nullptr, &Content);

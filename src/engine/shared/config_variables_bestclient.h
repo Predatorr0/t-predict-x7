@@ -94,7 +94,7 @@ MACRO_CONFIG_INT(BcFastInputAutoMargin, bc_fast_input_auto_margin, 0, 0, 1, CFGF
 MACRO_CONFIG_INT(BcSnapTap, bc_snap_tap, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable Snap Tap for opposite left/right inputs")
 MACRO_CONFIG_INT(BcSnapTapDelay, bc_snap_tap_delay, 0, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Snap Tap direction switch delay in milliseconds (0 = off)")
 MACRO_CONFIG_INT(BcKeystrokesKeyboard, bc_keystrokes_keyboard, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show keyboard keystrokes HUD")
-MACRO_CONFIG_INT(BcKeystrokesKeyboardPreset, bc_keystrokes_keyboard_preset, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keyboard keystrokes preset (0 = wasd-minimal, 1 = wasd-full)")
+MACRO_CONFIG_INT(BcKeystrokesKeyboardPreset, bc_keystrokes_keyboard_preset, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Keyboard keystrokes preset (0 = wasd-minimal, 1 = wasd-full, 2 = micro)")
 MACRO_CONFIG_INT(BcKeystrokesMouse, bc_keystrokes_mouse, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show mouse keystrokes HUD")
 MACRO_CONFIG_INT(BcKeystrokesMousePreset, bc_keystrokes_mouse_preset, 0, 0, 4, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Mouse keystrokes preset (0 = mouse-dot, 1 = mouse-arrow, 2 = mouse-dot-dot, 3 = mouse-dot-no-box, 4 = mouse-no-movement)")
 
