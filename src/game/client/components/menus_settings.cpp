@@ -1790,7 +1790,7 @@ void CMenus::RenderSettings(CUIRect MainView)
 			Localize("General"),
 			Localize("Appearance"),
 			TCLocalize("TClient"),
-			"BestClient",
+			BCLocalize("BestClient"),
 		};
 		static CButtonContainer s_aRootTabButtons[ROOT_TAB_LENGTH];
 		const int CurRootTab = GetRootTabByPage(g_Config.m_UiSettingsPage);

@@ -14,9 +14,6 @@ Clan
 Custom colors
 == Свои цвета
 
-Delete
-== Удалить
-
 Name
 == Имя
 
@@ -29,92 +26,14 @@ Yes
 Save
 == Сохранить
 
-HUD
-== HUD
-
 Website
 == Сайт
-
-Settings
-== Настройки
-
-Dummy
-== Дамми
 
 Discord
 == Дискорд
 
-Profiles
-== Профили
-
-Visual
-== Визуал
-
-Custom Font: 
-==     Шрифт: 
-
-Hide nameplates in spec
-== Скрывать имена в режиме наблюдателя
-
-Show skin names in nameplate
-== Показывать название скина около имени
-
-Freeze stars
-== Звёзды при заморозки
-
-Color frozen tee skins
-== Цветные замороженые скины
-
-Render all custom colored feet as white feet skin
-== Все ноги в белые ноги выбранного скина
-
-Show position and angle (mini debug)
-== Показывать позицию и угол прицела игрока (mini debug)
-
-Show your cursor when in free spectate
-== Показывать курсор в режиме наблюдателя
-
-Spectate cursor alpha
-== Прозр. курсора
-
-Show when you are the last alive
-== Показывать когда остался последний выживший
-
-Frozen Tee Display
-== Дисплей замороженных тии
-
-Show frozen tee display
-== Показывать дисплей замороженных тии
-
-Use skins instead of ninja tees
-== Использовать скины игроков вместо скина ниндзя
-
-Only show after joining a team
-== Показывать только в команде
-
-Max Rows
-== Макс. кол. строк
-
-Tee Size
-== Размер тии
-
-Tees left alive text
-== Текст оставшихся тии
-
-Count frozen tees
-== Считать замороженных тии
-
 Input
 == Ввод
-
-Fast Inputs (-20ms visual delay)
-== Быстрый ввод (-20ms визуальной задержки)
-
-Anti Latency Tools
-== Инструменты для устранения задержек
-
-Remove prediction & antiping in freeze
-== Убрать предсказания & антипинг в заморозке
 
 Amount
 == Кол.
@@ -122,353 +41,14 @@ Amount
 Delay
 == Задерж.
 
-Snap Tap does not work on the "DDNet" community.
-== Функция Snap Tap не работает на комюнити "DDNet".
-
-Dont predict other players if you are frozen
-== Не предсказывать других игроков, если вы заморожены
-
-Adjust your prediction margin while frozen
-== Отрегулировать предсказания пока вы заморожены
-
-Frozen Margin
-== Предел в заморозке
-
-Tile Outlines
-== Обводка тайлов
-
-Show any enabled outlines
-== Показывать все включенные обводки
-
-Only show outlines in entities
-== Показывать обводку только в энтити
-
-Outline freeze & deep
-== Обводка заморозки и дип-фриза
-
-Outline walls
-== Обводка стен
-
-Outline teleporter
-== Обводка телепортов
-
-Outline unfreeze & undeep
-== Обводка разморозки и андип-фриза
-
-Outline width
-== Толщина обводки
-
-Outline alpha
-== Прозрачн. обводки
-
-Outline Alpha (walls)
-== Прозрачн. обводки (для стен)
-
-Freeze outline color
-== Цвет обводки заморозки
-
-Walls outline color
-== Цвет обводки стен
-
-Teleporter outline color
-== Цвет обводки телепортов
-
-Unfreeze outline color
-== Цвет обводки разморозки
-
-Optimistic prediction along stable direction
-== Оптимальное предсказание по стабильному направлению
-
-Negative stability buffer (for Gores)
-== Отрицательный буфер стабильности (для Gores)
-
-Uncertainty duration
-== Длител. неопредел.
-
-Other
-== Другое
-
-Ghost Tools
-== Призрачные инструменты
-
-Show unpredicted ghosts for other players
-== Показывайте непредсказуемых призраков для других игроков
-
-Swap ghosts and normal players
-== Поменять местами призраков и игроков
-
-Predicted alpha
-== Прозрачн. предсказ.
-
-Unpredicted alpha
-== Прозрачн. непредсказ.
-
-Hide ghosts of frozen players
-== Убрать призраков замороженных игроков
-
-Render ghosts as circles
-== Показывать призраков как круги
-
-Player Indicator
-== Индикатор игроков
-
-Show any enabled Indicators
-== Показывать индикаторы
-
-Hide indicator for tees on your screen
-== Убрать индикатор если игрок на экране
-
-Show only freeze Players
-== Показывать только игроков в заморозке
-
-Render tiny tees instead of circles
-== Показывать маленьких тии вместо кругов
-
-Use warlist groups for indicator
-== Использовать группы из Списка воинов для индикатора
-
-Indicator size
-== Размер индикатора
-
-Indicator opacity
-== Прозрачн. индикатора
-
-Change indicator offset based on distance to other tees
-== Изм. смещ. индикатора в зависимости от расст. до других тии
-
-Indicator min offset
-== Мин. смещ. индикатора
-
-Indicator max offset
-== Макс. смещ. индикатора
-
-Indicator max distance
-== Макс. дист. индикатора
-
-Indicator offset
-== Смещение индикатора
-
-Indicator alive color
-== Цвет игрока не в заморозке
-
-Indicator in freeze color
-== Цвет игрока в заморозке
-
-Indicator safe color
-== Цвет игрока в безопасности
-
-Rainbow
-== Радуга
-
-Rainbow Tees
-== Радужные тии
-
-Rainbow weapons
-== Радужное оружие
-
-Rainbow hook
-== Радужный крюк
-
-Rainbow others
-== Радужные другие тии
-
-Rainbow speed
-== Скорость радуги
-
-Pulse
-== Пульс
-
-Black
-== Черный
-
 Random
 == Рандом
-
-Tee Trails
-== Трейл тии
-
-Enable tee trails
-== Включить трейлы
-
-Fade trail alpha
-== Затухание трейла
-
-Taper trail width
-== Сужающаяся ширина трейла
-
-Trail width
-== Ширина трейла
-
-Trail length
-== Длина трейла
-
-Trail alpha
-== Прозрачность трейла
-
-Tee trail color
-== Цвет трейла
 
 Name:
 == Название:
 
 Command:
 == Команда:
-
-Override Selected
-== Изменить выделенный
-
-Remove Bind
-== Удалить
-
-Add Bind
-== Добавить
-
-Use left mouse to select
-== Чтобы выбрать используй ЛКМ
-
-Use right mouse to swap with selected
-== Используй ПКМ чтобы заменить выделенный
-
-Use middle mouse select without copy
-== Используй колесико мыши чтобы выбрать без копированния
-
-Reset position of mouse when opening bindwheel
-== Сбрасывать позицию мыши при открытии
-
-Warlist
-== Список войн
-
-War Entries
-== Игроки & Кланы
-
-Edit Entry
-== Редактирование
-
-Override Entry
-== Изменить игрока
-
-Add Entry
-== Добавить игрока
-
-Allow Duplicate Entries
-== Разрешить копии
-
-Enable warlist
-== Включить
-
-Colors in chat
-== Цвета в чате
-
-Colors in scoreboard
-== Цвета в табе
-
-War Groups
-== Группы
-
-Override Group
-== Изменить группу
-
-Add Group
-== Добавить группу
-
-Online Players
-== Игроки на сервере
-
-Show clan if war
-== Показывать клан
-
-Chat Binds
-== Бинды для чата
-
-Kaomoji
-== Каомодзи
-
-Shrug:
-== Пожать плечами:
-
-Flip:
-== Перевернуть стол:
-
-Unflip:
-== Поставить стол:
-
-Mute:
-== Мьют:
-
-Status Bar
-== Статус бар 
-
-Show status bar
-== Показывать статус бар
-
-Show labels on status bar items
-== Показывать текст на предметах статус бара
-
-Status bar height
-== Высота статус бара
-
-Local Time
-== Локальное время
-
-Use 12 hour clock
-== Использовать 12 часовую систему
-
-Show seconds on clock
-== Показывать секунды
-
-Colors
-== Цвета
-
-Status bar color
-== Цвет статус бара
-
-Text color
-== Цвет текста
-
-Status bar alpha
-== Прозрачность статус бара
-
-Text alpha
-== Прозрачность текста
-
-Status Bar Codes:
-== Коды статус бара
-
-a = Angle
-== a = Angle (Угол)
-
-p = Ping
-== p = Ping (Пинг)
-
-d = Prediction
-== d = Prediction (Предсказание)
-
-c = Position
-== c = Position (Позиция)
-
-l = Local Time
-== l = Local Time (Локал. время)
-
-r = Race Time
-== r = Race Time (Время гонки)
-
-f = FPS
-== f = FPS (Кадров в секунду)
-
-v = Velocity
-== v = Velocity (Скорость)
-
-z = Zoom
-== z = Zoom (Приближение)
-
-Add Item
-== Добавить
-
-Remove Item
-== Удалить
-
-Status Scheme:
-== Схема:
 
 Apply
 == Применить
@@ -478,9 +58,6 @@ Info
 
 BestClient Links
 == Ссылки BestClient
-
-Support ♥
-== Поддержать ♥
 
 BestClient Settings
 == Настройки BestClient
@@ -494,391 +71,20 @@ BestClient Developers
 Hide Settings Tabs
 == Скрыть вкладки в настройках
 
-Your profile
-== Ваш профиль
-
-Profiles file
-== Файл с Профилями
-
-Save/Load Skin
-== Сохр./Загр. Скин
-
-Save/Load Colors
-== Сохр./Загр. Цвета
-
-Save/Load Emote
-== Сохр./Загр. Эмоц. 
-
-Save/Load Name
-== Сохр./Загр. Имя
-
-Save/Load Clan
-== Сохр./Загр. Клан
-
-Save/Load Flag
-== Сохр./Загр. Флаг
-
-Load
-== Загрузить
-
-Override
-== Изменить
-
 Command
 == Command
-
-Extra tick other tees (increases other tees latency, \nmakes dragging slightly easier when using fast input)
-== Дополнительный тик других тии (увеличивает задержку других тии,\n немного облегчает перетаскивание при использовании быстрого ввода)
-
-Prediction Margin
-== Предел предсказания
-
-Anti Ping Smoothing
-== Плавный Антипинг 
-
-Use new smoothing algorithm
-== Использовать новый анти-пинг
-
-Use warlist colors instead of regular colors
-== Используйте цвета списка вместо обычных цветов
-
-Show all warlist groups
-== Показывать все группы
-
-Last!
-== Последний!
-
-Outline kill
-== Обводка смерти
-
-Kill outline color
-== Цвет обводки смерти
 
 Reason
 == Причина
 
-Are you sure that you want to remove '%s' from your war groups?
-== Вы уверены, что хотите удалить '%s' из своих групп?
-
-Remove War Group
-== Удалить группу
-
 Color
 == Цвет
-
-Github
-== Github
-
-Integration
-== Интеграция
-
-Enable Discord Integration
-== Включить Интеграцию Discord (Discord RPC)
-
-Name: %s
-== Имя: %s
-
-Clan: %s
-== Клан: %s
-
-Skin: %s
-== Скин: %s
-
-After Load
-== После загрузки
 
 BestClient
 == BestClient
 
-Voting
-== Голосования
-
-Auto vote no to map changes when far
-== Авто-голосование за "нет" при смене карты если вы далеко
-
-Minimum Time
-== Минимальное время
-
-Leave empty to disable
-== Оставьте пустым чтобы отключить
-
-Message to send in chat:
-== Сообщение для отправки в чат
-
-Auto Reply
-== Авто-ответ
-
-Auto reply to muted players
-== Авто-ответ игрокам в мюте
-
-Auto reply when tabbed out
-== Авто-ответ когда не в игре
-
-Show other tees' trails
-== Показывать трейл других тии
-
-Solid
-== Статический
-
-Tee
-== Тии
-
 Speed
 == Скорость
-
-Colors in spectate select
-== Выбор цветов в наблюдателях
-
-Translated text hidden due to streamer mode
-== Переведенный текст скрыт из-за режима стримера
-
-(On Latest)
-== (Актуальная версия)
-
-(Fetching Update Info)
-== (Получение информации об обновлениях)
-
-[bgdraw]
-Failed to create bgdraw folder
-== Не удалось создать папку bgdraw
-
-[bgdraw]
-Writing item %d failed
-== Не удалось записать элемент %d
-
-[bgdraw]
-Written %d items
-== Записано элементов: %d
-
-[bgdraw]
-Loaded %d items
-== Загружено элементов: %d
-
-[bgdraw]
-Loaded %d items (discarded %d items)
-== Загружено элементов: %d (отброшено элементов: %d)
-
-Cute:
-== Мило:
-
-Lenny:
-== Ленни:
-
-Add war name:
-== Добавить имя в войну:
-
-Add war clan:
-== Добавить клан в войну:
-
-Add team name:
-== Добавить имя в команду:
-
-Add team clan:
-== Добавить клан в команду:
-
-Remove war name:
-== Убрать имя из войны:
-
-Remove team name:
-== Убрать имя из команды:
-
-Remove team clan:
-== Убрать клан из команды:
-
-Add [group] [name] [reason]:
-== Добавить [группа] [клан] [причина]:
-
-Add [group] [clan] [reason]:
-== Добавить [группа] [клан] [причина]:
-
-Remove [group] [name]:
-== Убрать игрока [группа] [имя]:
-
-Remove [group] [clan]:
-== Убрать клан [группа] [клан]:
-
-Translate:
-== Перевести:
-
-Translate ID:
-== Перевести ID:
-
-Unmute:
-== Снять мут:
-
-Bind Wheel
-== Колесо биндов
-
-War List
-== Список войн
-
-Bind Wheel Key
-== Клавиша колеса биндов
-
-[Hammer Mode]
-Normal
-== Обычный
-
-[Hammer Mode]
-Rotate with cursor
-== Вращение с курсором
-
-[Hammer Mode]
-Rotate with cursor like gun
-== Вращение с курсором как у пистолета
-
-Hammer Mode: 
-== Режим молота: 
-
-Ingame cursor scale
-== Масштаб курсора в игре
-
-Wheel animate
-== Анимация колеса
-
-Show katan on frozen players
-== Показывать катану на замороженных игроках
-
-Tiny Tees
-== Маленькие тии
-
-Tiny Tee Size
-== Размер маленьких тии
-
-Pet
-== Питомец
-
-Show the pet
-== Показать питомца
-
-Pet size
-== Размер питомца
-
-Pet alpha
-== Прозрачность питомца
-
-Pet Skin:
-== Скин питомца:
-
-Show mini vote HUD
-== Показывать мини-HUD голосования
-
-Horizontal Position
-== Горизонтальная позиция
-
-Vertical Position
-== Вертикальная позиция
-
-Font Size
-== Размер шрифта
-
-Show screen center lines
-== Показывать центральные линии экрана
-
-Screen center line color
-== Цвет центральной линии экрана
-
-Screen center line width
-== Ширина центральной линии экрана
-
-Toggle ghosts key
-== Клавиша переключения призраков
-
-Background Draw
-== Фоновое рисование
-
- seconds (never)
-==  секунд (никогда)
-
- seconds
-==  секунд
-
-Width
-== Ширина
-
-Draw where mouse is
-== Рисовать в месте курсора
-
-Finish Name
-== Имя при финише
-
-Attempt to change your name when near finish
-== Попытаться изменить имя при приближении к финишу
-
-Finish Name:
-== Имя при финише:
-
-Overwrite clan even if empty
-== Перезаписать клан, даже если пустой
-
-Changing name to %s near finish
-== Изменение имени на %s возле финиша
-
-[translate]
-%s translating to %s
-== %s переводит на %s
-
-[translate]
-%s to %s failed: %s
-== %s на %s не удался: %s
-
-[bgdraw]
-No items to write
-== 
-
-[bgdraw]
-No changes since last save
-== 
-
-Remove war clan:
-== 
-
-Show ping colored circle in nameplates
-== 
-
-Show country flags in nameplates
-== 
-
-Fake CTF flags
-== 
-
-Auto execute
-== 
-
-[Outlines]
-Width
-== 
-
-Unhook & hook
-== 
-
-Freeze & deep
-== 
-
-Unfreeze & undeep
-== 
-
-Kill
-== 
-
-Tele
-== 
-
-Time until strokes disappear
-== 
-
-The command is ran in console not chat
-== 
-
-_ or ' ' = Space
-== 
-
-Activating mod weapon on %d: %s\n
-== 
-
-[data_version.h]
-You have probably only installed the BestClient DDNet.exe which is not supported, please use the entire BestClient folder
-== 
 
 Media Background
 == Медиа-фон
@@ -891,18 +97,6 @@ Enable to game background
 
 Magic Particles
 == Магические частицы
-
-Magic Particles Radius
-== Радиус магических частиц
-
-Magic Particles Size
-== Размер магических частиц
-
-Magic Particles Alpha delay
-== Задержка прозрачности магических частиц
-
-Magic Particles Type
-== Тип магических частиц
 
 Slice
 == Слайс
@@ -942,9 +136,6 @@ Dynamic FOV amount
 
 Dynamic FOV smoothness
 == Плавность динамического угла обзора
-
-[[red]] This feature is disabled on this server
-== [[red]] На этих серверах это запрещено
 
 Afterimage
 == Афтеримедж
@@ -1012,12 +203,6 @@ fade out for
 3D Particles
 == 3D частицы
 
-Particles Count
-== Количество частиц
-
-Particle Type
-== Тип частиц
-
 Cube
 == Куб
 
@@ -1035,12 +220,6 @@ Alpha
 
 Glow
 == Свечение
-
-Glow Alpha
-== Прозрачность свечения
-
-Glow Offset
-== Смещение свечения
 
 Aspect Ratio
 == Соотношение сторон
@@ -1060,41 +239,8 @@ Enable in idle mode
 Idle delay
 == Задержка бездействия
 
-Aura Radius
-== Радиус ауры
-
 Particles
 == Частицы
-
-Aura Alpha
-== Прозрачность ауры
-
-Aura Speed
-== Скорость ауры
-
-Chat translate
-== Перевод чата
-
-Auto translate others' messages
-== Автоматически переводить чужие сообщения
-
-Auto translate your messages
-== Автоматически переводить свои сообщения
-
-Incoming from
-== Чужие сообщения: с
-
-Incoming to
-== Чужие сообщения: на
-
-Your messages from
-== Ваши сообщения: с
-
-Your messages to
-== Ваши сообщения: на
-
-Slot %s is empty
-== Слот %s пуст
 
 Best input
 == Лучший инпут
@@ -1114,17 +260,1091 @@ Interpolation
 None
 == Без
 
-Linear
-== Лин.
-
-Cubic
-== Куб.
-
-Smooth
-== Сглаж.
-
 Best input others
 == Лучший инпут для других
 
-Presets:
-== Пресеты:
+Telegram
+== Telegram
+
+Check update
+== Проверить обновление
+
+BestClient %s is out!
+== Вышел BestClient %s!
+
+Preparing update...
+== Подготовка обновления...
+
+Downloading %d%%
+== Загрузка %d%%
+
+Update failed
+== Обновление не удалось
+
+Update downloaded
+== Обновление загружено
+
+Download
+== Скачать
+
+Restart
+== Рестарт
+
+Reset
+== Сброс
+
+Username (auth_add)
+== Имя пользователя (auth_add)
+
+Password
+== Пароль
+
+Search tunings
+== Поиск настроек тюнинга
+
+Value
+== Значение
+
+Search commands
+== Поиск команд
+
+Duration
+== Длительность
+
+Actions for %s
+== Действия для %s
+
+Player actions
+== Действия игрока
+
+Say
+== Сказать
+
+Say team
+== Сказать команде
+
+Broadcast
+== Объявление
+
+Mute
+== Заглушить
+
+Ban
+== Бан
+
+Kick
+== Кик
+
+Respawn
+== Респавн
+
+Force pause
+== Принудительная пауза
+
+Unmute
+== Разглушить
+
+Vote mute (10 min)
+== Vote mute (10 мин)
+
+Vote unmute
+== Vote unmute
+
+Teleport to me
+== Телепортировать ко мне
+
+Teleport to player
+== Телепортироваться к игроку
+
+Force unpause
+== Снять принудительную паузу
+
+Move to spectators
+== Перевести в зрители
+
+Return to game
+== Вернуть в игру
+
+Select a player to enable player actions
+== Выберите игрока, чтобы включить действия
+
+Select a player
+== Выберите игрока
+
+Country
+== Страна
+
+Skin
+== Скин
+
+Client ID
+== ID клиента
+
+Spectators
+== Наблюдатели
+
+Game
+== Игра
+
+Team
+== Команда
+
+Score
+== Счёт
+
+Ping
+== Пинг
+
+Admin
+== Админ
+
+Moderator
+== Модератор
+
+Helper
+== Помощник
+
+Auth
+== Авторизация
+
+Super
+== Супер
+
+Invincible
+== Неуязвим
+
+Jetpack
+== Джетпак
+
+Endless jump
+== Бесконечный прыжок
+
+Endless hook
+== Бесконечный хук
+
+Solo
+== Соло
+
+Deep frozen
+== Глубоко заморожен
+
+Live freeze
+== Live freeze
+
+Frozen
+== Заморожен
+
+Normal
+== Нормально
+
+Status
+== Состояние
+
+No other players
+== Нет других игроков
+
+RCON login
+== Логин RCON
+
+RCON password
+== Пароль RCON
+
+Username
+== Имя пользователя
+
+Login
+== Войти
+
+Server uses auth_add: enter username and password.
+== Сервер использует auth_add: введите имя пользователя и пароль.
+
+Server uses password-only rcon.
+== Сервер использует RCON только по паролю.
+
+RCON log
+== Лог RCON
+
+No log entries yet
+== Записей в логе пока нет
+
+Fast actions
+== Быстрые действия
+
+No fast actions yet
+== Быстрых действий пока нет
+
+No matches
+== Нет совпадений
+
+Muted by admin panel
+== Замучен через админ-панель
+
+Seconds
+== Секунды
+
+Banned by admin panel
+== Забанен через админ-панель
+
+Minutes
+== Минуты
+
+Kicked by admin panel
+== Кикнут через админ-панель
+
+Respawned by admin panel
+== Респавн через админ-панель
+
+Message
+== Сообщение
+
+Mute player
+== Замутить игрока
+
+Ban player
+== Забанить игрока
+
+Kick player
+== Выгнать игрока
+
+Respawn player
+== Респавнить игрока
+
+Force pause player
+== Принудительно поставить игрока на паузу
+
+Say message
+== Сообщение в чат
+
+Say team message
+== Сообщение команде
+
+Broadcast message
+== Объявление
+
+Admin panel settings
+== Настройки админ-панели
+
+Close
+== Закрыть
+
+Auto-scroll logs
+== Автопрокрутка логов
+
+Remember last tab
+== Запоминать последнюю вкладку
+
+Disable animations
+== Отключить анимации
+
+Panel scale
+== Масштаб панели
+
+Log lines
+== Строки лога
+
+Panel background
+== Фон панели
+
+Tab inactive
+== Неактивная вкладка
+
+Tab active
+== Активная вкладка
+
+Tab hover
+== Вкладка при наведении
+
+Clear logs
+== Очистить логи
+
+Duration (sec)
+== Длительность (сек)
+
+Duration (min)
+== Длительность (мин)
+
+5 min
+== 5 мин
+
+30 sec
+== 30 сек
+
+10 min
+== 10 мин
+
+60 sec
+== 60 сек
+
+60 min
+== 60 мин
+
+300 sec
+== 300 сек
+
+Cancel
+== Отмена
+
+Tunings
+== Тюнинги
+
+Select a tuning
+== Выберите тюнинг
+
+Current
+== Текущий
+
+New value
+== Новое значение
+
+Reset all
+== Сбросить всё
+
+Changes apply to global tunings (tune).
+== Изменения применяются к глобальным тюнингам (tune).
+
+Admin Panel
+== Админ-панель
+
+RCON not authenticated
+== RCON не авторизован
+
+Logout
+== Выйти
+
+Players
+== Игроки
+
+Logs
+== Логи
+
+Enabled
+== Включено
+
+Scale
+== Масштаб
+
+Reset position
+== Сбросить позицию
+
+Reset settings
+== Сбросить настройки
+
+disabled
+== отключено
+
+preview
+== предпросмотр
+
+Reset All
+== Сбросить всё
+
+Visuals
+== Визуальные эффекты
+
+Gameplay
+== Игровой процесс
+
+Others
+== Остальное
+
+Fun
+== Развлечения
+
+Shop
+== Магазин
+
+Editors
+== Редакторы
+
+Reset to defaults
+== Сбросить настройки
+
+Hook combo
+== Hook-комбо
+
+Mode
+== Режим
+
+hook
+== хук
+
+hammer
+== молот
+
+hook&hammer
+== хук и молот
+
+Max time between hooks
+== Макс. время между хуками
+
+Hook combo sound volume
+== Громкость звука Hook-комбо
+
+Hook combo size
+== Размер Hook-комбо
+
+Jelly Tee
+== Желейный Tee
+
+Enable Jelly Tee
+== Включить Jelly Tee
+
+Jelly Others
+== Желейные другие игроки
+
+Jelly strength
+== Сила желе
+
+Jelly duration
+== Длительность желе
+
+Particles count
+== Количество частиц
+
+Particle type
+== Тип частиц
+
+Color mode
+== Режим цвета
+
+Custom
+== Кастомизация
+
+Glow alpha
+== Прозрачность свечения
+
+Glow offset
+== Смещение свечения
+
+Aura radius
+== Радиус ауры
+
+Aura alpha
+== Прозрачность ауры
+
+Aura speed
+== Скорость ауры
+
+No media files in backgrounds folder
+== Нет медиафайлов в папке backgrounds
+
+Map offset
+== Смещение карты
+
+0 keeps the image fixed to the screen. 100 fixes it to the map for a full parallax effect.
+== 0 закрепляет изображение на экране. 100 закрепляет его к карте для полного эффекта параллакса.
+
+Sweat Weapon
+== Потное оружие
+
+Enable
+== Включить
+
+Crystal Laser
+== Кристальный лазер
+
+Sand Shotgun
+== Песочный дробовик
+
+Appear animation
+== Анимация появления
+
+Fade
+== Затухание
+
+Rise
+== Подъём
+
+Slide
+== Сдвиг
+
+Pop
+== Всплытие
+
+Rounding
+== Скругление
+
+Background
+== Фон
+
+Text
+== Текст
+
+Text outline
+== Обводка текста
+
+Animations
+== Анимации
+
+Enable animations
+== Включить анимации
+
+Module settings reveals
+== Появление настроек модулей
+
+Module reveal time (ms)
+== Время появления модуля (мс)
+
+ESC menu animation
+== Анимация ESC-меню
+
+ESC menu animation time (ms)
+== Время анимации ESC-меню (мс)
+
+Chat message animations
+== Анимации сообщений чата
+
+Chat message animation time (ms)
+== Время анимации сообщений чата (мс)
+
+Chat open animation
+== Анимация открытия чата
+
+Chat open animation time (ms)
+== Время открытия чата (мс)
+
+Chat typing animation
+== Анимация ввода в чате
+
+Chat typing animation time (ms)
+== Время анимации ввода (мс)
+
+Killfeed animation
+== Анимация киллфида
+
+Killfeed animation time (ms)
+== Время анимации киллфида (мс)
+
+Music Player
+== Музыкальный плеер
+
+Enable music player
+== Включить музыкальный плеер
+
+Static color
+== Статичный цвет
+
+Cover accent color
+== Акцентный цвет обложки
+
+Dominant cover color
+== Основной цвет обложки
+
+Translucent
+== Полупрозрачный
+
+Enable visualizer
+== Включить визуализатор
+
+Visualizer mode
+== Режим визуализатора
+
+Bottom
+== Снизу
+
+Center
+== По центру
+
+Visualizer sensitivity
+== Чувствительность визуализатора
+
+Visualizer smoothing
+== Сглаживание визуализатора
+
+Keystrokes
+== Нажатия клавиш
+
+Show keyboard HUD
+== Показывать HUD клавиатуры
+
+Minimal
+== Минимальный
+
+Full
+== Полный
+
+Show mouse HUD
+== Показывать HUD мыши
+
+Dot No Box
+== Точка без рамки
+
+No movement
+== Без движения
+
+Looks like you're on a server where this feature is forbidden
+== Похоже, вы на сервере, где эта функция запрещена
+
+Radius
+== Радиус
+
+Alpha delay
+== Задержка прозрачности
+
+Game only
+== Только игра
+
+Game no HUD
+== Игра без HUD
+
+Custom size
+== Свой размер
+
+Create mixed assets or jump to the name plate editor.
+== Создайте смешанные ассеты или перейдите к редактору неймплейтов.
+
+Assets editor
+== Редактор ассетов
+
+Open a dedicated component toggles page.
+== Открыть отдельную страницу переключения компонентов.
+
+Components editor
+== Редактор компонентов
+
+Edit HUD positions directly above the live game.
+== Редактируйте позиции HUD прямо поверх игры.
+
+HUD editor
+== Редактор HUD
+
+Fast Input
+== Быстрый ввод
+
+Fast input
+== Быстрый ввод
+
+Delta input
+== Delta-ввод
+
+Gamma input
+== Gamma-ввод
+
+Gamma amount
+== Сила Gamma
+
+Fast Input others
+== Быстрый ввод для других
+
+Delta input others
+== Delta-ввод для других
+
+Gamma input others
+== Gamma-ввод для других
+
+Sub-Tick aiming
+== Sub-Tick прицеливание
+
+Auto margin
+== Автоотступ
+
+Snap Tap
+== Snap Tap
+
+Optimizer
+== Оптимизатор
+
+Enable optimizer
+== Включить оптимизатор
+
+Disable all particles render
+== Отключить рендер всех частиц
+
+High Detail
+== Высокая детализация
+
+FPS fog (cull outside limit)
+== FPS-туман (отсекать вне лимита)
+
+DDNet priority: High
+== Приоритет DDNet: высокий
+
+Discord priority: Below Normal
+== Приоритет Discord: ниже обычного
+
+Render FPS fog rectangle
+== Рендерить прямоугольник FPS-тумана
+
+Cull map tiles outside FPS fog
+== Отсекать тайлы карты вне FPS-тумана
+
+FPS fog mode
+== Режим FPS-тумана
+
+Manual radius
+== Ручной радиус
+
+By zoom
+== По зуму
+
+Radius (tiles)
+== Радиус (тайлы)
+
+Visible area (%)
+== Видимая область (%)
+
+Gores mode
+== Gores-режим
+
+Enable gores mode
+== Включить Gores-режим
+
+Disable if you have shotgun, grenade or laser
+== Отключать, если есть дробовик, гранатомёт или лазер
+
+Fast Actions
+== Быстрые действия
+
+Selected slot
+== Выбранный слот
+
+Name (optional)
+== Название (необязательно)
+
+Clear command
+== Очистить команду
+
+In game: hold bind key, press 1..6, release key to execute
+== В игре: удерживайте клавишу бинда, нажмите 1..6, отпустите для выполнения
+
+Fast Actions key
+== Клавиша быстрых действий
+
+Speedrun timer
+== Таймер спидрана
+
+Enable speedrun timer
+== Включить таймер спидрана
+
+Hours
+== Часы
+
+Milliseconds
+== Миллисекунды
+
+Auto disable after time end
+== Автоотключение после окончания времени
+
+Finish Prediction
+== Предсказание финиша
+
+Show finish prediction HUD
+== Показывать HUD предсказания финиша
+
+Show time
+== Показывать время
+
+Time left
+== Осталось времени
+
+Finish time
+== Время финиша
+
+Show milliseconds
+== Показывать миллисекунды
+
+Show percentage
+== Показывать проценты
+
+Show always
+== Показывать всегда
+
+Auto team lock
+== Автоблокировка команды
+
+Lock team automatically after joining
+== Автоматически блокировать команду после входа
+
+Focus mode bind
+== Бинд режима фокуса
+
+Misc
+== Разное
+
+Use new menu layout
+== Использовать новое меню
+
+Hide hud in settings
+== Скрывать HUD в настройках
+
+Show ESC players list
+== Показывать список игроков в ESC
+
+Shadow of Emotions
+== Тень эмоций
+
+Save unsent messages
+== Сохранять неотправленные сообщения
+
+Commands in other layout
+== Команды в другой раскладке
+
+Cinematic camera
+== Кинематографическая камера
+
+Use BestClient MasterServer
+== Использовать мастер-сервер BestClient
+
+Show player below indicator
+== Показывать индикатор игрока снизу
+
+Show real hitbox
+== Показывать реальный хитбокс
+
+UI scale
+== Масштаб интерфейса
+
+Real hitbox dot color
+== Цвет точки реального хитбокса
+
+Browser Utils
+== Утилиты браузера
+
+Auto server list refresh
+== Автообновление списка серверов
+
+Use short KoG server name
+== Использовать короткое имя KoG-сервера
+
+Chat Media
+== Медиа в чате
+
+Render media previews from chat links
+== Показывать превью медиа из ссылок в чате
+
+Show photos in chat media
+== Показывать фото в медиа чата
+
+Show GIFs in chat media
+== Показывать GIF в медиа чата
+
+Content filtering
+== Фильтрация контента
+
+Allowed media domains
+== Разрешённые медиа-домены
+
+Semicolon-separated allowlist, for example: tenor.com; imgur.com; giphy.com; cdn.discordapp.com
+== Список разрешённых доменов через точку с запятой, например: tenor.com; imgur.com; giphy.com; cdn.discordapp.com
+
+Media preview width
+== Ширина превью медиа
+
+Enable fullscreen media viewer in chat
+== Включить полноэкранный просмотр медиа в чате
+
+Viewer max zoom
+== Макс. зум просмотрщика
+
+Hide media bind
+== Бинд скрытия медиа
+
+Voice panel
+== Панель голоса
+
+Push-to-talk
+== Нажми-и-говори
+
+Mute microphone
+== Отключить микрофон
+
+Mute headphones
+== Отключить наушники
+
+Client Indicator
+== Индикатор клиента
+
+Show indicator in name plates
+== Показывать индикатор в неймплейтах
+
+Show above yourself
+== Показывать над собой
+
+Name plate indicator size
+== Размер индикатора в неймплейте
+
+Show indicator in scoreboard
+== Показывать индикатор в таблице счёта
+
+Scoreboard indicator size
+== Размер индикатора в таблице счёта
+
+Cancel all changes?
+== Отменить все изменения?
+
+All staged component changes will be lost.
+== Все подготовленные изменения компонентов будут потеряны.
+
+Restart client now so component changes fully apply?
+== Перезапустить клиент сейчас, чтобы изменения компонентов применились полностью?
+
+Disabled components: %d
+== Отключено компонентов: %d
+
+BestClient %s is available
+== Доступен BestClient %s
+
+Downloading
+== Загрузка
+
+Sudden Death
+== Внезапная смерть
+
+No media
+== Нет медиа
+
+Unknown artist
+== Неизвестный исполнитель
+
+System default
+== Системное устройство
+
+Voice
+== Голос
+
+Enable voice chat
+== Включить голосовой чат
+
+In-Game Only
+== Только в игре
+
+Use team0
+== Использовать team0
+
+Enable your group
+== Включить свою группу
+
+Radius filter
+== Фильтр радиуса
+
+Activation mode
+== Режим активации
+
+Automatic
+== Автоматически
+
+VAD threshold (%)
+== Порог VAD (%)
+
+VAD release delay (ms)
+== Задержка отпускания VAD (мс)
+
+Microphone
+== Микрофон
+
+Headphones
+== Наушники
+
+Connected
+== Подключено
+
+Offline
+== Офлайн
+
+Reload servers
+== Обновить серверы
+
+Available servers
+== Доступные серверы
+
+Loading server list...
+== Загрузка списка серверов...
+
+No servers loaded
+== Серверы не загружены
+
+Voice commands
+== Голосовые команды
+
+!voice mute "name" / !voice unmute "name"
+== !voice mute "name" / !voice unmute "name"
+
+!voice volume "name" 0-100
+== !voice volume "name" 0-100
+
+!voice radius on/off/<tiles>
+== !voice radius on/off/<tiles>
+
+Participant
+== Участник
+
+Voice servers
+== Голосовые серверы
+
+Servers
+== Серверы
+
+Reload
+== Обновить
+
+No servers loaded. Press Reload
+== Серверы не загружены. Нажмите «Обновить»
+
+Участники
+== Участники
+
+Нет подключенных участников.
+== Нет подключенных участников.
+
+Local participant
+== Локальный участник
+
+spec
+== набл.
+
+Участник
+== Участник
+
+Voice settings
+== Настройки голоса
+
+Voice: On
+== Голос: вкл.
+
+Voice: Off
+== Голос: выкл.
+
+Mode: Push-to-talk
+== Режим: нажми-и-говори
+
+Mode: Automatic activation
+== Режим: автоактивация
+
+Connection
+== Соединение
+
+Connecting
+== Подключение
+
+Automatic activation
+== Автоактивация
+
+Muted
+== Отключено
+
+On
+== Вкл.
+
+Voice volume
+== Громкость голоса
+
+Mic check: On
+== Проверка микрофона: вкл.
+
+Mic check: Off
+== Проверка микрофона: выкл.
+
+Microphone level
+== Уровень микрофона
+
+Mic volume
+== Громкость микрофона
+
+Reconnect
+== Переподключиться
+
+PTT
+== PTT
+
+Voice chat
+== Голосовой чат

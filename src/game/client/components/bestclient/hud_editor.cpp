@@ -602,7 +602,7 @@ CUi::EPopupMenuFunctionResult CHudEditor::PopupModuleSettings(void *pContext, CU
 	pThis->Ui()->DoLabel(&Title, HudLayout::Name(pThis->m_SelectedModule), 10.0f, TEXTALIGN_MC);
 	View.HSplitTop(8.0f, nullptr, &View);
 	View.HSplitTop(16.0f, &ToggleButton, &View);
-	if(pThis->GameClient()->m_Menus.DoButton_CheckBox(&pThis->m_ToggleModuleButton, Localize("Enabled"), Enabled ? 1 : 0, &ToggleButton))
+	if(pThis->GameClient()->m_Menus.DoButton_CheckBox(&pThis->m_ToggleModuleButton, BCLocalize("Enabled"), Enabled ? 1 : 0, &ToggleButton))
 		HudLayout::SetEnabled(pThis->m_SelectedModule, !Enabled);
 
 	View.HSplitTop(8.0f, nullptr, &View);
@@ -612,7 +612,7 @@ CUi::EPopupMenuFunctionResult CHudEditor::PopupModuleSettings(void *pContext, CU
 	{
 		const int Scale = HudLayout::Get(pThis->m_SelectedModule, pThis->HudWidth(), pThis->HudHeight()).m_Scale;
 		char aScale[32];
-		str_format(aScale, sizeof(aScale), "%s %d%%", Localize("Scale"), Scale);
+		str_format(aScale, sizeof(aScale), "%s %d%%", BCLocalize("Scale"), Scale);
 		pThis->Ui()->DoLabel(&ScaleLabel, aScale, 8.0f, TEXTALIGN_ML);
 
 		View.HSplitTop(14.0f, &ScaleSlider, &View);
@@ -627,12 +627,12 @@ CUi::EPopupMenuFunctionResult CHudEditor::PopupModuleSettings(void *pContext, CU
 
 	View.HSplitTop(10.0f, nullptr, &View);
 	View.HSplitTop(16.0f, &ResetPositionButton, &View);
-	if(pThis->Ui()->DoButton_PopupMenu(&pThis->m_ResetPositionButton, Localize("Reset position"), &ResetPositionButton, 8.0f, TEXTALIGN_MC))
+	if(pThis->Ui()->DoButton_PopupMenu(&pThis->m_ResetPositionButton, BCLocalize("Reset position"), &ResetPositionButton, 8.0f, TEXTALIGN_MC))
 		HudLayout::ResetPosition(pThis->m_SelectedModule);
 
 	View.HSplitTop(5.0f, nullptr, &View);
 	View.HSplitTop(16.0f, &ResetSettingsButton, &View);
-	if(pThis->Ui()->DoButton_PopupMenu(&pThis->m_ResetSettingsButton, Localize("Reset settings"), &ResetSettingsButton, 8.0f, TEXTALIGN_MC))
+	if(pThis->Ui()->DoButton_PopupMenu(&pThis->m_ResetSettingsButton, BCLocalize("Reset settings"), &ResetSettingsButton, 8.0f, TEXTALIGN_MC))
 		HudLayout::ResetSettings(pThis->m_SelectedModule);
 	return CUi::POPUP_KEEP_OPEN;
 }
@@ -681,11 +681,11 @@ void CHudEditor::RenderModuleLabel(const SModuleVisual &Visual) const
 {
 	char aLabel[96];
 	if(Visual.m_Editable && !Visual.m_Enabled)
-		str_format(aLabel, sizeof(aLabel), "%s (%s)", HudLayout::Name(Visual.m_Module), Localize("disabled"));
+		str_format(aLabel, sizeof(aLabel), "%s (%s)", HudLayout::Name(Visual.m_Module), BCLocalize("disabled"));
 	else if(Visual.m_Editable)
 		str_format(aLabel, sizeof(aLabel), "%s", HudLayout::Name(Visual.m_Module));
 	else
-		str_format(aLabel, sizeof(aLabel), "%s (%s)", HudLayout::Name(Visual.m_Module), Localize("preview"));
+		str_format(aLabel, sizeof(aLabel), "%s (%s)", HudLayout::Name(Visual.m_Module), BCLocalize("preview"));
 
 	const float Width = HudWidth();
 	const float Height = HudHeight();
@@ -947,7 +947,7 @@ void CHudEditor::RenderOverlay(vec2 MousePos)
 	const ColorRGBA ResetColor = m_PressedOnReset ? ColorRGBA(0.95f, 0.48f, 0.48f, 0.90f) :
 							(ResetHovered ? ColorRGBA(0.95f, 0.48f, 0.48f, 0.55f) : ColorRGBA(0.95f, 0.48f, 0.48f, 0.36f));
 	Graphics()->DrawRect(ResetRect.x, ResetRect.y, ResetRect.w, ResetRect.h, ResetColor, IGraphics::CORNER_ALL, 4.0f);
-	Ui()->DoLabel(&ResetRect, Localize("Reset All"), 6.5f, TEXTALIGN_MC);
+	Ui()->DoLabel(&ResetRect, BCLocalize("Reset All"), 6.5f, TEXTALIGN_MC);
 
 	Ui()->MapScreen();
 	Ui()->RenderPopupMenus();

@@ -378,7 +378,7 @@ static SGameTimerDisplay BuildGameTimerDisplay(const CNetObj_GameInfo *pGameInfo
 	if(!ForcePreview && (pGameInfo->m_GameStateFlags & GAMESTATEFLAG_SUDDENDEATH))
 	{
 		Result.m_Valid = true;
-		Result.m_Text = Localize("Sudden Death");
+		Result.m_Text = BCLocalize("Sudden Death");
 		return Result;
 	}
 
@@ -2983,10 +2983,10 @@ void CMusicPlayer::RenderMusicPlayer(bool ForcePreview)
 	const bool TitleHoverAllowed = AllowInteraction || ForcePreview;
 	const bool PlayerHovered = TitleHoverAllowed &&
 		(IsPointInsideRect(View, MousePos, 1.5f * Scale) || IsPointInsideRect(UiViewRect, UiMousePos, 1.5f * Scale * UiFontScale));
-	const std::string TrackTitle = Snapshot.m_Title.empty() ? Localize("No media") : Snapshot.m_Title;
+	const std::string TrackTitle = Snapshot.m_Title.empty() ? BCLocalize("No media") : Snapshot.m_Title;
 	const bool ShowGameTimer = GameTimer.m_Valid && !PlayerHovered;
 	const std::string Title = ShowGameTimer ? GameTimer.m_Text : TrackTitle;
-	const std::string Artist = Snapshot.m_Artist.empty() ? Localize("Unknown artist") : Snapshot.m_Artist;
+	const std::string Artist = Snapshot.m_Artist.empty() ? BCLocalize("Unknown artist") : Snapshot.m_Artist;
 	const float TitleFont = (ShowGameTimer ? 6.6f : 5.25f) * Scale;
 	const float ArtistFont = 3.45f * Scale;
 	const bool ShowArtist = TextT > 0.38f && ExpandT > 0.42f;
