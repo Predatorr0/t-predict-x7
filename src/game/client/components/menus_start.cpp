@@ -57,7 +57,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 
 	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
 	static CButtonContainer s_DiscordButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_DiscordButton, Localize("Discord"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_DiscordButton, BCLocalize("Discord"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
 		Client()->ViewLink("https://discord.gg/tmT4emAbrS");
 	}
@@ -65,7 +65,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	ExtMenu.HSplitBottom(5.0f, &ExtMenu, nullptr);
 	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
 	static CButtonContainer s_TelegramButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_TelegramButton, Localize("Telegram"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_TelegramButton, BCLocalize("Telegram"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
 		Client()->ViewLink("https://t.me/bestddnet");
 	}
@@ -73,7 +73,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	ExtMenu.HSplitBottom(5.0f, &ExtMenu, nullptr);
 	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
 	static CButtonContainer s_CheckUpdateButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_CheckUpdateButton, Localize("Check update"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_CheckUpdateButton, BCLocalize("Check update"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 	{
 		GameClient()->m_BestClient.FetchBestClientInfo();
 	}
@@ -132,24 +132,24 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 
 		if(ShowDownloadButton)
 		{
-			str_format(aUpdateBuf, sizeof(aUpdateBuf), "BestClient %s is out!", GameClient()->m_BestClient.m_aVersionStr);
+			str_format(aUpdateBuf, sizeof(aUpdateBuf), BCLocalize("BestClient %s is out!"), GameClient()->m_BestClient.m_aVersionStr);
 			TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
 		}
 		else if(ShowUpdateProgress)
 		{
 			if(State == IUpdater::GETTING_MANIFEST)
-				str_copy(aUpdateBuf, Localize("Preparing update..."));
+				str_copy(aUpdateBuf, BCLocalize("Preparing update..."));
 			else
-				str_format(aUpdateBuf, sizeof(aUpdateBuf), Localize("Downloading %d%%"), Updater()->GetCurrentPercent());
+				str_format(aUpdateBuf, sizeof(aUpdateBuf), BCLocalize("Downloading %d%%"), Updater()->GetCurrentPercent());
 		}
 		else if(State == IUpdater::FAIL)
 		{
-			str_copy(aUpdateBuf, Localize("Update failed"));
+			str_copy(aUpdateBuf, BCLocalize("Update failed"));
 			TextRender()->TextColor(1.0f, 0.4f, 0.4f, 1.0f);
 		}
 		else if(State == IUpdater::NEED_RESTART)
 		{
-			str_copy(aUpdateBuf, Localize("Update downloaded"));
+			str_copy(aUpdateBuf, BCLocalize("Update downloaded"));
 			TextRender()->TextColor(0.7f, 1.0f, 0.7f, 1.0f);
 		}
 
@@ -159,7 +159,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 		if(ShowDownloadButton || ShowRetryButton)
 		{
 			static CButtonContainer s_MenuUpdateDownload;
-			if(GameClient()->m_Menus.DoButton_Menu(&s_MenuUpdateDownload, Localize("Download"), 0, &UpdateButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+			if(GameClient()->m_Menus.DoButton_Menu(&s_MenuUpdateDownload, BCLocalize("Download"), 0, &UpdateButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 			{
 				Updater()->InitiateUpdate();
 			}
@@ -167,7 +167,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 		else if(ShowRestartButton)
 		{
 			static CButtonContainer s_MenuUpdateRestart;
-			if(GameClient()->m_Menus.DoButton_Menu(&s_MenuUpdateRestart, Localize("Restart"), 0, &UpdateButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+			if(GameClient()->m_Menus.DoButton_Menu(&s_MenuUpdateRestart, BCLocalize("Restart"), 0, &UpdateButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
 			{
 				Updater()->ApplyUpdateAndRestart();
 			}

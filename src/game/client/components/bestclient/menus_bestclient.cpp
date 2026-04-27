@@ -38,11 +38,6 @@
 
 using namespace std::chrono_literals;
 
-static const char *BCLocalize(const char *pStr, const char *pContext = "")
-{
-	return TCLocalize(pStr, pContext);
-}
-
 static void SetBestClientTabFlag(int32_t &Flags, int Tab, bool Hidden)
 {
 	if(Hidden)
