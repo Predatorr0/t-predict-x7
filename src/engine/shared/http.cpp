@@ -223,7 +223,13 @@ bool CHttpRequest::ConfigureHandle(void *pHandle)
 		curl_easy_setopt(pH, CURLOPT_INTERFACE, g_Config.m_Bindaddr);
 	}
 
-	if(curl_version_info(CURLVERSION_NOW)->version_num < 0x074400)
+	if(m_CloseConnection)
+	{
+		curl_easy_setopt(pH, CURLOPT_FRESH_CONNECT, 1L);
+		curl_easy_setopt(pH, CURLOPT_FORBID_REUSE, 1L);
+		Header("Connection: close");
+	}
+	else if(curl_version_info(CURLVERSION_NOW)->version_num < 0x074400)
 	{
 		// Causes crashes, see https://github.com/ddnet/ddnet/issues/4342.
 		// No longer a problem in curl 7.68 and above, and 0x44 = 68.

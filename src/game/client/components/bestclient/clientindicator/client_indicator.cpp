@@ -258,6 +258,7 @@ void CClientIndicator::RefreshBrowserCache(bool Force)
 	m_pBrowserTask->IpResolve(IPRESOLVE::V4);
 	// The indicator web endpoint is deployed with a self-signed certificate by default.
 	m_pBrowserTask->VerifyPeer(false);
+	m_pBrowserTask->CloseConnection(true);
 	m_pBrowserTask->LogProgress(HTTPLOG::FAILURE);
 	DebugLogF("starting browser request url=%s", g_Config.m_BcClientIndicatorBrowserUrl);
 	m_LastBrowserRefreshTick = time_get();
@@ -290,6 +291,7 @@ void CClientIndicator::RefreshToken(bool Force)
 	m_pTokenTask->IpResolve(IPRESOLVE::V4);
 	// Keep token bootstrap aligned with the self-signed indicator deployment.
 	m_pTokenTask->VerifyPeer(false);
+	m_pTokenTask->CloseConnection(true);
 	m_pTokenTask->LogProgress(HTTPLOG::FAILURE);
 	DebugLogF("starting token request url=%s", g_Config.m_BcClientIndicatorTokenUrl);
 	m_LastTokenRefreshTick = time_get();
