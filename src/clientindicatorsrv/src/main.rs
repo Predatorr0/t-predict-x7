@@ -1,5 +1,6 @@
 use constant_time_eq::constant_time_eq;
 use hmac::{Hmac, Mac};
+use hyper::server::conn::Http;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -11,8 +12,9 @@ use std::net::{IpAddr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use tokio::net::UdpSocket;
+use tokio::net::{TcpListener, UdpSocket};
 use tokio::time;
+use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 use warp::Filter;
 
 const PROTOCOL_MAGIC: [u8; 4] = *b"BCI1";
@@ -31,6 +33,9 @@ const MIN_DEV_AUTH_INTERVAL: Duration = Duration::from_secs(1);
 const MAX_ENTRIES: usize = 5000;
 const MAX_NONCES: usize = 20000;
 const MAX_BROADCAST_PEERS: usize = 128;
+const DEFAULT_TLS_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
+const DEFAULT_HTTP_HEADER_TIMEOUT: Duration = Duration::from_secs(5);
+const DEFAULT_HTTPS_CONNECTION_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Clone)]
 struct Config {
@@ -41,6 +46,9 @@ struct Config {
     json_path: PathBuf,
     tls_cert_file: PathBuf,
     tls_key_file: PathBuf,
+    tls_handshake_timeout: Duration,
+    http_header_timeout: Duration,
+    https_connection_timeout: Duration,
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -550,6 +558,12 @@ impl Config {
         let tls_key_file = env::var("TLS_KEY_FILE")
             .unwrap_or_else(|_| format!("{state_dir}/tls/key.pem"))
             .into();
+        let tls_handshake_timeout =
+            env_duration_ms("WEB_TLS_HANDSHAKE_TIMEOUT_MS", DEFAULT_TLS_HANDSHAKE_TIMEOUT);
+        let http_header_timeout =
+            env_duration_ms("WEB_HTTP_HEADER_TIMEOUT_MS", DEFAULT_HTTP_HEADER_TIMEOUT);
+        let https_connection_timeout =
+            env_duration_ms("WEB_HTTPS_CONNECTION_TIMEOUT_MS", DEFAULT_HTTPS_CONNECTION_TIMEOUT);
         Ok(Self {
             udp_bind,
             web_bind,
@@ -558,8 +572,19 @@ impl Config {
             json_path,
             tls_cert_file,
             tls_key_file,
+            tls_handshake_timeout,
+            http_header_timeout,
+            https_connection_timeout,
         })
     }
+}
+
+fn env_duration_ms(name: &str, default: Duration) -> Duration {
+    env::var(name)
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .map(Duration::from_millis)
+        .unwrap_or(default)
 }
 
 async fn udp_loop(
@@ -694,14 +719,89 @@ async fn web_loop(
         .and(warp::get())
         .map(move || warp::reply::json(&serde_json::json!({ "token": shared_token })));
 
-    let routes = healthz.or(users).or(token).with(warp::reply::with::header("cache-control", "no-store"));
-    warp::serve(routes)
-        .tls()
-        .cert_path(config.tls_cert_file)
-        .key_path(config.tls_key_file)
-        .run(config.web_bind)
-        .await;
-    Ok(())
+    let routes = healthz
+        .or(users)
+        .or(token)
+        .with(warp::reply::with::header("cache-control", "no-store"))
+        .with(warp::reply::with::header("connection", "close"));
+    let tls_acceptor = load_tls_acceptor(&config)?;
+    let listener = TcpListener::bind(config.web_bind).await?;
+
+    loop {
+        let (stream, peer_addr) = listener.accept().await?;
+        let _ = stream.set_nodelay(true);
+
+        let routes = routes.clone();
+        let tls_acceptor = tls_acceptor.clone();
+        let tls_handshake_timeout = config.tls_handshake_timeout;
+        let http_header_timeout = config.http_header_timeout;
+        let https_connection_timeout = config.https_connection_timeout;
+
+        tokio::spawn(async move {
+            let tls_stream = match time::timeout(tls_handshake_timeout, tls_acceptor.accept(stream))
+                .await
+            {
+                Ok(Ok(stream)) => stream,
+                Ok(Err(err)) => {
+                    eprintln!("clientindicator HTTPS TLS handshake failed from {peer_addr}: {err}");
+                    return;
+                }
+                Err(_) => {
+                    eprintln!("clientindicator HTTPS TLS handshake timeout from {peer_addr}");
+                    return;
+                }
+            };
+
+            let mut http = Http::new();
+            http.http1_only(true)
+                .http1_keep_alive(false)
+                .http1_header_read_timeout(http_header_timeout);
+
+            let service = warp::service(routes);
+            match time::timeout(
+                https_connection_timeout,
+                http.serve_connection(tls_stream, service),
+            )
+            .await
+            {
+                Ok(Ok(())) => {}
+                Ok(Err(err)) => {
+                    eprintln!("clientindicator HTTPS request failed from {peer_addr}: {err}");
+                }
+                Err(_) => eprintln!("clientindicator HTTPS request timeout from {peer_addr}"),
+            }
+        });
+    }
+}
+
+fn load_tls_acceptor(
+    config: &Config,
+) -> Result<TlsAcceptor, Box<dyn std::error::Error + Send + Sync>> {
+    let cert_file = fs::File::open(&config.tls_cert_file)?;
+    let mut cert_reader = io::BufReader::new(cert_file);
+    let certs = rustls_pemfile::certs(&mut cert_reader).collect::<Result<Vec<_>, _>>()?;
+    if certs.is_empty() {
+        return Err(format!(
+            "no certificates found in {}",
+            config.tls_cert_file.display()
+        )
+        .into());
+    }
+
+    let key_file = fs::File::open(&config.tls_key_file)?;
+    let mut key_reader = io::BufReader::new(key_file);
+    let Some(key) = rustls_pemfile::private_key(&mut key_reader)? else {
+        return Err(format!(
+            "no private key found in {}",
+            config.tls_key_file.display()
+        )
+        .into());
+    };
+
+    let tls_config = ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(certs, key)?;
+    Ok(TlsAcceptor::from(Arc::new(tls_config)))
 }
 
 fn packet_type(data: &[u8]) -> Option<u8> {
