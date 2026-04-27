@@ -2558,16 +2558,23 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 		if(!GameClient()->m_BestClient.IsComponentDisabled(CBestClient::COMPONENT_GAMEPLAY_FINISH_PREDICTION))
 		{
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+			const float ColorPickerLineSize = 25.0f;
+			const float ColorPickerLabelSize = 13.0f;
+			const float ColorPickerSpacing = 5.0f;
 			static float s_FinishPredictionPhase = 0.0f;
 			static float s_FinishPredictionTimePhase = 0.0f;
 			const bool FinishPredictionExpanded = g_Config.m_BcFinishPrediction != 0;
+			const bool FinishPredictionBarMode = g_Config.m_BcFinishPredictionMode == 1;
 			UpdateRevealPhase(s_FinishPredictionPhase, FinishPredictionExpanded);
-			const bool ShowTimeExpanded = FinishPredictionExpanded && g_Config.m_BcFinishPredictionShowTime != 0;
+			const bool ShowTimeExpanded = FinishPredictionExpanded && !FinishPredictionBarMode && g_Config.m_BcFinishPredictionShowTime != 0;
 			UpdateRevealPhase(s_FinishPredictionTimePhase, ShowTimeExpanded);
-			const float ExpandedTargetHeight = LineSize * 3.0f + (MarginSmall + LineSize * 2.0f) * s_FinishPredictionTimePhase;
+			const float BarColorHeight = FinishPredictionBarMode && g_Config.m_BcFinishPredictionBarCustomColor ? ColorPickerLineSize + ColorPickerSpacing : 0.0f;
+			const float ExpandedTargetHeight = FinishPredictionBarMode ?
+								      LineSize * 3.0f + BarColorHeight :
+								      LineSize * 4.0f + (MarginSmall + LineSize * 2.0f) * s_FinishPredictionTimePhase;
 			const float ExpandedHeight = ExpandedTargetHeight * s_FinishPredictionPhase;
 			const float ContentHeight = LineSize + MarginSmall + LineSize + ExpandedHeight;
-			CUIRect Content, Label, Button, Visible;
+			CUIRect Content, Label, Button, Row, Visible;
 			BeginBlock(Column, ContentHeight, Content);
 
 			Content.HSplitTop(LineSize, &Label, &Content);
@@ -2586,31 +2593,56 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				} ClipGuard{Ui()};
 
 				CUIRect Expand = {Visible.x, Visible.y, Visible.w, ExpandedTargetHeight};
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcFinishPredictionShowTime, BCLocalize("Show time"), &g_Config.m_BcFinishPredictionShowTime, &Expand, LineSize);
+				Expand.HSplitTop(LineSize, &Row, &Expand);
+				CUIRect ModeLabel, ModeSelect;
+				Row.VSplitLeft(150.0f, &ModeLabel, &ModeSelect);
+				Ui()->DoLabel(&ModeLabel, BCLocalize("Mode"), 14.0f, TEXTALIGN_ML);
+				static CUi::SDropDownState s_FinishPredictionModeState;
+				static CScrollRegion s_FinishPredictionModeScrollRegion;
+				s_FinishPredictionModeState.m_SelectionPopupContext.m_pScrollRegion = &s_FinishPredictionModeScrollRegion;
+				const char *apFinishPredictionModes[2] = {
+					BCLocalize("Classic"),
+					BCLocalize("Progress bar"),
+				};
+				g_Config.m_BcFinishPredictionMode = Ui()->DoDropDown(&ModeSelect, std::clamp(g_Config.m_BcFinishPredictionMode, 0, 1), apFinishPredictionModes, (int)std::size(apFinishPredictionModes), s_FinishPredictionModeState);
 
-				const float TimeOptionsHeight = (MarginSmall + LineSize * 2.0f) * s_FinishPredictionTimePhase;
-				if(TimeOptionsHeight > 0.0f)
+				if(g_Config.m_BcFinishPredictionMode == 1)
 				{
-					CUIRect TimeVisible;
-					Expand.HSplitTop(TimeOptionsHeight, &TimeVisible, &Expand);
-					Ui()->ClipEnable(&TimeVisible);
-					SScopedClip TimeClipGuard{Ui()};
-					CUIRect TimeExpand = {TimeVisible.x, TimeVisible.y, TimeVisible.w, MarginSmall + LineSize * 2.0f};
-					TimeExpand.HSplitTop(MarginSmall, nullptr, &TimeExpand);
-					TimeExpand.HSplitTop(LineSize, &Button, &TimeExpand);
-					static CButtonContainer s_FinishPredictionRemainingButton;
-					static CButtonContainer s_FinishPredictionFinishTimeButton;
-					CUIRect Left, Right;
-					Button.VSplitMid(&Left, &Right, 2.0f);
-					Left.HMargin(2.0f, &Left);
-					Right.HMargin(2.0f, &Right);
-					if(DoButton_Menu(&s_FinishPredictionRemainingButton, BCLocalize("Time left"), g_Config.m_BcFinishPredictionTimeMode == 0, &Left, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
-						g_Config.m_BcFinishPredictionTimeMode = 0;
-					if(DoButton_Menu(&s_FinishPredictionFinishTimeButton, BCLocalize("Finish time"), g_Config.m_BcFinishPredictionTimeMode == 1, &Right, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
-						g_Config.m_BcFinishPredictionTimeMode = 1;
-					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcFinishPredictionShowMillis, BCLocalize("Show milliseconds"), &g_Config.m_BcFinishPredictionShowMillis, &TimeExpand, LineSize);
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcFinishPredictionBarCustomColor, BCLocalize("Custom bar color"), &g_Config.m_BcFinishPredictionBarCustomColor, &Expand, LineSize);
+					if(g_Config.m_BcFinishPredictionBarCustomColor)
+					{
+						static CButtonContainer s_FinishPredictionBarColorButton;
+						DoLine_ColorPicker(&s_FinishPredictionBarColorButton, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerSpacing, &Expand, BCLocalize("Bar color"), &g_Config.m_BcFinishPredictionBarColor, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::BcFinishPredictionBarColor, true)), false, nullptr, true);
+					}
 				}
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcFinishPredictionShowPercentage, BCLocalize("Show percentage"), &g_Config.m_BcFinishPredictionShowPercentage, &Expand, LineSize);
+				else
+				{
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcFinishPredictionShowTime, BCLocalize("Show time"), &g_Config.m_BcFinishPredictionShowTime, &Expand, LineSize);
+
+					const float TimeOptionsHeight = (MarginSmall + LineSize * 2.0f) * s_FinishPredictionTimePhase;
+					if(TimeOptionsHeight > 0.0f)
+					{
+						CUIRect TimeVisible;
+						Expand.HSplitTop(TimeOptionsHeight, &TimeVisible, &Expand);
+						Ui()->ClipEnable(&TimeVisible);
+						SScopedClip TimeClipGuard{Ui()};
+						CUIRect TimeExpand = {TimeVisible.x, TimeVisible.y, TimeVisible.w, MarginSmall + LineSize * 2.0f};
+						TimeExpand.HSplitTop(MarginSmall, nullptr, &TimeExpand);
+						TimeExpand.HSplitTop(LineSize, &Button, &TimeExpand);
+						static CButtonContainer s_FinishPredictionRemainingButton;
+						static CButtonContainer s_FinishPredictionFinishTimeButton;
+						CUIRect Left, Right;
+						Button.VSplitMid(&Left, &Right, 2.0f);
+						Left.HMargin(2.0f, &Left);
+						Right.HMargin(2.0f, &Right);
+						if(DoButton_Menu(&s_FinishPredictionRemainingButton, BCLocalize("Time left"), g_Config.m_BcFinishPredictionTimeMode == 0, &Left, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+							g_Config.m_BcFinishPredictionTimeMode = 0;
+						if(DoButton_Menu(&s_FinishPredictionFinishTimeButton, BCLocalize("Finish time"), g_Config.m_BcFinishPredictionTimeMode == 1, &Right, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+							g_Config.m_BcFinishPredictionTimeMode = 1;
+						DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcFinishPredictionShowMillis, BCLocalize("Show milliseconds"), &g_Config.m_BcFinishPredictionShowMillis, &TimeExpand, LineSize);
+					}
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcFinishPredictionShowPercentage, BCLocalize("Show percentage"), &g_Config.m_BcFinishPredictionShowPercentage, &Expand, LineSize);
+				}
 				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcFinishPredictionShowAlways, BCLocalize("Show always"), &g_Config.m_BcFinishPredictionShowAlways, &Expand, LineSize);
 			}
 		}

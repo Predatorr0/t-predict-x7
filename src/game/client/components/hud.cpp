@@ -48,6 +48,8 @@ namespace
 	constexpr int KEYSTROKES_KEYBOARD_ATLAS_HEIGHT = 1050;
 	constexpr int KEYSTROKES_MOUSE_ATLAS_WIDTH = 715;
 	constexpr int KEYSTROKES_MOUSE_ATLAS_HEIGHT = 353;
+	constexpr float FINISH_PREDICTION_BAR_WIDTH = 170.0f;
+	constexpr float FINISH_PREDICTION_BAR_HEIGHT = 34.0f;
 
 	enum class EKeystrokesInputKind
 	{
@@ -503,6 +505,7 @@ void CHud::OnReset()
 	m_FinishPredictionLastProgress = 0.0f;
 	m_FinishPredictionSmoothedFinishTimeMs = -1;
 	m_FinishPredictionLastPredictTick = -1;
+	m_FinishPredictionFinishedRaceTick = -1;
 	m_KeystrokesWheelUpEndTime = 0;
 	m_KeystrokesWheelDownEndTime = 0;
 
@@ -521,6 +524,7 @@ bool CHud::RebuildFinishPredictionPathData()
 	m_FinishPredictionLastProgress = 0.0f;
 	m_FinishPredictionSmoothedFinishTimeMs = -1;
 	m_FinishPredictionLastPredictTick = -1;
+	m_FinishPredictionFinishedRaceTick = -1;
 
 	if(!Collision() || Collision()->GetWidth() <= 0 || Collision()->GetHeight() <= 0)
 		return false;
@@ -780,6 +784,17 @@ int64_t CHud::GetFinishPredictionAverageTimeMs() const
 	return Count > 0 ? Sum / Count : -1;
 }
 
+void CHud::ResetFinishPredictionState(bool ClearFinishedRace) const
+{
+	m_FinishPredictionRaceStartTick = -1;
+	m_FinishPredictionRaceStartDistance = -1.0f;
+	m_FinishPredictionLastProgress = 0.0f;
+	m_FinishPredictionSmoothedFinishTimeMs = -1;
+	m_FinishPredictionLastPredictTick = -1;
+	if(ClearFinishedRace)
+		m_FinishPredictionFinishedRaceTick = -1;
+}
+
 bool CHud::GetFinishPredictionState(SFinishPredictionState &State, bool ForcePreview) const
 {
 	State = {};
@@ -799,11 +814,7 @@ bool CHud::GetFinishPredictionState(SFinishPredictionState &State, bool ForcePre
 		!GameClient()->m_Snap.m_pLocalCharacter ||
 		GameClient()->m_Snap.m_SpecInfo.m_Active)
 	{
-		const_cast<CHud *>(this)->m_FinishPredictionRaceStartTick = -1;
-		const_cast<CHud *>(this)->m_FinishPredictionRaceStartDistance = -1.0f;
-		const_cast<CHud *>(this)->m_FinishPredictionLastProgress = 0.0f;
-		const_cast<CHud *>(this)->m_FinishPredictionSmoothedFinishTimeMs = -1;
-		const_cast<CHud *>(this)->m_FinishPredictionLastPredictTick = -1;
+		ResetFinishPredictionState();
 		return false;
 	}
 
@@ -811,11 +822,20 @@ bool CHud::GetFinishPredictionState(SFinishPredictionState &State, bool ForcePre
 	{
 		if(g_Config.m_BcFinishPredictionShowAlways == 0)
 			return false;
-		const_cast<CHud *>(this)->m_FinishPredictionRaceStartTick = -1;
-		const_cast<CHud *>(this)->m_FinishPredictionRaceStartDistance = -1.0f;
-		const_cast<CHud *>(this)->m_FinishPredictionLastProgress = 0.0f;
-		const_cast<CHud *>(this)->m_FinishPredictionSmoothedFinishTimeMs = -1;
-		const_cast<CHud *>(this)->m_FinishPredictionLastPredictTick = -1;
+		ResetFinishPredictionState();
+		State.m_Valid = true;
+		State.m_Progress = 0.0f;
+		State.m_CurrentTimeMs = 0;
+		State.m_PredictedFinishTimeMs = 0;
+		State.m_RemainingTimeMs = 0;
+		return true;
+	}
+
+	if(m_FinishPredictionFinishedRaceTick == GameClient()->LastRaceTick())
+	{
+		ResetFinishPredictionState(false);
+		if(g_Config.m_BcFinishPredictionShowAlways == 0)
+			return false;
 		State.m_Valid = true;
 		State.m_Progress = 0.0f;
 		State.m_CurrentTimeMs = 0;
@@ -849,6 +869,7 @@ bool CHud::GetFinishPredictionState(SFinishPredictionState &State, bool ForcePre
 
 	if(m_FinishPredictionRaceStartTick != RaceStartTick)
 	{
+		const_cast<CHud *>(this)->m_FinishPredictionFinishedRaceTick = -1;
 		const_cast<CHud *>(this)->m_FinishPredictionRaceStartTick = RaceStartTick;
 		const_cast<CHud *>(this)->m_FinishPredictionRaceStartDistance = maximum(CurrentDistance, GetFinishPredictionStartDistance());
 		const_cast<CHud *>(this)->m_FinishPredictionLastProgress = 0.0f;
@@ -3127,6 +3148,9 @@ CUIRect CHud::GetLocalTimeHudEditorRect() const
 
 CUIRect CHud::GetFinishPredictionAnchorRect() const
 {
+	if(g_Config.m_BcFinishPredictionMode == 1)
+		return GetFinishPredictionBarRect(true);
+
 	const auto Layout = HudLayout::Get(HudLayout::MODULE_FINISH_PREDICTION, m_Width, m_Height);
 	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
 	const float TitleFontSize = 5.25f * Scale;
@@ -3159,6 +3183,13 @@ CUIRect CHud::GetFinishPredictionAnchorRect() const
 
 CUIRect CHud::GetFinishPredictionRect(bool ForcePreview) const
 {
+	if(g_Config.m_BcFinishPredictionMode == 1)
+		return GetFinishPredictionBarRect(ForcePreview);
+	return GetFinishPredictionClassicRect(ForcePreview);
+}
+
+CUIRect CHud::GetFinishPredictionClassicRect(bool ForcePreview) const
+{
 	if(!HudLayout::IsEnabled(HudLayout::MODULE_FINISH_PREDICTION))
 		return {0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -3174,7 +3205,6 @@ CUIRect CHud::GetFinishPredictionRect(bool ForcePreview) const
 	const float PaddingY = 4.0f * Scale;
 	const float Gap = 1.5f * Scale;
 	const bool ShowTime = g_Config.m_BcFinishPredictionShowTime != 0;
-	const bool ShowRemaining = g_Config.m_BcFinishPredictionTimeMode == 0;
 	const bool ShowPercentage = g_Config.m_BcFinishPredictionShowPercentage != 0 || !State.m_HasPredictedTime;
 	const bool ShowMillis = g_Config.m_BcFinishPredictionShowMillis != 0;
 	if(!ShowTime && !ShowPercentage)
@@ -3190,6 +3220,23 @@ CUIRect CHud::GetFinishPredictionRect(bool ForcePreview) const
 	const float RectWidth = maximum(TopWidth, ProgressWidth) + PaddingX * 2.0f;
 	const float RectHeight = PaddingY * 2.0f + (ShowTime ? TitleFontSize : 0.0f) + (ShowTime && ShowPercentage ? Gap : 0.0f) + (ShowPercentage ? ProgressFontSize : 0.0f);
 	CUIRect Rect = {Layout.m_X, Layout.m_Y, RectWidth, RectHeight};
+	Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, m_Width - Rect.w));
+	Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, m_Height - Rect.h));
+	return Rect;
+}
+
+CUIRect CHud::GetFinishPredictionBarRect(bool ForcePreview) const
+{
+	if(!HudLayout::IsEnabled(HudLayout::MODULE_FINISH_PREDICTION))
+		return {0.0f, 0.0f, 0.0f, 0.0f};
+
+	SFinishPredictionState State;
+	if(!GetFinishPredictionState(State, ForcePreview))
+		return {0.0f, 0.0f, 0.0f, 0.0f};
+
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_FINISH_PREDICTION, m_Width, m_Height);
+	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+	CUIRect Rect = {Layout.m_X, Layout.m_Y, FINISH_PREDICTION_BAR_WIDTH * Scale, FINISH_PREDICTION_BAR_HEIGHT * Scale};
 	Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, m_Width - Rect.w));
 	Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, m_Height - Rect.h));
 	return Rect;
@@ -3433,6 +3480,14 @@ void CHud::RenderFinishPrediction(bool ForcePreview)
 	if(!GetFinishPredictionState(State, ForcePreview))
 		return;
 
+	if(g_Config.m_BcFinishPredictionMode == 1)
+		RenderFinishPredictionBar(Rect, State, ForcePreview);
+	else
+		RenderFinishPredictionClassic(Rect, State);
+}
+
+void CHud::RenderFinishPredictionClassic(const CUIRect &Rect, const SFinishPredictionState &State)
+{
 	const auto Layout = HudLayout::Get(HudLayout::MODULE_FINISH_PREDICTION, m_Width, m_Height);
 	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
 	const float TitleFontSize = 5.25f * Scale;
@@ -3473,6 +3528,71 @@ void CHud::RenderFinishPrediction(bool ForcePreview)
 		TextRender()->Text(Rect.x + maximum(PaddingX, (Rect.w - ProgressWidth) * 0.5f), TextY, ProgressFontSize, aProgress, -1.0f);
 		TextRender()->TextColor(TextRender()->DefaultTextColor());
 	}
+}
+
+void CHud::RenderFinishPredictionBar(const CUIRect &Rect, const SFinishPredictionState &State, bool ForcePreview)
+{
+	const auto Layout = HudLayout::Get(HudLayout::MODULE_FINISH_PREDICTION, m_Width, m_Height);
+	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
+	const ColorRGBA BackgroundColor = color_cast<ColorRGBA>(ColorHSLA(Layout.m_BackgroundColor, true));
+	const int Corners = HudLayout::BackgroundCorners(IGraphics::CORNER_ALL, Rect.x, Rect.y, Rect.w, Rect.h, m_Width, m_Height);
+	if(Layout.m_BackgroundEnabled)
+		Graphics()->DrawRect(Rect.x, Rect.y, Rect.w, Rect.h, BackgroundColor, Corners, 4.0f * Scale);
+
+	const float PaddingX = 9.0f * Scale;
+	const float BarHeight = 4.5f * Scale;
+	const float BarY = Rect.y + 20.0f * Scale;
+	const float BarX = Rect.x + PaddingX;
+	const float BarW = maximum(1.0f, Rect.w - PaddingX * 2.0f);
+	const float Progress = std::clamp(State.m_Progress, 0.0f, 1.0f);
+	const float MarkerX = BarX + BarW * Progress;
+
+	Graphics()->DrawRect(BarX, BarY, BarW, BarHeight, ColorRGBA(0.78f, 0.78f, 0.78f, 0.55f), IGraphics::CORNER_ALL, BarHeight * 0.5f);
+
+	ColorRGBA BarColor;
+	if(g_Config.m_BcFinishPredictionBarCustomColor)
+	{
+		BarColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_BcFinishPredictionBarColor, true));
+	}
+	else
+	{
+		const int LocalClientId = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
+		if(LocalClientId >= 0 && LocalClientId < MAX_CLIENTS)
+			BarColor = GameClient()->m_aClients[LocalClientId].m_RenderInfo.m_ColorBody;
+		else
+			BarColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+	}
+	const float MinBarW = BarHeight;
+	const float FilledW = maximum(MinBarW, std::clamp(BarW * Progress, 0.0f, BarW));
+	Graphics()->DrawRect(BarX, BarY, FilledW, BarHeight, BarColor, IGraphics::CORNER_ALL, BarHeight * 0.5f);
+
+	CTeeRenderInfo TeeInfo;
+	const int LocalClientId = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
+	if(!ForcePreview && LocalClientId >= 0 && LocalClientId < MAX_CLIENTS && GameClient()->m_aClients[LocalClientId].m_Active)
+	{
+		TeeInfo = GameClient()->m_aClients[LocalClientId].m_RenderInfo;
+	}
+	else
+	{
+		TeeInfo.Apply(GameClient()->m_Skins.Find(g_Config.m_ClPlayerSkin));
+		TeeInfo.ApplyColors(g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorBody, g_Config.m_ClPlayerColorFeet);
+	}
+	TeeInfo.m_Size = 18.0f * Scale;
+
+	const float TeeHalfWidth = 9.0f * Scale;
+	const float ClampedMarkerX = std::clamp(MarkerX, Rect.x + PaddingX + TeeHalfWidth, Rect.x + Rect.w - PaddingX - TeeHalfWidth);
+	vec2 TeeOffsetToMid;
+	CRenderTools::GetRenderTeeOffsetToRenderedTee(CAnimState::GetIdle(), &TeeInfo, TeeOffsetToMid);
+	const vec2 TeeRenderPos(ClampedMarkerX, Rect.y + 11.5f * Scale + TeeOffsetToMid.y);
+	RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeInfo, EMOTE_NORMAL, vec2(1.0f, 0.0f), TeeRenderPos);
+
+	char aProgress[16];
+	const int ProgressPercent = std::clamp((int)std::lround(Progress * 100.0f), 0, 100);
+	str_format(aProgress, sizeof(aProgress), "%d%%", ProgressPercent);
+	const float PercentFontSize = 6.0f * Scale;
+	const float PercentWidth = TextRender()->TextWidth(PercentFontSize, aProgress, -1, -1.0f);
+	TextRender()->Text(Rect.x + (Rect.w - PercentWidth) * 0.5f, Rect.y + 25.8f * Scale, PercentFontSize, aProgress, -1.0f);
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
 }
 
 void CHud::RenderFinishPredictionPreview()
@@ -3846,6 +3966,16 @@ void CHud::OnMessage(int MsgType, void *pRawMsg)
 		{
 			// ignore m_ServerTimeBest, it's handled by the game client
 			m_aPlayerRecord[g_Config.m_ClDummy] = (float)pMsg->m_PlayerTimeBest / 100;
+		}
+	}
+	else if(MsgType == NETMSGTYPE_SV_RACEFINISH)
+	{
+		CNetMsg_Sv_RaceFinish *pMsg = (CNetMsg_Sv_RaceFinish *)pRawMsg;
+		const int LocalClientId = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
+		if(pMsg->m_ClientId == LocalClientId)
+		{
+			m_FinishPredictionFinishedRaceTick = GameClient()->LastRaceTick();
+			ResetFinishPredictionState(false);
 		}
 	}
 }

@@ -209,6 +209,11 @@ private:
 	int64_t GetFinishPredictionAverageTimeMs() const;
 	bool GetFinishPredictionState(SFinishPredictionState &State, bool ForcePreview) const;
 	CUIRect GetFinishPredictionAnchorRect() const;
+	CUIRect GetFinishPredictionClassicRect(bool ForcePreview) const;
+	CUIRect GetFinishPredictionBarRect(bool ForcePreview) const;
+	void RenderFinishPredictionClassic(const CUIRect &Rect, const SFinishPredictionState &State);
+	void RenderFinishPredictionBar(const CUIRect &Rect, const SFinishPredictionState &State, bool ForcePreview);
+	void ResetFinishPredictionState(bool ClearFinishedRace = true) const;
 	void RenderKeystrokesKeyboardInternal(bool ForcePreview, bool IgnoreModuleEnabled);
 	CUIRect GetKeystrokesKeyboardRectInternal(bool ForcePreview, bool IgnoreModuleEnabled) const;
 	void RenderKeystrokesMouseInternal(bool ForcePreview, bool IgnoreModuleEnabled);
@@ -232,6 +237,7 @@ private:
 	mutable float m_FinishPredictionLastProgress;
 	mutable int64_t m_FinishPredictionSmoothedFinishTimeMs;
 	mutable int m_FinishPredictionLastPredictTick;
+	mutable int m_FinishPredictionFinishedRaceTick;
 	IGraphics::CTextureHandle m_KeystrokesKeyboardTexture;
 	IGraphics::CTextureHandle m_KeystrokesMouseTexture;
 	int64_t m_KeystrokesWheelUpEndTime = 0;
