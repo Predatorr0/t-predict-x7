@@ -3370,6 +3370,7 @@ void CMenus::SetMenuPage(int NewPage)
 
 void CMenus::RefreshBrowserTab(bool Force)
 {
+	bool BrowserRefreshed = false;
 	if(g_Config.m_UiPage == PAGE_INTERNET)
 	{
 		if(Force || ServerBrowser()->GetCurrentType() != IServerBrowser::TYPE_INTERNET)
@@ -3381,6 +3382,7 @@ void CMenus::RefreshBrowserTab(bool Force)
 			ServerBrowser()->Refresh(IServerBrowser::TYPE_INTERNET);
 			UpdateCommunityCache(true);
 			m_LastServerBrowserRefreshTick = time_get();
+			BrowserRefreshed = true;
 		}
 	}
 	else if(g_Config.m_UiPage == PAGE_LAN)
@@ -3390,6 +3392,7 @@ void CMenus::RefreshBrowserTab(bool Force)
 			ServerBrowser()->Refresh(IServerBrowser::TYPE_LAN);
 			UpdateCommunityCache(true);
 			m_LastServerBrowserRefreshTick = time_get();
+			BrowserRefreshed = true;
 		}
 	}
 	else if(g_Config.m_UiPage == PAGE_FAVORITES)
@@ -3403,6 +3406,7 @@ void CMenus::RefreshBrowserTab(bool Force)
 			ServerBrowser()->Refresh(IServerBrowser::TYPE_FAVORITES);
 			UpdateCommunityCache(true);
 			m_LastServerBrowserRefreshTick = time_get();
+			BrowserRefreshed = true;
 		}
 	}
 	else if(g_Config.m_UiPage >= PAGE_FAVORITE_COMMUNITY_1 && g_Config.m_UiPage <= PAGE_FAVORITE_COMMUNITY_5)
@@ -3417,8 +3421,12 @@ void CMenus::RefreshBrowserTab(bool Force)
 			ServerBrowser()->Refresh(BrowserType);
 			UpdateCommunityCache(true);
 			m_LastServerBrowserRefreshTick = time_get();
+			BrowserRefreshed = true;
 		}
 	}
+
+	if(BrowserRefreshed)
+		GameClient()->m_ClientIndicator.RefreshBrowserCache(false);
 }
 
 void CMenus::ForceRefreshLanPage()

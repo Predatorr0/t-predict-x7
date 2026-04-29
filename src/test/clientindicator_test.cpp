@@ -3,6 +3,7 @@
 #include <game/client/components/bestclient/clientindicator/protocol.h>
 
 #include <base/net.h>
+#include <base/system.h>
 
 #include <engine/external/json-parser/json.h>
 
@@ -14,7 +15,7 @@ namespace
 {
 json_value *ParseJson(const char *pJson)
 {
-	return json_parse(pJson, -1);
+	return json_parse(pJson, str_length(pJson));
 }
 }
 
@@ -61,12 +62,18 @@ TEST(ClientIndicator, BrowserCacheParsesDeveloperFlag)
 	});
 	ASSERT_NE(DevIt, Players.end());
 	EXPECT_TRUE(DevIt->m_Developer);
+	bool Developer = false;
+	EXPECT_TRUE(Cache.HasPlayer("127.0.0.1:8303", "dev", &Developer));
+	EXPECT_TRUE(Developer);
 
 	const auto UserIt = std::find_if(Players.begin(), Players.end(), [](const IServerBrowser::CBestClientPlayerEntry &Entry) {
 		return str_comp(Entry.m_aName, "user") == 0;
 	});
 	ASSERT_NE(UserIt, Players.end());
 	EXPECT_FALSE(UserIt->m_Developer);
+	Developer = true;
+	EXPECT_TRUE(Cache.HasPlayer("127.0.0.1:8303", "user", &Developer));
+	EXPECT_FALSE(Developer);
 }
 
 TEST(ClientIndicator, BrowserCacheKeepsLegacyJsonNonDeveloper)

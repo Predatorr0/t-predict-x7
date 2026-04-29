@@ -186,6 +186,10 @@ bool CClientIndicator::IsPlayerBestClient(int ClientId) const
 	const char *pPlayerName = PlayerNameForClient(ClientId);
 	if(pPlayerName[0] == '\0')
 		return false;
+	char aCurrentServerAddress[NETADDR_MAXSTRSIZE];
+	net_addr_str(&Client()->ServerAddress(), aCurrentServerAddress, sizeof(aCurrentServerAddress), true);
+	if(m_BrowserCache.HasPlayer(aCurrentServerAddress, pPlayerName))
+		return true;
 
 	const IServerBrowser::CServerEntry *pCurrentServer = ServerBrowser()->Find(Client()->ServerAddress());
 	if(!pCurrentServer)
@@ -216,6 +220,11 @@ bool CClientIndicator::IsPlayerDeveloper(int ClientId) const
 	const char *pPlayerName = PlayerNameForClient(ClientId);
 	if(pPlayerName[0] == '\0')
 		return false;
+	char aCurrentServerAddress[NETADDR_MAXSTRSIZE];
+	net_addr_str(&Client()->ServerAddress(), aCurrentServerAddress, sizeof(aCurrentServerAddress), true);
+	bool BrowserDeveloper = false;
+	if(m_BrowserCache.HasPlayer(aCurrentServerAddress, pPlayerName, &BrowserDeveloper) && BrowserDeveloper)
+		return true;
 
 	const IServerBrowser::CServerEntry *pCurrentServer = ServerBrowser()->Find(Client()->ServerAddress());
 	if(!pCurrentServer)

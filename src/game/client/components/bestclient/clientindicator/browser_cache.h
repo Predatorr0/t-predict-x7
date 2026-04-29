@@ -16,6 +16,7 @@ public:
 	bool Load(const json_value &Json);
 	void Clear() { m_vPlayers.clear(); }
 	const std::vector<IServerBrowser::CBestClientPlayerEntry> &Players() const { return m_vPlayers; }
+	bool HasPlayer(const char *pServerAddress, const char *pName, bool *pDeveloper = nullptr) const;
 };
 
 #endif

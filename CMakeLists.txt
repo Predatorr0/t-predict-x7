@@ -3688,6 +3688,8 @@ if((GTEST_FOUND OR DOWNLOAD_GTEST) AND SERVER)
     src/engine/client/serverbrowser_ping_cache.cpp
     src/engine/client/serverbrowser_ping_cache.h
     src/engine/client/sqlite.cpp
+    src/game/client/components/bestclient/clientindicator/browser_cache.cpp
+    src/game/client/components/bestclient/clientindicator/browser_cache.h
     src/game/client/components/bestclient/visualizer/analyzer.cpp
     src/game/client/components/bestclient/visualizer/analyzer.h
     src/game/client/components/bestclient/visualizer/smoother.cpp

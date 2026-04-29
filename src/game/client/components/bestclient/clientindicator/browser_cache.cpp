@@ -181,3 +181,29 @@ bool CBrowserCache::Load(const json_value &Json)
 	}
 	return true;
 }
+
+bool CBrowserCache::HasPlayer(const char *pServerAddress, const char *pName, bool *pDeveloper) const
+{
+	if(pDeveloper)
+		*pDeveloper = false;
+	if(!pServerAddress || !pName || pServerAddress[0] == '\0' || pName[0] == '\0')
+		return false;
+
+	char aNormalizedAddress[MAX_SERVER_ADDRESSES * NETADDR_MAXSTRSIZE];
+	if(!NormalizeServerAddress(pServerAddress, aNormalizedAddress, sizeof(aNormalizedAddress)))
+		return false;
+
+	bool Found = false;
+	bool Developer = false;
+	for(const auto &Entry : m_vPlayers)
+	{
+		if(str_comp(Entry.m_aServerAddress, aNormalizedAddress) != 0 || str_comp(Entry.m_aName, pName) != 0)
+			continue;
+		Found = true;
+		Developer = Developer || Entry.m_Developer;
+	}
+
+	if(pDeveloper)
+		*pDeveloper = Developer;
+	return Found;
+}
