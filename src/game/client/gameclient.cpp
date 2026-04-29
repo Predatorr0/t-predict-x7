@@ -175,6 +175,17 @@ float EffectiveFastInputOffsetTicksGammaInputMode(const CGameClient *pGameClient
 	return GammaInputAmount / 100.0f;
 }
 
+float EffectiveFastInputOffsetTicksSaikoPlusMode()
+{
+	if(!g_Config.m_TcFastInput ||
+		g_Config.m_BcFastInputMode != 4 ||
+		IsGameplayInputComponentDisabled())
+		return 0.0f;
+	if(g_Config.m_BcSaikoPlusAmount <= 0)
+		return 0.0f;
+	return g_Config.m_BcSaikoPlusAmount / 100.0f;
+}
+
 float EffectiveFastInputOffsetTicks(const CGameClient *pGameClient)
 {
 	if(g_Config.m_BcFastInputMode == 0)
@@ -183,6 +194,8 @@ float EffectiveFastInputOffsetTicks(const CGameClient *pGameClient)
 		return EffectiveFastInputOffsetTicksDeltaInputMode();
 	if(g_Config.m_BcFastInputMode == 2)
 		return EffectiveFastInputOffsetTicksGammaInputMode(pGameClient);
+	if(g_Config.m_BcFastInputMode == 4)
+		return EffectiveFastInputOffsetTicksSaikoPlusMode();
 	return EffectiveFastInputOffsetTicksBestMode(pGameClient);
 }
 
@@ -190,6 +203,8 @@ int FastInputPredictionTicks(float OffsetTicks)
 {
 	if(OffsetTicks <= 0.0f)
 		return 0;
+	if(g_Config.m_BcFastInputMode == 4)
+		return (int)std::ceil(OffsetTicks + 1.0f);
 	return (int)std::ceil(OffsetTicks);
 }
 
@@ -265,9 +280,16 @@ bool EffectiveGammaInputOthers()
 		!IsGameplayInputComponentDisabled();
 }
 
+bool EffectiveSaikoPlusOthers()
+{
+	return g_Config.m_BcFastInputMode == 4 &&
+		g_Config.m_BcSaikoPlusOthers != 0 &&
+		!IsGameplayInputComponentDisabled();
+}
+
 bool EffectiveAnyFastInputOthers()
 {
-	return EffectiveFastInputOthers() || EffectiveDeltaInputOthers() || EffectiveGammaInputOthers() || EffectiveBestInputOthers();
+	return EffectiveFastInputOthers() || EffectiveDeltaInputOthers() || EffectiveGammaInputOthers() || EffectiveBestInputOthers() || EffectiveSaikoPlusOthers();
 }
 
 bool EffectiveImmediateFastInputOthers()
@@ -3381,7 +3403,7 @@ void CGameClient::OnPredict()
 		if(FastInputTicks > 0 && Tick > FinalTickRegular)
 		{
 			pInputData = &m_Controls.m_aFastInput[LocalTee];
-			if(GetDummyFastInput(DummyFastInput, pDummyInputData, pDummyChar, LocalTee, DummyTee))
+			if(g_Config.m_BcFastInputMode != 4 && GetDummyFastInput(DummyFastInput, pDummyInputData, pDummyChar, LocalTee, DummyTee))
 				pDummyInputData = &DummyFastInput;
 		}
 

@@ -1852,6 +1852,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				static CButtonContainer s_FastInputModeDeltaInput;
 				static CButtonContainer s_FastInputModeGammaInput;
 				static CButtonContainer s_FastInputModeBest;
+				static CButtonContainer s_FastInputModeSaikoPlus;
 				const int OldMode = g_Config.m_BcFastInputMode;
 				auto ApplyBestInputPreset = [&](int Preset) {
 					g_Config.m_BcFastInputMode = 3;
@@ -1872,20 +1873,23 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 				Expand.HSplitTop(LineSize, &Button, &Expand);
 				{
-					CUIRect FastButton, ButtonsRest, DeltaButton, GammaButton, BestButton;
+					CUIRect FastButton, ButtonsRest, DeltaButton, GammaButton, BestButton, SaikoPlusButton;
 					const float Spacing = 2.0f;
-					const float ButtonWidth = (Button.w - Spacing * 3.0f) / 4.0f;
+					const float ButtonWidth = (Button.w - Spacing * 4.0f) / 5.0f;
 					Button.VSplitLeft(ButtonWidth, &FastButton, &ButtonsRest);
 					ButtonsRest.VSplitLeft(Spacing, nullptr, &ButtonsRest);
 					ButtonsRest.VSplitLeft(ButtonWidth, &DeltaButton, &ButtonsRest);
 					ButtonsRest.VSplitLeft(Spacing, nullptr, &ButtonsRest);
 					ButtonsRest.VSplitLeft(ButtonWidth, &GammaButton, &ButtonsRest);
 					ButtonsRest.VSplitLeft(Spacing, nullptr, &ButtonsRest);
-					BestButton = ButtonsRest;
+					ButtonsRest.VSplitLeft(ButtonWidth, &BestButton, &ButtonsRest);
+					ButtonsRest.VSplitLeft(Spacing, nullptr, &ButtonsRest);
+					SaikoPlusButton = ButtonsRest;
 					FastButton.HMargin(2.0f, &FastButton);
 					DeltaButton.HMargin(2.0f, &DeltaButton);
 					GammaButton.HMargin(2.0f, &GammaButton);
 					BestButton.HMargin(2.0f, &BestButton);
+					SaikoPlusButton.HMargin(2.0f, &SaikoPlusButton);
 
 					if(DoButton_Menu(&s_FastInputModeFast, BCLocalize("Fast input"), g_Config.m_BcFastInputMode == 0, &FastButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
 						g_Config.m_BcFastInputMode = 0;
@@ -1893,8 +1897,10 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 						g_Config.m_BcFastInputMode = 1;
 					if(DoButton_Menu(&s_FastInputModeGammaInput, BCLocalize("Gamma input"), g_Config.m_BcFastInputMode == 2, &GammaButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
 						g_Config.m_BcFastInputMode = 2;
-					if(DoButton_Menu(&s_FastInputModeBest, BCLocalize("Best input"), g_Config.m_BcFastInputMode == 3, &BestButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+					if(DoButton_Menu(&s_FastInputModeBest, BCLocalize("Best input"), g_Config.m_BcFastInputMode == 3, &BestButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
 						g_Config.m_BcFastInputMode = 3;
+					if(DoButton_Menu(&s_FastInputModeSaikoPlus, "Saiko+", g_Config.m_BcFastInputMode == 4, &SaikoPlusButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+						g_Config.m_BcFastInputMode = 4;
 				}
 
 				if(g_Config.m_BcFastInputMode != OldMode)
@@ -1905,6 +1911,8 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 							g_Config.m_BcFastInputDeltaInput = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
 						else if(OldMode == 3 && g_Config.m_BcBestInputOffset > 0)
 							g_Config.m_BcFastInputDeltaInput = std::clamp(g_Config.m_BcBestInputOffset, 0, 500);
+						else if(OldMode == 4 && g_Config.m_BcSaikoPlusAmount > 0)
+							g_Config.m_BcFastInputDeltaInput = std::clamp(g_Config.m_BcSaikoPlusAmount, 0, 500);
 						else if(g_Config.m_TcFastInputAmount > 0)
 							g_Config.m_BcFastInputDeltaInput = std::clamp(g_Config.m_TcFastInputAmount * 5, 0, 500);
 					}
@@ -1914,6 +1922,8 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 							g_Config.m_BcFastInputGammaInput = BcFastInputGammaEffectiveToUiAmount(g_Config.m_BcFastInputDeltaInput);
 						else if(OldMode == 3 && g_Config.m_BcBestInputOffset > 0)
 							g_Config.m_BcFastInputGammaInput = BcFastInputGammaEffectiveToUiAmount(g_Config.m_BcBestInputOffset);
+						else if(OldMode == 4 && g_Config.m_BcSaikoPlusAmount > 0)
+							g_Config.m_BcFastInputGammaInput = BcFastInputGammaEffectiveToUiAmount(g_Config.m_BcSaikoPlusAmount);
 						else if(g_Config.m_TcFastInputAmount > 0)
 							g_Config.m_BcFastInputGammaInput = BcFastInputGammaEffectiveToUiAmount(g_Config.m_TcFastInputAmount * 5);
 					}
@@ -1924,8 +1934,22 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 							SourceAmount = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
 						else if(OldMode == 3)
 							SourceAmount = g_Config.m_BcBestInputOffset;
+						else if(OldMode == 4)
+							SourceAmount = g_Config.m_BcSaikoPlusAmount;
 						if(SourceAmount > 0)
 							g_Config.m_TcFastInputAmount = std::clamp((SourceAmount + 2) / 5, 0, 40);
+					}
+					else if(g_Config.m_BcFastInputMode == 4 && g_Config.m_BcSaikoPlusAmount <= 0)
+					{
+						int SourceAmount = g_Config.m_BcFastInputDeltaInput;
+						if(OldMode == 0)
+							SourceAmount = g_Config.m_TcFastInputAmount * 5;
+						else if(OldMode == 2)
+							SourceAmount = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
+						else if(OldMode == 3)
+							SourceAmount = g_Config.m_BcBestInputOffset;
+						if(SourceAmount > 0)
+							g_Config.m_BcSaikoPlusAmount = std::clamp(SourceAmount, 0, 500);
 					}
 				}
 
@@ -1936,7 +1960,7 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				{
 					DoSliderWithScaledValue(&g_Config.m_TcFastInputAmount, &g_Config.m_TcFastInputAmount, &Button, BCLocalize("Amount"), 0, 40, 1, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE, "ms");
 				}
-				else if(g_Config.m_BcFastInputMode == 1 || g_Config.m_BcFastInputMode == 2)
+				else if(g_Config.m_BcFastInputMode == 1 || g_Config.m_BcFastInputMode == 2 || g_Config.m_BcFastInputMode == 4)
 				{
 					const int Min = 0;
 					const bool GammaMode = g_Config.m_BcFastInputMode == 2;
@@ -1954,6 +1978,31 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 
 						char aBuf[256];
 						str_format(aBuf, sizeof(aBuf), "%s: %.2fM", BCLocalize("Gamma amount"), Value / 100.0f);
+
+						CUIRect AmountLabel, ScrollBar;
+						Button.VSplitMid(&AmountLabel, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
+						const float LabelFontSize = AmountLabel.h * CUi::ms_FontmodHeight * 0.8f;
+						Ui()->DoLabel(&AmountLabel, aBuf, LabelFontSize, TEXTALIGN_ML);
+
+						const float Rel = (Value - Min) / (float)(Max - Min);
+						const float NewRel = Ui()->DoScrollbarH(pAmountValue, &ScrollBar, Rel);
+						Value = (int)(Min + NewRel * (Max - Min) + 0.5f);
+						*pAmountValue = std::clamp(Value, Min, Max);
+					}
+					else if(g_Config.m_BcFastInputMode == 4)
+					{
+						const int Max = 500;
+						int *pAmountValue = &g_Config.m_BcSaikoPlusAmount;
+						int Value = std::clamp(*pAmountValue, Min, Max);
+
+						const int Increment = std::max(1, (Max - Min) / 35);
+						if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_UP) && Ui()->MouseInside(&Button))
+							Value = std::clamp(Value + Increment, Min, Max);
+						if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_DOWN) && Ui()->MouseInside(&Button))
+							Value = std::clamp(Value - Increment, Min, Max);
+
+						char aBuf[256];
+						str_format(aBuf, sizeof(aBuf), "%s: %.2f ticks", "Saiko+", Value / 100.0f);
 
 						CUIRect AmountLabel, ScrollBar;
 						Button.VSplitMid(&AmountLabel, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
@@ -2144,8 +2193,10 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcDeltaInputOthers, BCLocalize("Delta input others"), &g_Config.m_BcDeltaInputOthers, &Expand, LineSize);
 				else if(g_Config.m_BcFastInputMode == 2)
 					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcGammaInputOthers, BCLocalize("Gamma input others"), &g_Config.m_BcGammaInputOthers, &Expand, LineSize);
-				else
+				else if(g_Config.m_BcFastInputMode == 3)
 					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcBestInputOthers, BCLocalize("Best input others"), &g_Config.m_BcBestInputOthers, &Expand, LineSize);
+				else
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcSaikoPlusOthers, "Saiko+ others", &g_Config.m_BcSaikoPlusOthers, &Expand, LineSize);
 			}
 
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClSubTickAiming, BCLocalize("Sub-Tick aiming"), &g_Config.m_ClSubTickAiming, &Content, LineSize);

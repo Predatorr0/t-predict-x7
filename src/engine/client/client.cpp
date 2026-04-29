@@ -2939,8 +2939,14 @@ void CClient::Update()
 					((g_Config.m_BcFastInputMode == 0 && g_Config.m_TcFastInputAmount > 0) ||
 						(g_Config.m_BcFastInputMode == 1 && g_Config.m_BcFastInputDeltaInput > 0) ||
 						(g_Config.m_BcFastInputMode == 2 && BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput) > 0) ||
-						(g_Config.m_BcFastInputMode == 3 && g_Config.m_BcBestInputOffset > 0));
-				if(HasFastInput && GameClient()->CheckNewInput())
+						(g_Config.m_BcFastInputMode == 3 && g_Config.m_BcBestInputOffset > 0) ||
+						(g_Config.m_BcFastInputMode == 4 && g_Config.m_BcSaikoPlusAmount > 0));
+				if(HasFastInput && g_Config.m_BcFastInputMode == 4)
+				{
+					GameClient()->CheckNewInput();
+					Repredict = true;
+				}
+				else if(HasFastInput && GameClient()->CheckNewInput())
 				{
 					Repredict = true;
 				}
@@ -5683,6 +5689,11 @@ int CClient::PredictionMargin() const
 		{
 			const int GammaInputAmount = BcFastInputGammaUiToEffectiveAmount(g_Config.m_BcFastInputGammaInput);
 			FastInputMargin = (GammaInputAmount + 2) / 5;
+		}
+		else if(g_Config.m_BcFastInputMode == 4)
+		{
+			const int SaikoPlusAmount = std::max(0, g_Config.m_BcSaikoPlusAmount);
+			FastInputMargin = (SaikoPlusAmount + 2) / 5;
 		}
 		else
 		{
