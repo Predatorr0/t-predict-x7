@@ -5905,7 +5905,7 @@ CUIRect CChat::GetHudRect(float HudWidth, float HudHeight, bool ForcePreview) co
 		ExtraBottom = maximum(2.25f * ScaledFontSize, maximum(ScaledFontSize + 4.0f, 16.0f));
 	}
 
-	CUIRect Rect = {Layout.m_X, Layout.m_Y - VisibleHeight - ExtraTop, VisibleWidth, VisibleHeight + ExtraTop + ExtraBottom};
+	CUIRect Rect = {Layout.m_X + g_Config.m_MeowChatOffsetX, Layout.m_Y - VisibleHeight - ExtraTop + g_Config.m_MeowChatOffsetY, VisibleWidth, VisibleHeight + ExtraTop + ExtraBottom};
 	Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, HudWidth - Rect.w));
 	Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, HudHeight - Rect.h));
 	return Rect;

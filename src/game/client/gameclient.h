@@ -1124,5 +1124,7 @@ public:
 };
 
 ColorRGBA CalculateNameColor(ColorHSLA TextColorHSL);
+float EffectiveFastInputOffsetTicks(const class CGameClient *pGameClient);
+float EffectiveFastInputOffsetTicksLexzyMode(const class CGameClient *pGameClient);
 
 #endif

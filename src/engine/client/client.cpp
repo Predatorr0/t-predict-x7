@@ -2938,8 +2938,11 @@ void CClient::Update()
 					g_Config.m_TcFastInput &&
 					((BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 0 && g_Config.m_TcFastInputAmount > 0) ||
 						(BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 3 && g_Config.m_BcBestInputOffset > 0) ||
-						(BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 4 && g_Config.m_BcSaikoPlusAmount > 0));
-				if(HasFastInput && BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 4)
+						(BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 4 && g_Config.m_BcSaikoPlusAmount > 0) ||
+						(BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 5 && g_Config.m_TcFastInputSnowAmount > 0) ||
+						(BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 6 && g_Config.m_TcMeowFastInputAmount > 0) ||
+						(BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 7 && g_Config.m_TcLexzyFastInputAmount > 0));
+				if(HasFastInput && (BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) >= 4 && BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) <= 7))
 				{
 					GameClient()->CheckNewInput();
 					Repredict = true;
@@ -5672,9 +5675,9 @@ int CClient::PredictionMargin() const
 		return PredictionMargin;
 
 	int FastInputMargin = 0;
+	const int FastInputMode = BcFastInputNormalizedMode(g_Config.m_BcFastInputMode);
 	if(g_Config.m_TcFastInput)
 	{
-		const int FastInputMode = BcFastInputNormalizedMode(g_Config.m_BcFastInputMode);
 		if(FastInputMode == 0)
 		{
 			FastInputMargin = std::max(0, g_Config.m_TcFastInputAmount);
@@ -5683,6 +5686,25 @@ int CClient::PredictionMargin() const
 		{
 			const int SaikoPlusAmount = std::max(0, g_Config.m_BcSaikoPlusAmount);
 			FastInputMargin = (SaikoPlusAmount + 2) / 5;
+		}
+		else if(FastInputMode == 5)
+		{
+			int SnowAmount = std::max(0, g_Config.m_TcFastInputSnowAmount);
+			// Margin in ms: (Amount / 100 ticks) * 20 ms/tick
+			FastInputMargin = (SnowAmount + 2) / 5;
+			// Add 10ms (0.5 ticks) if 'Another hook logic' is enabled
+			if(g_Config.m_TcFastInputSnowHookAmount)
+				FastInputMargin += 10;
+		}
+		else if(FastInputMode == 6)
+		{
+			const int MeowAmount = std::max(0, g_Config.m_TcMeowFastInputAmount);
+			// Meow input is measured in 0.01 ticks, convert to ms
+			FastInputMargin = (MeowAmount + 2) / 5;
+		}
+		else if(FastInputMode == 7)
+		{
+			FastInputMargin = std::max(0, g_Config.m_TcLexzyFastInputAmount) / 5;
 		}
 		else
 		{
@@ -5718,7 +5740,14 @@ int CClient::PredictionMargin() const
 	const float MeasuredPingMargin = HasMeasuredPing ? pCurrentServerEntry->m_Info.m_Latency * 0.5f : 0.0f;
 	const float LiveConnectionMargin = std::max({MeasuredPingMargin, m_AutoMarginLatencyAverageMs, (float)LivePredictionMs});
 	const float ExcessLatencyMargin = std::max(0.0f, LiveConnectionMargin - BaseMargin) / 6.0f;
-	const float JitterMargin = std::max(0.0f, m_AutoMarginLatencyJitterMs - 2.0f) * 0.75f;
+	float JitterMultiplier = 0.75f;
+	float JitterThreshold = 2.0f;
+	if (FastInputMode == 7 && g_Config.m_TcLexzyDynamicMargin)
+	{
+		JitterMultiplier = 1.25f;
+		JitterThreshold = 1.0f;
+	}
+	const float JitterMargin = std::max(0.0f, m_AutoMarginLatencyJitterMs - JitterThreshold) * JitterMultiplier;
 	const float ConnectionMargin = BaseMargin + ExcessLatencyMargin + JitterMargin + (ConnectionProblems ? 10.0f : 0.0f);
 
 	return std::clamp(round_to_int(ConnectionMargin), 1, 300);

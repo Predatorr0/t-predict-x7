@@ -238,6 +238,8 @@ bool CHttpRequest::ConfigureHandle(void *pHandle)
 
 #ifdef CONF_PLATFORM_ANDROID
 	curl_easy_setopt(pH, CURLOPT_CAPATH, "/system/etc/security/cacerts");
+#elif defined(CONF_FAMILY_WINDOWS)
+	curl_easy_setopt(pH, CURLOPT_CAINFO, "cacert.pem");
 #endif
 
 	switch(m_Type)

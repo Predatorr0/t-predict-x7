@@ -1821,7 +1821,15 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 			UpdateRevealPhase(s_FastInputPhase, FastInputExpanded);
 
 			const bool BestInputMode = g_Config.m_BcFastInputMode == 3;
-			const float FastInputExtraTargetHeight = BestInputMode ? (MarginSmall * 8.0f + LineSize * 8.0f) : (MarginSmall * 3.0f + LineSize * 3.0f);
+			const bool SnowInputMode = g_Config.m_BcFastInputMode == 5;
+			const bool MeowInputMode = g_Config.m_BcFastInputMode == 6;
+			const bool SaikoPlusInputMode = g_Config.m_BcFastInputMode == 4;
+			float ExtraRows = 6.0f;
+			if(BestInputMode) ExtraRows = 11.0f;
+			else if(SnowInputMode) ExtraRows = 8.0f;
+			else if(MeowInputMode) ExtraRows = 6.0f;
+			else if(g_Config.m_BcFastInputMode == 7) ExtraRows = 9.0f;
+			const float FastInputExtraTargetHeight = MarginSmall * ExtraRows + LineSize * ExtraRows;
 			const float ContentHeight = LineSize + MarginSmall + LineSize * 3.0f +
 						    FastInputExtraTargetHeight * s_FastInputPhase;
 
@@ -1851,6 +1859,9 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 				static CButtonContainer s_FastInputModeFast;
 				static CButtonContainer s_FastInputModeBest;
 				static CButtonContainer s_FastInputModeSaikoPlus;
+				static CButtonContainer s_FastInputModeSnow;
+				static CButtonContainer s_FastInputModeMeow;
+				static CButtonContainer s_FastInputModeLexzy;
 				g_Config.m_BcFastInputMode = BcFastInputNormalizedMode(g_Config.m_BcFastInputMode);
 				const int OldMode = g_Config.m_BcFastInputMode;
 
@@ -1874,6 +1885,31 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 						g_Config.m_BcFastInputMode = 3;
 					if(DoButton_Menu(&s_FastInputModeSaikoPlus, "Saiko+", g_Config.m_BcFastInputMode == 4, &SaikoPlusButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
 						g_Config.m_BcFastInputMode = 4;
+				}
+
+				CUIRect ButtonRow2;
+				Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+				Expand.HSplitTop(LineSize, &ButtonRow2, &Expand);
+				{
+					CUIRect SnowButton, MeowButton, LexzyButton, Row2Rest;
+					const float Spacing = 2.0f;
+					const float ButtonWidth = (ButtonRow2.w - Spacing * 2.0f) / 3.0f;
+					ButtonRow2.VSplitLeft(ButtonWidth, &SnowButton, &Row2Rest);
+					Row2Rest.VSplitLeft(Spacing, nullptr, &Row2Rest);
+					Row2Rest.VSplitLeft(ButtonWidth, &MeowButton, &Row2Rest);
+					Row2Rest.VSplitLeft(Spacing, nullptr, &Row2Rest);
+					LexzyButton = Row2Rest;
+					
+					SnowButton.HMargin(2.0f, &SnowButton);
+					MeowButton.HMargin(2.0f, &MeowButton);
+					LexzyButton.HMargin(2.0f, &LexzyButton);
+
+					if(DoButton_Menu(&s_FastInputModeSnow, "Snow", g_Config.m_BcFastInputMode == 5, &SnowButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_L))
+						g_Config.m_BcFastInputMode = 5;
+					if(DoButton_Menu(&s_FastInputModeMeow, "Meow", g_Config.m_BcFastInputMode == 6, &MeowButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_NONE))
+						g_Config.m_BcFastInputMode = 6;
+					if(DoButton_Menu(&s_FastInputModeLexzy, "Lexzy", g_Config.m_BcFastInputMode == 7, &LexzyButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_R))
+						g_Config.m_BcFastInputMode = 7;
 				}
 
 				if(g_Config.m_BcFastInputMode != OldMode)
@@ -1932,6 +1968,105 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 					const float NewRel = Ui()->DoScrollbarH(pAmountValue, &ScrollBar, Rel);
 					Value = (int)(Min + NewRel * (Max - Min) + 0.5f);
 					*pAmountValue = std::clamp(Value, Min, Max);
+				}
+				else if(g_Config.m_BcFastInputMode == 5)
+				{
+					const int Min = 0;
+					const int Max = 500;
+					int *pAmountValue = &g_Config.m_TcFastInputSnowAmount;
+					int Value = std::clamp(*pAmountValue, Min, Max);
+
+					const int Increment = std::max(1, (Max - Min) / 35);
+					if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_UP) && Ui()->MouseInside(&Button))
+						Value = std::clamp(Value + Increment, Min, Max);
+					if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_DOWN) && Ui()->MouseInside(&Button))
+						Value = std::clamp(Value - Increment, Min, Max);
+
+					char aBuf[256];
+					str_format(aBuf, sizeof(aBuf), "%s: %.2f ticks", "Snow Amount", Value / 100.0f);
+
+					CUIRect AmountLabel, ScrollBar;
+					Button.VSplitMid(&AmountLabel, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
+					const float LabelFontSize = AmountLabel.h * CUi::ms_FontmodHeight * 0.8f;
+					Ui()->DoLabel(&AmountLabel, aBuf, LabelFontSize, TEXTALIGN_ML);
+
+					const float Rel = (Value - Min) / (float)(Max - Min);
+					const float NewRel = Ui()->DoScrollbarH(pAmountValue, &ScrollBar, Rel);
+					Value = (int)(Min + NewRel * (Max - Min) + 0.5f);
+					*pAmountValue = std::clamp(Value, Min, Max);
+
+					Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+					{
+						CUIRect Label;
+						Button.VSplitMid(&Label, &Button, minimum(10.0f, Button.w * 0.05f));
+						if(Ui()->DoButton_CheckBox(&g_Config.m_TcFastInputSnowHookAmount, "Another hook logic (Snow)", g_Config.m_TcFastInputSnowHookAmount, &Button))
+							g_Config.m_TcFastInputSnowHookAmount ^= 1;
+					}
+					// Snow Input others is shown in the common "others" block below
+				}
+				else if(g_Config.m_BcFastInputMode == 6)
+				{
+					const int Min = 0;
+					const int Max = 500;
+					int *pAmountValue = &g_Config.m_TcMeowFastInputAmount;
+					int Value = std::clamp(*pAmountValue, Min, Max);
+
+					const int Increment = std::max(1, (Max - Min) / 35);
+					if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_UP) && Ui()->MouseInside(&Button))
+						Value = std::clamp(Value + Increment, Min, Max);
+					if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_DOWN) && Ui()->MouseInside(&Button))
+						Value = std::clamp(Value - Increment, Min, Max);
+
+					char aBuf[256];
+					str_format(aBuf, sizeof(aBuf), "%s: %.2f ticks", "Meow Amount", Value / 100.0f);
+
+					CUIRect AmountLabel, ScrollBar;
+					Button.VSplitMid(&AmountLabel, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
+					const float LabelFontSize = AmountLabel.h * CUi::ms_FontmodHeight * 0.8f;
+					Ui()->DoLabel(&AmountLabel, aBuf, LabelFontSize, TEXTALIGN_ML);
+
+					const float Rel = (Value - Min) / (float)(Max - Min);
+					const float NewRel = Ui()->DoScrollbarH(pAmountValue, &ScrollBar, Rel);
+					Value = (int)(Min + NewRel * (Max - Min) + 0.5f);
+					*pAmountValue = std::clamp(Value, Min, Max);
+				}
+				else if(g_Config.m_BcFastInputMode == 7)
+				{
+					const int Min = 0;
+					const int Max = 1000;
+					int *pAmountValue = &g_Config.m_TcLexzyFastInputAmount;
+					int Value = std::clamp(*pAmountValue, Min, Max);
+
+					const int Increment = std::max(1, (Max - Min) / 35);
+					if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_UP) && Ui()->MouseInside(&Button))
+						Value = std::clamp(Value + Increment, Min, Max);
+					if(Input()->ModifierIsPressed() && Input()->KeyPress(KEY_MOUSE_WHEEL_DOWN) && Ui()->MouseInside(&Button))
+						Value = std::clamp(Value - Increment, Min, Max);
+
+					char aBuf[256];
+					str_format(aBuf, sizeof(aBuf), "%s: %.2f ticks", "Lexzy Amount", Value / 100.0f);
+
+					CUIRect AmountLabel, ScrollBar;
+					Button.VSplitMid(&AmountLabel, &ScrollBar, minimum(10.0f, Button.w * 0.05f));
+					const float LabelFontSize = AmountLabel.h * CUi::ms_FontmodHeight * 0.8f;
+					Ui()->DoLabel(&AmountLabel, aBuf, LabelFontSize, TEXTALIGN_ML);
+
+					const float Rel = (Value - Min) / (float)(Max - Min);
+					const float NewRel = Ui()->DoScrollbarH(pAmountValue, &ScrollBar, Rel);
+					Value = (int)(Min + NewRel * (Max - Min) + 0.5f);
+					*pAmountValue = std::clamp(Value, Min, Max);
+
+					Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+					Expand.HSplitTop(LineSize, &Button, &Expand);
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcLexzyHookPrediction, "Enhanced hook prediction", &g_Config.m_TcLexzyHookPrediction, &Button, LineSize);
+
+					Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+					Expand.HSplitTop(LineSize, &Button, &Expand);
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcLexzyDynamicMargin, "Dynamic prediction margin", &g_Config.m_TcLexzyDynamicMargin, &Button, LineSize);
+					
+					Expand.HSplitTop(MarginSmall, nullptr, &Expand);
+					Expand.HSplitTop(LineSize, &Button, &Expand);
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcLexzyHitboxAssist, "Hitbox prediction assist", &g_Config.m_TcLexzyHitboxAssist, &Button, LineSize);
 				}
 				else
 				{
@@ -2069,12 +2204,23 @@ void CMenus::RenderSettingsBestClient(CUIRect MainView)
 					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInputOthers, BCLocalize("Fast Input others"), &g_Config.m_TcFastInputOthers, &Expand, LineSize);
 				else if(g_Config.m_BcFastInputMode == 3)
 					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcBestInputOthers, BCLocalize("Best input others"), &g_Config.m_BcBestInputOthers, &Expand, LineSize);
-				else
+				else if(g_Config.m_BcFastInputMode == 4)
 					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcSaikoPlusOthers, "Saiko+ others", &g_Config.m_BcSaikoPlusOthers, &Expand, LineSize);
+				else if(g_Config.m_BcFastInputMode == 5)
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcFastInputSnowOthers, "Snow Input others", &g_Config.m_TcFastInputSnowOthers, &Expand, LineSize);
+				else if(g_Config.m_BcFastInputMode == 6)
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcMeowFastInputOthers, "Extra tick other tees", &g_Config.m_TcMeowFastInputOthers, &Expand, LineSize);
+				else if(g_Config.m_BcFastInputMode == 7)
+				{
+					DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcLexzyOthers, "Apply lexzy to others", &g_Config.m_TcLexzyOthers, &Expand, LineSize);
+				}
 			}
 
+			// Sub-Tick aiming: shown for all modes
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_ClSubTickAiming, BCLocalize("Sub-Tick aiming"), &g_Config.m_ClSubTickAiming, &Content, LineSize);
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcFastInputAutoMargin, BCLocalize("Auto margin"), &g_Config.m_BcFastInputAutoMargin, &Content, LineSize);
+			// Auto margin: only for Saiko+ and Fast modes
+			if(g_Config.m_BcFastInputMode == 4 || g_Config.m_BcFastInputMode == 0)
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_BcFastInputAutoMargin, BCLocalize("Auto margin"), &g_Config.m_BcFastInputAutoMargin, &Content, LineSize);
 			Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
 
 			static float s_SnapTapPhase = 0.0f;

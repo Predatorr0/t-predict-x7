@@ -377,34 +377,38 @@ void CServerBrowserHttp::ResetMasterChooser(const char *pPreviousBestUrl)
 	char aaUrls[CChooseMaster::MAX_URLS][256];
 	const char *apUrls[CChooseMaster::MAX_URLS] = {nullptr};
 	int NumUrls = 0;
+	// Only include BestClient master server if the setting is enabled
 	if(UseBestClientMaster)
 	{
 		apUrls[0] = BESTCLIENT_SERVERLIST_URL;
 		NumUrls = 1;
 	}
-	else
+
+	CLineReader LineReader;
+	if(LineReader.OpenFile(m_pStorage->OpenFile("ddnet-serverlist-urls.cfg", IOFLAG_READ, IStorage::TYPE_ALL)))
 	{
-		CLineReader LineReader;
-		if(LineReader.OpenFile(m_pStorage->OpenFile("ddnet-serverlist-urls.cfg", IOFLAG_READ, IStorage::TYPE_ALL)))
+		while(const char *pLine = LineReader.Get())
 		{
-			while(const char *pLine = LineReader.Get())
+			if(NumUrls == CChooseMaster::MAX_URLS)
 			{
-				if(NumUrls == CChooseMaster::MAX_URLS)
-				{
-					break;
-				}
-				str_copy(aaUrls[NumUrls], pLine);
-				apUrls[NumUrls] = aaUrls[NumUrls];
-				NumUrls += 1;
+				break;
 			}
+			str_copy(aaUrls[NumUrls], pLine);
+			apUrls[NumUrls] = aaUrls[NumUrls];
+			NumUrls += 1;
 		}
-		if(NumUrls == 0)
+	}
+	// Always add DDNet master servers so all servers remain visible
+	if(NumUrls < CChooseMaster::MAX_URLS)
+	{
+		for(size_t i = 0; i < std::size(DEFAULT_SERVERLIST_URLS); i++)
 		{
-			for(size_t i = 0; i < std::size(DEFAULT_SERVERLIST_URLS); i++)
+			if(NumUrls == CChooseMaster::MAX_URLS)
 			{
-				apUrls[i] = DEFAULT_SERVERLIST_URLS[i];
+				break;
 			}
-			NumUrls = std::size(DEFAULT_SERVERLIST_URLS);
+			apUrls[NumUrls] = DEFAULT_SERVERLIST_URLS[i];
+			NumUrls += 1;
 		}
 	}
 
@@ -606,44 +610,52 @@ IServerBrowserHttp *CreateServerBrowserHttp(IEngine *pEngine, IStorage *pStorage
 {
 	char aaUrls[CChooseMaster::MAX_URLS][256];
 	const char *apUrls[CChooseMaster::MAX_URLS] = {nullptr};
+	const char **ppUrls = apUrls;
 	int NumUrls = 0;
+	// Only include BestClient master server if the setting is enabled
 	if(g_Config.m_BcMastersrv != 0)
 	{
 		apUrls[0] = BESTCLIENT_SERVERLIST_URL;
 		NumUrls = 1;
 	}
-	else
+
+	CLineReader LineReader;
+	if(LineReader.OpenFile(pStorage->OpenFile("ddnet-serverlist-urls.cfg", IOFLAG_READ, IStorage::TYPE_ALL)))
 	{
-		CLineReader LineReader;
-		if(LineReader.OpenFile(pStorage->OpenFile("ddnet-serverlist-urls.cfg", IOFLAG_READ, IStorage::TYPE_ALL)))
+		while(const char *pLine = LineReader.Get())
 		{
-			while(const char *pLine = LineReader.Get())
+			if(NumUrls == CChooseMaster::MAX_URLS)
 			{
-				if(NumUrls == CChooseMaster::MAX_URLS)
-				{
-					break;
-				}
-				str_copy(aaUrls[NumUrls], pLine);
-				apUrls[NumUrls] = aaUrls[NumUrls];
-				NumUrls += 1;
+				break;
 			}
+			str_copy(aaUrls[NumUrls], pLine);
+			apUrls[NumUrls] = aaUrls[NumUrls];
+			NumUrls += 1;
 		}
-		if(NumUrls == 0)
+	}
+	// Always add DDNet master servers so all servers remain visible
+	if(NumUrls < CChooseMaster::MAX_URLS)
+	{
+		for(size_t i = 0; i < std::size(DEFAULT_SERVERLIST_URLS); i++)
 		{
-			for(size_t i = 0; i < std::size(DEFAULT_SERVERLIST_URLS); i++)
+			if(NumUrls == CChooseMaster::MAX_URLS)
 			{
-				apUrls[i] = DEFAULT_SERVERLIST_URLS[i];
+				break;
 			}
-			NumUrls = std::size(DEFAULT_SERVERLIST_URLS);
+			apUrls[NumUrls] = DEFAULT_SERVERLIST_URLS[i];
+			NumUrls += 1;
 		}
 	}
 	int PreviousBestIndex = -1;
-	for(int i = 0; i < NumUrls; i++)
+	if(pPreviousBestUrl != nullptr)
 	{
-		if(str_comp(apUrls[i], pPreviousBestUrl) == 0)
+		for(int i = 0; i < NumUrls; i++)
 		{
-			PreviousBestIndex = i;
-			break;
+			if(str_comp(apUrls[i], pPreviousBestUrl) == 0)
+			{
+				PreviousBestIndex = i;
+				break;
+			}
 		}
 	}
 	return new CServerBrowserHttp(pEngine, pStorage, pHttp, apUrls, NumUrls, PreviousBestIndex);

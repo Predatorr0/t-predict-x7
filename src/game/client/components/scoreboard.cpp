@@ -1181,7 +1181,7 @@ void CScoreboard::OnRender()
 	const float ScoreboardWidth = !Teams && NumPlayers <= 16 ? ScoreboardSmallWidth : 750.0f;
 	const float TitleHeight = 30.0f;
 
-	CUIRect Scoreboard = {(Screen.w - ScoreboardWidth) / 2.0f, 75.0f, ScoreboardWidth, 355.0f + TitleHeight};
+	CUIRect Scoreboard = {(Screen.w - ScoreboardWidth) / 2.0f + g_Config.m_MeowScoreHudOffsetX, 75.0f + g_Config.m_MeowScoreHudOffsetY, ScoreboardWidth, 355.0f + TitleHeight};
 	CScoreboardRenderState RenderState{};
 
 	if(Teams)
@@ -1241,6 +1241,7 @@ void CScoreboard::OnRender()
 			const ColorRGBA RedTitleRight(1.00f, 0.34f, 0.34f, 0.92f);
 			const ColorRGBA BlueTitleLeft(0.04f, 0.14f, 0.40f, 0.92f);
 			const ColorRGBA BlueTitleRight(0.34f, 0.66f, 1.00f, 0.92f);
+
 			RedTitle.Draw4(RedTitleLeft, RedTitleRight, RedTitleLeft, RedTitleRight, IGraphics::CORNER_T, 7.5f);
 			BlueTitle.Draw4(BlueTitleLeft, BlueTitleRight, BlueTitleLeft, BlueTitleRight, IGraphics::CORNER_T, 7.5f);
 		}

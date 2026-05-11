@@ -623,7 +623,12 @@ float CControls::GetMaxMouseDistance() const
 
 bool CControls::CheckNewInput()
 {
-	if(g_Config.m_TcFastInput && g_Config.m_BcFastInputMode == 4 && g_Config.m_BcSaikoPlusAmount > 0)
+	const int NormalizedMode = BcFastInputNormalizedMode(g_Config.m_BcFastInputMode);
+	const bool IsSaikoPlusActive = NormalizedMode == 4 && g_Config.m_BcSaikoPlusAmount > 0;
+	const bool IsSnowActive = NormalizedMode == 5 && g_Config.m_TcFastInputSnowAmount > 0;
+	const bool IsMeowActive = NormalizedMode == 6 && g_Config.m_TcMeowFastInputAmount > 0;
+	const bool IsLexzyActive = NormalizedMode == 7 && g_Config.m_TcLexzyFastInputAmount > 0;
+	if(g_Config.m_TcFastInput && (IsSaikoPlusActive || IsSnowActive || IsMeowActive || IsLexzyActive))
 	{
 		CNetObj_PlayerInput TestInput = m_aInputData[g_Config.m_ClDummy];
 		TestInput.m_Direction = 0;

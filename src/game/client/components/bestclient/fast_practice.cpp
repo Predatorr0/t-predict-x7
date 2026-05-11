@@ -53,42 +53,7 @@ int ReleasedFireState(int FireState)
 	return FireState;
 }
 
-float EffectiveFastInputOffsetTicks(const CGameClient *pGameClient)
-{
-	if(!g_Config.m_TcFastInput)
-		return 0.0f;
-
-	if(g_Config.m_BcFastInputMode == 0)
-	{
-		if(g_Config.m_TcFastInputAmount <= 0)
-			return 0.0f;
-		return g_Config.m_TcFastInputAmount / 20.0f;
-	}
-
-	if(BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 4)
-	{
-		if(g_Config.m_BcSaikoPlusAmount <= 0)
-			return 0.0f;
-		return g_Config.m_BcSaikoPlusAmount / 100.0f;
-	}
-
-	const CGameClient::SBestInputSettings Settings = pGameClient->BestInputSettings();
-	if(Settings.m_Offset <= 0)
-		return 0.0f;
-
-	float Offset = Settings.m_Offset / 100.0f;
-	if(Settings.m_Smoothing > 0)
-	{
-		float SmoothFactor = 1.0f - (Settings.m_Smoothing / 200.0f);
-		Offset *= SmoothFactor;
-	}
-	if(Settings.m_LatencyComp > 0)
-	{
-		float CompFactor = 1.0f + (Settings.m_LatencyComp / 100.0f);
-		Offset *= CompFactor;
-	}
-	return Offset;
-}
+// EffectiveFastInputOffsetTicks is defined in gameclient.cpp / declared in gameclient.h
 
 int FastInputPredictionTicks(float OffsetTicks)
 {

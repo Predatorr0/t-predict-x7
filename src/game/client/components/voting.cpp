@@ -350,7 +350,7 @@ CUIRect CVoting::GetHudRect(float HudWidth, float HudHeight, bool ForcePreview) 
 	{
 		const auto Layout = HudLayout::Get(HudLayout::MODULE_VOTES, HudWidth, HudLayout::CANVAS_HEIGHT);
 		const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
-		CUIRect Rect = {Layout.m_X, Layout.m_Y, 70.0f * Scale, 35.0f * Scale};
+		CUIRect Rect = {Layout.m_X + g_Config.m_MeowVoteOffsetX, Layout.m_Y + g_Config.m_MeowVoteOffsetY, 70.0f * Scale, 35.0f * Scale};
 		Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, HudWidth - Rect.w));
 		Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, HudLayout::CANVAS_HEIGHT - Rect.h));
 		if(!ForcePreview && !IsVoting())
@@ -360,7 +360,7 @@ CUIRect CVoting::GetHudRect(float HudWidth, float HudHeight, bool ForcePreview) 
 
 	const auto Layout = HudLayout::Get(HudLayout::MODULE_VOTES, HudWidth, HudLayout::CANVAS_HEIGHT);
 	const float Scale = std::clamp(Layout.m_Scale / 100.0f, 0.25f, 3.0f);
-	CUIRect Rect = {Layout.m_X, Layout.m_Y, 120.0f * Scale, 38.0f * Scale};
+	CUIRect Rect = {Layout.m_X + g_Config.m_MeowVoteOffsetX, Layout.m_Y + g_Config.m_MeowVoteOffsetY, 120.0f * Scale, 38.0f * Scale};
 	Rect.x = std::clamp(Rect.x, 0.0f, maximum(0.0f, HudWidth - Rect.w));
 	Rect.y = std::clamp(Rect.y, 0.0f, maximum(0.0f, HudLayout::CANVAS_HEIGHT - Rect.h));
 	if(!ForcePreview && !IsVoting())

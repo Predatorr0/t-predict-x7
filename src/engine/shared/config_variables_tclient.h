@@ -61,6 +61,23 @@ MACRO_CONFIG_INT(TcFastInput, tc_fast_input, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_S
 MACRO_CONFIG_INT(TcFastInputAmount, tc_fast_input_amount, 20, 1, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How many milliseconds fast input will apply")
 MACRO_CONFIG_INT(TcFastInputOthers, tc_fast_input_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply fast input to other tees")
 
+// Snow Input (Meow Client port)
+MACRO_CONFIG_INT(TcFastInputSnowAmount, tc_fast_input_snow_amount, 0, 0, 500, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Snow input prediction amount in 0.01 ticks (0 = disabled, max 500 = 5 ticks)")
+MACRO_CONFIG_INT(TcFastInputSnowHookAmount, tc_fast_input_snow_hook_amount, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable 'Another hook logic' for snow input (original MeowClient feature)")
+MACRO_CONFIG_INT(TcFastInputSnowOthers, tc_fast_input_snow_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply snow input to other tees")
+
+// Meow Fast Input (Meow Client port)
+MACRO_CONFIG_INT(TcMeowFastInputAmount, tc_meow_fast_input_amount, 0, 0, 500, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Meow fast input prediction offset in 0.01 ticks (0=disabled, 500=5 ticks)")
+MACRO_CONFIG_INT(TcMeowFastInputOthers, tc_meow_fast_input_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply meow fast input extra tick to other tees")
+
+// Lexzy Fast Input
+MACRO_CONFIG_INT(TcLexzyFastInputAmount, tc_lexzy_fast_input_amount, 0, 0, 1000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Lexzy input amount in 0.01 ticks")
+MACRO_CONFIG_INT(TcLexzyOthers, tc_lexzy_others, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Apply Lexzy input to other tees")
+MACRO_CONFIG_INT(TcLexzyDynamicMargin, tc_lexzy_dynamic_margin, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable dynamic margin for Lexzy mode")
+MACRO_CONFIG_INT(TcLexzyHookPrediction, tc_lexzy_hook_prediction, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable enhanced hook prediction for Lexzy mode")
+MACRO_CONFIG_INT(TcLexzyHitboxAssist, tc_lexzy_hitbox_assist, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable hitbox prediction assist for Lexzy mode")
+
+
 MACRO_CONFIG_INT(TcAntiPingImproved, tc_antiping_improved, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Different antiping smoothing algorithm, not compatible with cl_antiping_smooth")
 MACRO_CONFIG_INT(TcAntiPingNegativeBuffer, tc_antiping_negative_buffer, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Helps in Gores. Allows internal certainty value to be negative which causes more conservative prediction")
 MACRO_CONFIG_INT(TcAntiPingStableDirection, tc_antiping_stable_direction, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Predicts optimistically along the tees stable axis to reduce delay in gaining overall stability")

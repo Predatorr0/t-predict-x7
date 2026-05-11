@@ -140,6 +140,31 @@ void CMod::OnRender()
 
 			RenderHitbox(Player.m_RenderPos, Alpha);
 
+			if(g_Config.m_TcLexzyHitboxAssist)
+			{
+				const float OffsetTicks = EffectiveFastInputOffsetTicks(GameClient());
+				if(OffsetTicks > 0.0f)
+				{
+					const auto &Char = GameClient()->m_Snap.m_aCharacters[ClientId];
+					vec2 Velocity = vec2(Char.m_Cur.m_VelX / 256.0f, Char.m_Cur.m_VelY / 256.0f);
+					vec2 PredictedPosition = Player.m_RenderPos + Velocity * OffsetTicks;
+
+					if(GameClient()->OptimizerAllowRenderPos(PredictedPosition))
+					{
+						Graphics()->QuadsBegin();
+						Graphics()->SetColor(ColorRGBA(1.0f, 1.0f, 1.0f, 0.4f * Alpha));
+						Graphics()->DrawCircle(PredictedPosition.x, PredictedPosition.y, 8.0f, 10);
+						Graphics()->QuadsEnd();
+
+						IEngineGraphics::CLineItem PredictionLine = {Player.m_RenderPos.x, Player.m_RenderPos.y, PredictedPosition.x, PredictedPosition.y};
+						Graphics()->LinesBegin();
+						Graphics()->SetColor(ColorRGBA(1.0f, 1.0f, 1.0f, 0.2f * Alpha));
+						Graphics()->LinesDraw(&PredictionLine, 1);
+						Graphics()->LinesEnd();
+					}
+				}
+			}
+
 			if(g_Config.m_TcShowPlayerHitBoxes > 1)
 			{
 				// From CPlayers::RenderPlayer

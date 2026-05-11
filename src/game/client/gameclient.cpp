@@ -102,6 +102,7 @@ bool IsGameplayInputComponentDisabled()
 	return CBestClient::IsComponentDisabledByMask((int)CBestClient::COMPONENT_GAMEPLAY_INPUT,
 		g_Config.m_BcDisabledComponentsMaskLo, g_Config.m_BcDisabledComponentsMaskHi);
 }
+} // namespace
 
 float EffectiveFastInputOffsetTicksFastMode()
 {
@@ -161,6 +162,63 @@ float EffectiveFastInputOffsetTicksSaikoPlusMode()
 	return g_Config.m_BcSaikoPlusAmount / 100.0f;
 }
 
+float EffectiveFastInputOffsetTicksSnowMode()
+{
+	if(!g_Config.m_TcFastInput ||
+		BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) != 5 ||
+		IsGameplayInputComponentDisabled())
+		return 0.0f;
+	if(g_Config.m_TcFastInputSnowAmount <= 0)
+		return 0.0f;
+
+	float BaseOffset = g_Config.m_TcFastInputSnowAmount / 100.0f;
+
+	// Add hook amount offset (0.5 ticks) if 'Another hook logic' is enabled
+	if(g_Config.m_TcFastInputSnowHookAmount)
+	{
+		// MeowClient 'Another hook logic' typically uses a 0.5 tick offset for kanca
+		BaseOffset += 0.5f;
+	}
+
+	return BaseOffset;
+}
+
+float EffectiveFastInputOffsetTicksMeowMode()
+{
+	if(!g_Config.m_TcFastInput ||
+		BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) != 6 ||
+		IsGameplayInputComponentDisabled())
+		return 0.0f;
+	if(g_Config.m_TcMeowFastInputAmount <= 0)
+		return 0.0f;
+	// Meow fast input is now tick-based (Amount / 100.0)
+	return g_Config.m_TcMeowFastInputAmount / 100.0f;
+}
+
+float EffectiveFastInputOffsetTicksLexzyMode(const CGameClient *pGameClient)
+{
+	if(!g_Config.m_TcFastInput ||
+		BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) != 7 ||
+		IsGameplayInputComponentDisabled())
+		return 0.0f;
+	
+	float BaseOffset = g_Config.m_TcLexzyFastInputAmount / 100.0f;
+	
+	// Advanced: Auto Margin improvement
+	if(g_Config.m_BcFastInputAutoMargin && pGameClient)
+	{
+		// Optimal margin is roughly ping / 2.
+		// 1 tick = 20ms.
+		float PingTicks = pGameClient->CurrentPing() / 20.0f;
+		float AutoOffset = PingTicks * 0.5f; // Aim for half-ping ahead
+		
+		// Blend base offset with auto offset for stability
+		BaseOffset = maximum(BaseOffset, AutoOffset);
+	}
+
+	return BaseOffset;
+}
+
 float EffectiveFastInputOffsetTicks(const CGameClient *pGameClient)
 {
 	const int FastInputMode = BcFastInputNormalizedMode(g_Config.m_BcFastInputMode);
@@ -168,6 +226,12 @@ float EffectiveFastInputOffsetTicks(const CGameClient *pGameClient)
 		return EffectiveFastInputOffsetTicksFastMode();
 	if(FastInputMode == 4)
 		return EffectiveFastInputOffsetTicksSaikoPlusMode();
+	if(FastInputMode == 5)
+		return EffectiveFastInputOffsetTicksSnowMode();
+	if(FastInputMode == 6)
+		return EffectiveFastInputOffsetTicksMeowMode();
+	if(FastInputMode == 7)
+		return EffectiveFastInputOffsetTicksLexzyMode(pGameClient);
 	return EffectiveFastInputOffsetTicksBestMode(pGameClient);
 }
 
@@ -175,7 +239,8 @@ int FastInputPredictionTicks(float OffsetTicks)
 {
 	if(OffsetTicks <= 0.0f)
 		return 0;
-	if(BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 4)
+	const int Mode = BcFastInputNormalizedMode(g_Config.m_BcFastInputMode);
+	if(Mode == 4 || Mode == 5 || Mode == 7)
 		return (int)std::ceil(OffsetTicks + 1.0f);
 	return (int)std::ceil(OffsetTicks);
 }
@@ -184,7 +249,8 @@ int FastInputPredictionTicksOthers(float OffsetTicks)
 {
 	if(OffsetTicks <= 0.0f)
 		return 0;
-	if(BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 4)
+	const int Mode = BcFastInputNormalizedMode(g_Config.m_BcFastInputMode);
+	if(Mode == 4 || Mode == 5 || Mode == 7)
 		return (int)std::ceil(OffsetTicks);
 	return FastInputPredictionTicks(OffsetTicks);
 }
@@ -254,16 +320,37 @@ bool EffectiveSaikoPlusOthers()
 		!IsGameplayInputComponentDisabled();
 }
 
+bool EffectiveSnowInputOthers()
+{
+	return BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 5 &&
+		g_Config.m_TcFastInputSnowOthers != 0 &&
+		!IsGameplayInputComponentDisabled();
+}
+
+bool EffectiveMeowInputOthers()
+{
+	return BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 6 &&
+		g_Config.m_TcMeowFastInputOthers != 0 &&
+		!IsGameplayInputComponentDisabled();
+}
+
+bool EffectiveLexzyInputOthers()
+{
+	return g_Config.m_TcFastInput && BcFastInputNormalizedMode(g_Config.m_BcFastInputMode) == 7 &&
+		g_Config.m_TcLexzyOthers != 0 &&
+		!IsGameplayInputComponentDisabled();
+}
+
 bool EffectiveAnyFastInputOthers()
 {
-	return EffectiveFastInputOthers() || EffectiveBestInputOthers() || EffectiveSaikoPlusOthers();
+	return EffectiveFastInputOthers() || EffectiveBestInputOthers() || EffectiveSaikoPlusOthers() || EffectiveSnowInputOthers() || EffectiveMeowInputOthers() || EffectiveLexzyInputOthers();
 }
 
 bool EffectiveImmediateFastInputOthers()
 {
-	return EffectiveBestInputOthers() || EffectiveSaikoPlusOthers();
+	return EffectiveBestInputOthers() || EffectiveSaikoPlusOthers() || EffectiveSnowInputOthers() || EffectiveMeowInputOthers() || EffectiveLexzyInputOthers();
 }
-} // namespace
+
 
 const char *CGameClient::Version() const { return GAME_VERSION; }
 const char *CGameClient::NetVersion() const { return GAME_NETVERSION; }
@@ -3369,7 +3456,8 @@ void CGameClient::OnPredict()
 		if(FastInputTicks > 0 && Tick > FinalTickRegular)
 		{
 			pInputData = &m_Controls.m_aFastInput[LocalTee];
-			if(g_Config.m_BcFastInputMode != 4 && GetDummyFastInput(DummyFastInput, pDummyInputData, pDummyChar, LocalTee, DummyTee))
+			const int Mode = BcFastInputNormalizedMode(g_Config.m_BcFastInputMode);
+			if(Mode != 4 && Mode != 5 && GetDummyFastInput(DummyFastInput, pDummyInputData, pDummyChar, LocalTee, DummyTee))
 				pDummyInputData = &DummyFastInput;
 		}
 
